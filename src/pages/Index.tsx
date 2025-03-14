@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, FileText, BarChart, Users, Clock, GraduationCap } from 'lucide-react';
+import { ArrowRight, FileText, BarChart, Users, Clock, GraduationCap, CheckSquare, Edit3, FileCheck } from 'lucide-react';
 
 const Index = () => {
   const { user } = useAuth();
@@ -79,11 +79,11 @@ const Index = () => {
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="bg-gradient-to-br from-purple-900/90 to-purple-800/90 rounded-2xl p-8 text-white">
                   <div className="bg-purple-700/50 p-3 rounded-lg w-fit mb-4">
-                    <FileText className="h-6 w-6 text-purple-200" />
+                    <CheckSquare className="h-6 w-6 text-purple-200" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3">Multiple Question Types</h3>
+                  <h3 className="text-xl font-medium mb-3">Diverse Question Types</h3>
                   <p className="text-purple-200 mb-4">
-                    Create diverse quizzes with multiple-choice, true/false, short answer, and matching question formats.
+                    Create engaging quizzes with multiple-choice, true/false, short answer, and long answer formats.
                   </p>
                   <a href="#" className="text-white flex items-center hover:underline group">
                     Learn more <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -94,9 +94,9 @@ const Index = () => {
                   <div className="bg-purple-700/50 p-3 rounded-lg w-fit mb-4">
                     <BarChart className="h-6 w-6 text-purple-200" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3">Detailed Analytics</h3>
+                  <h3 className="text-xl font-medium mb-3">Results Analytics</h3>
                   <p className="text-purple-200 mb-4">
-                    Track performance metrics and gain insights with comprehensive quiz results and response analytics.
+                    Track performance with detailed quiz analytics, including completion rates, time spent, and question-level insights.
                   </p>
                   <a href="#" className="text-white flex items-center hover:underline group">
                     Learn more <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -105,11 +105,11 @@ const Index = () => {
                 
                 <div className="bg-gradient-to-br from-purple-900/90 to-purple-800/90 rounded-2xl p-8 text-white">
                   <div className="bg-purple-700/50 p-3 rounded-lg w-fit mb-4">
-                    <Users className="h-6 w-6 text-purple-200" />
+                    <FileCheck className="h-6 w-6 text-purple-200" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3">Team Collaboration</h3>
+                  <h3 className="text-xl font-medium mb-3">Share & Distribute</h3>
                   <p className="text-purple-200 mb-4">
-                    Collaborate with team members to create, edit, and share quizzes for seamless workflow.
+                    Easily share quizzes via custom links, embed them on your website, or distribute to specific groups.
                   </p>
                   <a href="#" className="text-white flex items-center hover:underline group">
                     Learn more <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -168,32 +168,32 @@ const Index = () => {
                     Transform Your Assessment Experience
                   </h2>
                   <p className="text-gray-700 mb-8">
-                    QuizGator provides educators and trainers with powerful tools to create engaging quizzes that enhance learning outcomes. Whether you're assessing knowledge, gathering feedback, or conducting training evaluations, our platform makes it simple and effective.
+                    QuizGator empowers educators with robust quiz-building tools that make assessment creation effortless. From classroom quizzes to professional certifications, our platform elevates your testing experience.
                   </p>
                   <div className="grid grid-cols-2 gap-4 mb-8">
                     <div className="flex items-start">
                       <div className="mr-2 text-purple-600">
                         <Clock className="h-5 w-5" />
                       </div>
-                      <p className="text-sm">Timed quizzes with flexible settings</p>
+                      <p className="text-sm">Auto-grading and instant results</p>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="mr-2 text-purple-600">
+                        <Edit3 className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm">Customizable quiz templates</p>
                     </div>
                     <div className="flex items-start">
                       <div className="mr-2 text-purple-600">
                         <GraduationCap className="h-5 w-5" />
                       </div>
-                      <p className="text-sm">Adaptive learning pathways</p>
-                    </div>
-                    <div className="flex items-start">
-                      <div className="mr-2 text-purple-600">
-                        <BarChart className="h-5 w-5" />
-                      </div>
-                      <p className="text-sm">Comprehensive question analytics</p>
+                      <p className="text-sm">Learning progress tracking</p>
                     </div>
                     <div className="flex items-start">
                       <div className="mr-2 text-purple-600">
                         <Users className="h-5 w-5" />
                       </div>
-                      <p className="text-sm">Instant feedback for participants</p>
+                      <p className="text-sm">Collaborative quiz creation</p>
                     </div>
                   </div>
                   <Link to="/login">
