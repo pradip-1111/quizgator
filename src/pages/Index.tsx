@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, Search, BarChart, Share2 } from 'lucide-react';
+import { ArrowRight, FileText, BarChart, Users, Clock, GraduationCap } from 'lucide-react';
 
 const Index = () => {
   const { user } = useAuth();
@@ -21,9 +21,9 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-8">
               <nav className="hidden md:flex space-x-8">
-                <a href="#services" className="text-gray-800 hover:text-primary transition-colors">Services</a>
-                <a href="#case-studies" className="text-gray-800 hover:text-primary transition-colors">Case Studies</a>
-                <a href="#contact" className="text-gray-800 hover:text-primary transition-colors">Contact</a>
+                <a href="#features" className="text-gray-800 hover:text-primary transition-colors">Features</a>
+                <a href="#examples" className="text-gray-800 hover:text-primary transition-colors">Examples</a>
+                <a href="#pricing" className="text-gray-800 hover:text-primary transition-colors">Pricing</a>
               </nav>
               {user ? (
                 <Link to="/admin-dashboard">
@@ -56,17 +56,16 @@ const Index = () => {
             <div className="container mx-auto px-4">
               <div className="max-w-4xl mx-auto">
                 <div className="text-center mb-12">
-                  <span className="text-xs uppercase tracking-wider text-indigo-300 mb-4 inline-block">YOUR NEW TESTING PLATFORM</span>
+                  <span className="text-xs uppercase tracking-wider text-indigo-300 mb-4 inline-block">MODERN QUIZ PLATFORM</span>
                   <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
-                    Let's Build Your Online Success Story
+                    Create Engaging Quizzes in Minutes
                   </h1>
                   <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
-                    We specialize in crafting data-driven digital quizzes and assessments 
-                    that captivate your audience.
+                    Design beautiful quizzes, collect responses, and analyze results with our intuitive quiz creation platform.
                   </p>
                   <Link to="/login">
                     <Button className="rounded-full px-8 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
-                      Get this template <ArrowRight className="ml-2 h-4 w-4" />
+                      Start creating quizzes <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
@@ -75,16 +74,16 @@ const Index = () => {
           </section>
 
           {/* Feature cards */}
-          <section className="py-10 px-6">
+          <section id="features" className="py-10 px-6">
             <div className="container mx-auto px-4">
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="bg-gradient-to-br from-purple-900/90 to-purple-800/90 rounded-2xl p-8 text-white">
                   <div className="bg-purple-700/50 p-3 rounded-lg w-fit mb-4">
-                    <Search className="h-6 w-6 text-purple-200" />
+                    <FileText className="h-6 w-6 text-purple-200" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3">Paid Search</h3>
+                  <h3 className="text-xl font-medium mb-3">Multiple Question Types</h3>
                   <p className="text-purple-200 mb-4">
-                    Maximize Visibility and Conversions with Precision Target Settings Through Our Expert Paid Search Campaigns.
+                    Create diverse quizzes with multiple-choice, true/false, short answer, and matching question formats.
                   </p>
                   <a href="#" className="text-white flex items-center hover:underline group">
                     Learn more <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -95,9 +94,9 @@ const Index = () => {
                   <div className="bg-purple-700/50 p-3 rounded-lg w-fit mb-4">
                     <BarChart className="h-6 w-6 text-purple-200" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3">Analytics & Reporting</h3>
+                  <h3 className="text-xl font-medium mb-3">Detailed Analytics</h3>
                   <p className="text-purple-200 mb-4">
-                    Gain Insights and Track Performance with Robust Analytics and Reporting.
+                    Track performance metrics and gain insights with comprehensive quiz results and response analytics.
                   </p>
                   <a href="#" className="text-white flex items-center hover:underline group">
                     Learn more <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -106,11 +105,11 @@ const Index = () => {
                 
                 <div className="bg-gradient-to-br from-purple-900/90 to-purple-800/90 rounded-2xl p-8 text-white">
                   <div className="bg-purple-700/50 p-3 rounded-lg w-fit mb-4">
-                    <Share2 className="h-6 w-6 text-purple-200" />
+                    <Users className="h-6 w-6 text-purple-200" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3">Paid Social</h3>
+                  <h3 className="text-xl font-medium mb-3">Team Collaboration</h3>
                   <p className="text-purple-200 mb-4">
-                    Amplify Reach with Strategic Paid Social Media Advertising.
+                    Collaborate with team members to create, edit, and share quizzes for seamless workflow.
                   </p>
                   <a href="#" className="text-white flex items-center hover:underline group">
                     Learn more <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -123,7 +122,7 @@ const Index = () => {
           {/* Trusted by section */}
           <section className="py-12 bg-white rounded-2xl mx-6">
             <div className="container mx-auto px-4">
-              <p className="text-center text-sm font-medium text-gray-500 mb-8">TRUSTED BY</p>
+              <p className="text-center text-sm font-medium text-gray-500 mb-8">TRUSTED BY EDUCATORS WORLDWIDE</p>
               <div className="flex flex-wrap justify-center items-center gap-12">
                 <div className="grayscale opacity-70 hover:opacity-100 transition-opacity">
                   <svg width="60" height="20" viewBox="0 0 60 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -154,29 +153,54 @@ const Index = () => {
             </div>
           </section>
           
-          {/* Marketing section */}
+          {/* Quiz features section */}
           <section className="py-16 px-6">
             <div className="container mx-auto px-4">
               <div className="grid md:grid-cols-2 gap-8 items-center">
                 <div className="rounded-2xl overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80" 
-                       alt="People collaborating" 
+                  <img src="https://images.unsplash.com/photo-1516534775068-ba3e7458af70?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80" 
+                       alt="Student taking quiz on tablet" 
                        className="w-full h-[400px] object-cover rounded-2xl" />
                 </div>
                 <div>
-                  <span className="text-xs uppercase tracking-wider text-purple-600 mb-4 inline-block">DIGITAL MAGIC</span>
+                  <span className="text-xs uppercase tracking-wider text-purple-600 mb-4 inline-block">POWERFUL QUIZ TOOLS</span>
                   <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                    Elevate Your Business with Our Marketing Expertise
+                    Transform Your Assessment Experience
                   </h2>
                   <p className="text-gray-700 mb-8">
-                    Our digital marketing approaches are designed to unlock your 
-                    online potential into tangible success. Offering a dynamic blend 
-                    of creativity and strategic expertise to elevate your brand in 
-                    the digital realm.
+                    QuizGator provides an intuitive platform for creating engaging quizzes that captivate audiences and deliver meaningful insights. Perfect for educators, trainers, and businesses seeking to evaluate knowledge and improve learning outcomes.
                   </p>
-                  <Button className="rounded-full px-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
-                    Get this template <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="flex items-start">
+                      <div className="mr-2 text-purple-600">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm">Timed quizzes with customizable settings</p>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="mr-2 text-purple-600">
+                        <GraduationCap className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm">Ideal for all education levels</p>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="mr-2 text-purple-600">
+                        <BarChart className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm">Detailed performance analytics</p>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="mr-2 text-purple-600">
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <p className="text-sm">Share results with participants</p>
+                    </div>
+                  </div>
+                  <Link to="/login">
+                    <Button className="rounded-full px-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
+                      Start creating quizzes <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>
