@@ -168,37 +168,37 @@ const Index = () => {
                     Transform Your Assessment Experience
                   </h2>
                   <p className="text-gray-700 mb-8">
-                    QuizGator provides an intuitive platform for creating engaging quizzes that captivate audiences and deliver meaningful insights. Perfect for educators, trainers, and businesses seeking to evaluate knowledge and improve learning outcomes.
+                    QuizGator provides educators and trainers with powerful tools to create engaging quizzes that enhance learning outcomes. Whether you're assessing knowledge, gathering feedback, or conducting training evaluations, our platform makes it simple and effective.
                   </p>
                   <div className="grid grid-cols-2 gap-4 mb-8">
                     <div className="flex items-start">
                       <div className="mr-2 text-purple-600">
                         <Clock className="h-5 w-5" />
                       </div>
-                      <p className="text-sm">Timed quizzes with customizable settings</p>
+                      <p className="text-sm">Timed quizzes with flexible settings</p>
                     </div>
                     <div className="flex items-start">
                       <div className="mr-2 text-purple-600">
                         <GraduationCap className="h-5 w-5" />
                       </div>
-                      <p className="text-sm">Ideal for all education levels</p>
+                      <p className="text-sm">Adaptive learning pathways</p>
                     </div>
                     <div className="flex items-start">
                       <div className="mr-2 text-purple-600">
                         <BarChart className="h-5 w-5" />
                       </div>
-                      <p className="text-sm">Detailed performance analytics</p>
+                      <p className="text-sm">Comprehensive question analytics</p>
                     </div>
                     <div className="flex items-start">
                       <div className="mr-2 text-purple-600">
                         <Users className="h-5 w-5" />
                       </div>
-                      <p className="text-sm">Share results with participants</p>
+                      <p className="text-sm">Instant feedback for participants</p>
                     </div>
                   </div>
                   <Link to="/login">
                     <Button className="rounded-full px-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
-                      Start creating quizzes <ArrowRight className="ml-2 h-4 w-4" />
+                      Start your free trial <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 </div>
