@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Clock, User, Lock } from 'lucide-react';
+import { AlertCircle, Clock, User, Lock, Shield, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
@@ -91,8 +91,12 @@ const QuizRegistration = ({
                   <span>Once started, the quiz will enter fullscreen mode</span>
                 </div>
                 <div className="flex items-center text-muted-foreground">
-                  <Lock className="h-4 w-4 mr-1" />
-                  <span>Switching tabs or windows is not allowed during the test</span>
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  <span>Switching tabs or windows will result in warnings</span>
+                </div>
+                <div className="flex items-center text-muted-foreground">
+                  <Shield className="h-4 w-4 mr-1" />
+                  <span>After 3 warnings, your quiz will be auto-submitted</span>
                 </div>
               </div>
             </>

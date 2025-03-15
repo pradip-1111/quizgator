@@ -27,3 +27,12 @@ export type QuizResult = {
 };
 
 export type QuizStatus = 'draft' | 'active' | 'completed';
+
+export type StudentResponse = {
+  studentName: string;
+  studentId: string;
+  score: number;
+  totalPoints: number;
+  submittedAt: string;
+  percentageScore: number;
+};
