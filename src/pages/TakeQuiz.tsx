@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
-import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
+import { enterFullscreen, exitFullscreen, setupTabVisibilityTracking } from '../lib/fullscreen';
 import { Quiz } from '@/components/QuizCard';
 import { Question, QuizData, QuizResult, QuizStatus } from '@/types/quiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,9 +36,23 @@ const TakeQuiz = () => {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [requiresAuth, setRequiresAuth] = useState(true);
   
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
+  const cleanupTabTrackingRef = useRef<(() => void) | null>(null);
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (requiresAuth && !user && !loading) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in or sign up to take this quiz",
+        variant: "destructive",
+      });
+      navigate('/login');
+    }
+  }, [user, requiresAuth, loading, navigate, toast]);
 
   useEffect(() => {
     console.log("TakeQuiz component mounted with quizId:", quizId);
@@ -209,6 +224,48 @@ const TakeQuiz = () => {
     }
   }, [started, timeLeft]);
   
+  // Tab change detection
+  useEffect(() => {
+    if (started) {
+      // Setup tab change tracking
+      const cleanup = setupTabVisibilityTracking((isVisible) => {
+        if (!isVisible) {
+          // Tab was changed or window lost focus
+          setTabSwitchWarnings(prev => {
+            const newCount = prev + 1;
+            
+            // Alert the user
+            toast({
+              title: `Warning #${newCount}`,
+              description: "Switching tabs or applications during the quiz is not allowed!",
+              variant: "destructive",
+            });
+            
+            // If too many warnings, auto-submit the quiz
+            if (newCount >= 3) {
+              toast({
+                title: "Quiz Terminated",
+                description: "You've switched tabs multiple times. Your quiz has been automatically submitted.",
+                variant: "destructive",
+              });
+              handleSubmitQuiz();
+            }
+            
+            return newCount;
+          });
+        }
+      });
+      
+      cleanupTabTrackingRef.current = cleanup;
+      
+      return () => {
+        if (cleanupTabTrackingRef.current) {
+          cleanupTabTrackingRef.current();
+        }
+      };
+    }
+  }, [started, toast]);
+  
   const generateSampleQuestions = (count: number): Question[] => {
     console.log(`Generating ${count} sample questions`);
     const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
@@ -259,8 +316,10 @@ const TakeQuiz = () => {
     }
     
     try {
+      // Register student for the quiz
       await registerStudent(name, rollNumber, quizId || '1');
       
+      // Enter fullscreen
       if (quizContainerRef.current) {
         enterFullscreen(quizContainerRef.current);
       }
@@ -303,6 +362,12 @@ const TakeQuiz = () => {
   const handleQuitQuiz = () => {
     if (window.confirm("Are you sure you want to quit? Your progress will be lost.")) {
       exitFullscreen();
+      
+      // Clean up tab tracking
+      if (cleanupTabTrackingRef.current) {
+        cleanupTabTrackingRef.current();
+      }
+      
       navigate('/');
     }
   };
@@ -336,6 +401,11 @@ const TakeQuiz = () => {
   
   const handleSubmitQuiz = () => {
     if (!quiz) return;
+    
+    // Clean up tab tracking
+    if (cleanupTabTrackingRef.current) {
+      cleanupTabTrackingRef.current();
+    }
     
     const unansweredRequired = quiz.questions
       .filter(q => q.required)
@@ -429,6 +499,7 @@ const TakeQuiz = () => {
         rollNumber={rollNumber}
         setRollNumber={setRollNumber}
         onStartQuiz={handleStartQuiz}
+        requiresAuth={requiresAuth}
       />
     );
   }
@@ -441,6 +512,7 @@ const TakeQuiz = () => {
         studentRollNumber={rollNumber}
         timeLeft={timeLeft}
         onQuit={handleQuitQuiz}
+        tabSwitchWarnings={tabSwitchWarnings}
       />
       
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">

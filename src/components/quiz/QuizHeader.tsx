@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Clock, LogOut } from 'lucide-react';
+import { Clock, LogOut, AlertTriangle } from 'lucide-react';
 
 type QuizHeaderProps = {
   quizTitle: string;
@@ -9,6 +9,7 @@ type QuizHeaderProps = {
   studentRollNumber: string;
   timeLeft: number;
   onQuit: () => void;
+  tabSwitchWarnings?: number;
 };
 
 const QuizHeader = ({
@@ -17,6 +18,7 @@ const QuizHeader = ({
   studentRollNumber,
   timeLeft,
   onQuit,
+  tabSwitchWarnings = 0,
 }: QuizHeaderProps) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -34,6 +36,12 @@ const QuizHeader = ({
           </div>
         </div>
         <div className="flex items-center space-x-4">
+          {tabSwitchWarnings > 0 && (
+            <div className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full border border-amber-200 flex items-center">
+              <AlertTriangle className="h-4 w-4 mr-1" />
+              <span className="font-medium">Warnings: {tabSwitchWarnings}/3</span>
+            </div>
+          )}
           <div className="bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200 flex items-center">
             <Clock className="h-4 w-4 mr-1" />
             <span className="font-medium">{formatTime(timeLeft)}</span>
