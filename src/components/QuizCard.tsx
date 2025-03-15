@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Clock, FileText, Users, Link as LinkIcon, BarChart } from 'lucide-react';
+import { Clock, FileText, Users, Link as LinkIcon, BarChart, ExternalLink } from 'lucide-react';
 
 export type Quiz = {
   id: string;
@@ -30,10 +30,15 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
     completed: 'bg-blue-100 text-blue-800 border-blue-200',
   }[quiz.status];
 
+  // Get the quiz URL for external use
+  const getQuizUrl = () => {
+    return `${window.location.origin}/take-quiz/${quiz.id}`;
+  };
+
   // Create a function to handle the copy link action
   const handleCopyLink = () => {
     // Create the full URL for the quiz using absolute path
-    const quizLink = `${window.location.origin}/take-quiz/${quiz.id}`;
+    const quizLink = getQuizUrl();
     
     // Copy to clipboard
     navigator.clipboard.writeText(quizLink)
@@ -47,6 +52,12 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
       .catch(err => {
         console.error('Failed to copy quiz link:', err);
       });
+  };
+
+  // Function to open quiz in a new tab
+  const openInNewTab = () => {
+    const quizUrl = getQuizUrl();
+    window.open(quizUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -84,6 +95,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
           <Button size="sm" variant="outline" onClick={handleCopyLink}>
             <LinkIcon className="h-4 w-4 mr-1" />
             Copy Link
+          </Button>
+          <Button size="sm" variant="outline" onClick={openInNewTab}>
+            <ExternalLink className="h-4 w-4 mr-1" />
+            Open
           </Button>
           <Link to={`/view-results/${quiz.id}`}>
             <Button size="sm" variant="outline">
