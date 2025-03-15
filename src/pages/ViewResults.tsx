@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Users, FileText, Clock } from 'lucide-react';
 import { Quiz } from '@/components/QuizCard';
 import { QuizResult } from '@/types/quiz';
 
@@ -12,30 +12,54 @@ const ViewResults = () => {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [results, setResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("ViewResults component mounted with quizId:", quizId);
+    
     // Load quiz data from localStorage
     const loadQuiz = () => {
       setLoading(true);
+      setError(null);
+      
       try {
+        console.log("Loading quiz with ID:", quizId);
         const storedQuizzes = localStorage.getItem('quizzes');
-        if (storedQuizzes) {
-          const quizzes = JSON.parse(storedQuizzes) as Quiz[];
-          const foundQuiz = quizzes.find(q => q.id === quizId);
-          
-          if (foundQuiz) {
-            setQuiz(foundQuiz);
-          }
+        
+        if (!storedQuizzes) {
+          console.error("No quizzes found in localStorage");
+          setError("No quizzes found");
+          setLoading(false);
+          return;
         }
+        
+        const quizzes = JSON.parse(storedQuizzes) as Quiz[];
+        console.log("All quizzes:", quizzes);
+        
+        const foundQuiz = quizzes.find(q => q.id === quizId);
+        
+        if (!foundQuiz) {
+          console.error("Quiz not found with ID:", quizId);
+          setError(`Quiz with ID ${quizId} not found`);
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Found quiz:", foundQuiz);
+        setQuiz(foundQuiz);
         
         // Load quiz results
         const storedResults = localStorage.getItem(`quiz_results_${quizId}`);
         if (storedResults) {
           const parsedResults = JSON.parse(storedResults) as QuizResult[];
+          console.log("Loaded quiz results:", parsedResults);
           setResults(parsedResults);
+        } else {
+          console.log("No results found for quiz");
         }
       } catch (error) {
         console.error('Error loading quiz:', error);
+        setError("Failed to load quiz data");
       } finally {
         setLoading(false);
       }
@@ -70,6 +94,8 @@ const ViewResults = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      console.log("Downloaded results CSV");
     } catch (error) {
       console.error('Error exporting results:', error);
     }
@@ -85,14 +111,14 @@ const ViewResults = () => {
     );
   }
 
-  if (!quiz) {
+  if (error || !quiz) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Quiz Not Found</CardTitle>
             <CardDescription>
-              The quiz you're looking for doesn't exist or has been removed.
+              {error || "The quiz you're looking for doesn't exist or has been removed."}
             </CardDescription>
           </CardHeader>
           <CardFooter>
@@ -148,8 +174,29 @@ const ViewResults = () => {
                 <div className="text-2xl font-bold capitalize">{quiz.status}</div>
               </div>
               <div className="bg-secondary/30 p-4 rounded-lg">
-                <div className="text-sm text-muted-foreground">Questions</div>
-                <div className="text-2xl font-bold">{quiz.questions}</div>
+                <div className="text-sm text-muted-foreground">Average Score</div>
+                <div className="text-2xl font-bold">
+                  {results.length > 0 
+                    ? `${Math.round(results.reduce((acc, r) => acc + (r.score / r.totalPoints * 100), 0) / results.length)}%` 
+                    : 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-secondary/20 p-4 rounded-lg">
+              <div className="flex flex-wrap gap-3 text-sm">
+                <div className="flex items-center">
+                  <FileText className="h-4 w-4 mr-1 text-primary/70" />
+                  {quiz.questions} questions
+                </div>
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 mr-1 text-primary/70" />
+                  {quiz.duration} min
+                </div>
+                <div className="flex items-center">
+                  <Users className="h-4 w-4 mr-1 text-primary/70" />
+                  {results.length} submissions
+                </div>
               </div>
             </div>
 
@@ -163,6 +210,7 @@ const ViewResults = () => {
                         <th className="p-2 text-left">Student Name</th>
                         <th className="p-2 text-left">Student ID</th>
                         <th className="p-2 text-left">Score</th>
+                        <th className="p-2 text-left">Percentage</th>
                         <th className="p-2 text-left">Submitted At</th>
                       </tr>
                     </thead>
@@ -172,6 +220,7 @@ const ViewResults = () => {
                           <td className="p-2">{result.studentName}</td>
                           <td className="p-2">{result.studentId}</td>
                           <td className="p-2">{result.score}/{result.totalPoints}</td>
+                          <td className="p-2">{Math.round((result.score / result.totalPoints) * 100)}%</td>
                           <td className="p-2">{new Date(result.submittedAt).toLocaleString()}</td>
                         </tr>
                       ))}

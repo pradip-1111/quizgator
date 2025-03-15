@@ -66,12 +66,23 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
 
   // Navigate to take quiz page
   const handleOpenQuiz = () => {
-    console.log(`Navigating to take-quiz/${quiz.id}`);
+    console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
     
-    const questionCount = quiz.questions;
+    // Ensure quiz questions exist
+    ensureQuizQuestionsExist(quiz.id, quiz.questions);
     
-    // Generate sample questions for this quiz if they don't already exist
-    if (!localStorage.getItem(`quiz_questions_${quiz.id}`)) {
+    // Navigate directly instead of using window.open
+    // Using window.location to ensure a full page reload which helps with initializing the quiz
+    window.location.href = `/take-quiz/${quiz.id}`;
+  };
+
+  // Function to ensure quiz questions exist
+  const ensureQuizQuestionsExist = (quizId: string, questionCount: number) => {
+    // Check if questions already exist
+    const existingQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
+    
+    if (!existingQuestions) {
+      console.log(`Generating sample questions for quiz ${quizId}`);
       const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
       const questions = [];
       
@@ -104,12 +115,11 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
       }
       
       // Store the questions in localStorage
-      localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(questions));
-      console.log(`Stored ${questions.length} questions for quiz ${quiz.id}`);
+      localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
+      console.log(`Stored ${questions.length} questions for quiz ${quizId}`);
+    } else {
+      console.log(`Questions already exist for quiz ${quizId}`);
     }
-    
-    // Use window.open for external links that need to open in a new tab
-    window.open(`/take-quiz/${quiz.id}`, '_blank');
   };
 
   // Navigate to view results

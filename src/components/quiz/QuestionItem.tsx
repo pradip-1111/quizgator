@@ -35,6 +35,9 @@ const QuestionItem = ({
   answer,
   onAnswerChange,
 }: QuestionItemProps) => {
+  // Debug log the received question
+  console.log("Rendering question:", question);
+  
   // Early return if question is not properly loaded
   if (!question || !question.id) {
     console.error("Question not properly loaded", question);
@@ -51,8 +54,6 @@ const QuestionItem = ({
       </Card>
     );
   }
-
-  console.log("Rendering question:", question, "Answer:", answer);
 
   return (
     <>
