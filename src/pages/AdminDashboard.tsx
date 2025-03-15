@@ -7,7 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import QuizCard, { Quiz } from '../components/QuizCard';
 import Navbar from '../components/Navbar';
-import { Plus, Search, FileDown, ClipboardCheck, Settings, Clock } from 'lucide-react';
+import { Plus, Search, FileDown, ClipboardCheck, Settings, Clock, Trash2 } from 'lucide-react';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Dummy data for demonstration
 const dummyQuizzes: Quiz[] = [
@@ -67,6 +78,14 @@ const AdminDashboard = () => {
     });
   };
 
+  const clearAllQuizzes = () => {
+    setQuizzes([]);
+    toast({
+      title: "All quizzes cleared",
+      description: "Your dashboard is now empty",
+    });
+  };
+
   const filteredQuizzes = (status?: string) => {
     return quizzes
       .filter(quiz => status ? quiz.status === status : true)
@@ -108,13 +127,36 @@ const AdminDashboard = () => {
             <p className="text-muted-foreground mt-1">Manage your quizzes and view results</p>
           </div>
           
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex gap-2">
             <Link to="/create-quiz">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Quiz
               </Button>
             </Link>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Quizzes
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action will remove all quizzes from your dashboard. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={clearAllQuizzes}>
+                    Yes, clear all quizzes
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
         
@@ -168,7 +210,13 @@ const AdminDashboard = () => {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No quizzes found. Try a different search term.</p>
+                <p className="text-muted-foreground">No quizzes found. Try a different search term or create a new quiz.</p>
+                <Link to="/create-quiz">
+                  <Button variant="outline" className="mt-4">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create a Quiz
+                  </Button>
+                </Link>
               </div>
             )}
           </TabsContent>
