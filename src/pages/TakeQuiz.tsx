@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -38,11 +39,18 @@ const TakeQuiz = () => {
   const quizContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log("TakeQuiz component mounted with quizId:", quizId);
     const loadQuiz = () => {
       setLoading(true);
       setError(null);
       
       try {
+        if (!quizId) {
+          setError("Quiz ID is missing");
+          setLoading(false);
+          return;
+        }
+        
         console.log("Loading quiz with ID:", quizId);
         const storedQuizzes = localStorage.getItem('quizzes');
         
@@ -108,6 +116,10 @@ const TakeQuiz = () => {
           questions: generatedQuestions
         });
         setTimeLeft(foundQuiz.duration * 60);
+        console.log("Quiz setup complete:", { 
+          title: foundQuiz.title, 
+          questions: generatedQuestions.length 
+        });
       } catch (error) {
         console.error('Error loading quiz:', error);
         setError("Failed to load quiz data");

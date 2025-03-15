@@ -63,6 +63,12 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
       });
   };
 
+  // Function to handle opening the quiz in a new tab
+  const handleOpenQuiz = () => {
+    const quizUrl = getQuizUrl();
+    window.open(quizUrl, '_blank');
+  };
+
   return (
     <Card className="overflow-hidden card-hover animate-scale-in">
       <CardHeader className="pb-2">
@@ -99,12 +105,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
             <LinkIcon className="h-4 w-4 mr-1" />
             Copy Link
           </Button>
-          <Link to={`/take-quiz/${quiz.id}`} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="outline">
-              <ExternalLink className="h-4 w-4 mr-1" />
-              Open
-            </Button>
-          </Link>
+          <Button size="sm" variant="outline" onClick={handleOpenQuiz}>
+            <ExternalLink className="h-4 w-4 mr-1" />
+            Open
+          </Button>
           <Link to={`/view-results/${quiz.id}`}>
             <Button size="sm" variant="outline">
               <BarChart className="h-4 w-4 mr-1" />
