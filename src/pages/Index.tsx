@@ -1,50 +1,20 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../context/AuthContext';
-import { ArrowRight, FileText, BarChart, Users, Clock, GraduationCap, CheckSquare, Edit3, FileCheck } from 'lucide-react';
+import { ArrowRight, FileText, BarChart, Users, Clock, GraduationCap, CheckSquare, Edit3, FileCheck, UserPlus } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
 const Index = () => {
   const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-[#e9e6ff]">
+      <Navbar />
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <header className="py-4 px-6">
-          <div className="container mx-auto px-4 flex justify-between items-center">
-            <div className="flex items-center">
-              <div className="bg-black p-2 rounded-lg">
-                <span className="text-xl font-bold text-white">QuizGator</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-8">
-              <nav className="hidden md:flex space-x-8">
-                <a href="#features" className="text-gray-800 hover:text-primary transition-colors">Features</a>
-                <a href="#examples" className="text-gray-800 hover:text-primary transition-colors">Examples</a>
-                <a href="#pricing" className="text-gray-800 hover:text-primary transition-colors">Pricing</a>
-              </nav>
-              {user ? (
-                <Link to="/admin-dashboard">
-                  <Button variant="outline" className="rounded-full bg-white border-gray-200 hover:bg-gray-100 hover:border-gray-300">
-                    Dashboard
-                  </Button>
-                </Link>
-              ) : (
-                <Link to="/login">
-                  <Button variant="outline" className="rounded-full bg-white border-gray-200 hover:bg-gray-100 hover:border-gray-300">
-                    Get Started
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
-        </header>
-
         <main>
           {/* Hero section with dark gradient background */}
-          <section className="bg-gradient-to-br from-[#0e0825] via-[#18154a] to-[#250e5e] text-white py-20 px-6 rounded-3xl mx-6 relative overflow-hidden">
+          <section className="bg-gradient-to-br from-[#0e0825] via-[#18154a] to-[#250e5e] text-white py-20 px-6 rounded-3xl mx-6 relative overflow-hidden mt-6">
             {/* Decorative elements */}
             <div className="absolute top-20 left-10 rotate-12 bg-white/10 p-4 rounded-xl backdrop-blur-md border border-white/20 w-24 h-24 flex items-center justify-center">
               <div className="w-16 h-8 bg-gradient-to-r from-indigo-500 to-pink-500 rounded-md"></div>
@@ -63,11 +33,28 @@ const Index = () => {
                   <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
                     Design beautiful quizzes, collect responses, and analyze results with our intuitive quiz creation platform.
                   </p>
-                  <Link to="/login">
-                    <Button className="rounded-full px-8 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
-                      Start creating quizzes <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    {user ? (
+                      <Link to="/admin-dashboard">
+                        <Button className="rounded-full px-8 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
+                          Go to dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </Link>
+                    ) : (
+                      <>
+                        <Link to="/signup">
+                          <Button className="rounded-full px-8 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-0">
+                            Register now <UserPlus className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Link to="/login">
+                          <Button variant="outline" className="rounded-full px-8 py-6 bg-transparent border-white hover:bg-white/20">
+                            Log in
+                          </Button>
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

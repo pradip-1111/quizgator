@@ -21,7 +21,8 @@ import {
   Settings, 
   Home,
   GraduationCap, 
-  Plus
+  Plus,
+  UserPlus
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
@@ -194,6 +195,12 @@ const Navbar: React.FC = () => {
             </>
           ) : (
             <div className="space-x-2">
+              <Link to="/signup">
+                <Button variant="outline" size="sm" className="bg-purple-700/80 text-white border-purple-600 hover:bg-purple-600">
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline-block">Register</span>
+                </Button>
+              </Link>
               <Link to="/login">
                 <Button variant="secondary" size="sm" className="bg-white text-purple-900 hover:bg-purple-100">
                   Login

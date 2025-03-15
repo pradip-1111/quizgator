@@ -13,6 +13,7 @@ type AuthContextType = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  register: (name: string, email: string, password: string) => Promise<void>;
   registerStudent: (name: string, rollNumber: string, quizId: string) => Promise<void>;
 };
 
@@ -55,6 +56,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const register = async (name: string, email: string, password: string) => {
+    try {
+      // This is a placeholder for actual registration logic
+      // In a real app, this would call your backend API to create a new user
+      console.log('Register user:', { name, email, password });
+      
+      // For demo purposes, we'll simulate a successful registration
+      // In a real app, the backend would handle user creation and return the user data
+      // For now, we don't automatically log the user in after registration
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
@@ -79,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, registerStudent }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register, registerStudent }}>
       {children}
     </AuthContext.Provider>
   );
