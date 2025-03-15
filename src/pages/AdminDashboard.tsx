@@ -75,11 +75,21 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Filter quizzes by current user when component loads or user changes
+  // Load quizzes when component mounts or user changes
   useEffect(() => {
     if (user) {
-      const userQuizzes = dummyQuizzes.filter(quiz => quiz.userId === user.id);
-      setQuizzes(userQuizzes);
+      // Try to load quizzes from localStorage first
+      const storedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+      
+      // If there are stored quizzes, use those
+      if (storedQuizzes.length > 0) {
+        const userQuizzes = storedQuizzes.filter((quiz: Quiz) => quiz.userId === user.id);
+        setQuizzes(userQuizzes);
+      } else {
+        // Fallback to dummy quizzes if no stored quizzes
+        const userQuizzes = dummyQuizzes.filter(quiz => quiz.userId === user.id);
+        setQuizzes(userQuizzes);
+      }
     } else {
       setQuizzes([]);
     }
@@ -95,7 +105,10 @@ const AdminDashboard = () => {
   };
 
   const clearAllQuizzes = () => {
+    // Clear quizzes from state and localStorage
     setQuizzes([]);
+    localStorage.removeItem('quizzes');
+    
     toast({
       title: "All quizzes cleared",
       description: "Your dashboard is now empty",

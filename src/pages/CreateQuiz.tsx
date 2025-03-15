@@ -14,10 +14,13 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor, { Question } from '../components/QuestionEditor';
 import Navbar from '../components/Navbar';
 import { Clock, FileText, Plus, Save, Send, Settings } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Quiz } from '../components/QuizCard';
 
 const CreateQuiz = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [quizTitle, setQuizTitle] = useState('');
   const [quizDescription, setQuizDescription] = useState('');
@@ -82,7 +85,26 @@ const CreateQuiz = () => {
       description: "Your quiz has been saved as a draft",
     });
     
-    // In a real app, this would save to API/database
+    // Create a new quiz object for the draft
+    if (user) {
+      const newQuiz: Quiz = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        title: quizTitle,
+        description: quizDescription,
+        questions: questions.length,
+        duration: parseInt(timeLimit),
+        created: new Date().toISOString(),
+        attempts: 0,
+        status: 'draft'
+      };
+      
+      // In a real app, this would save to API/database
+      // For now we'll store in localStorage to persist between page refreshes
+      const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+      localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
+    }
+    
     navigate('/admin-dashboard');
   };
 
@@ -105,13 +127,38 @@ const CreateQuiz = () => {
       return;
     }
 
-    toast({
-      title: "Quiz published",
-      description: "Your quiz is now live and ready to share",
-    });
-    
-    // In a real app, this would publish to API/database
-    navigate('/admin-dashboard');
+    if (user) {
+      // Create a new quiz object
+      const newQuiz: Quiz = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        title: quizTitle,
+        description: quizDescription,
+        questions: questions.length,
+        duration: parseInt(timeLimit),
+        created: new Date().toISOString(),
+        attempts: 0,
+        status: 'active'
+      };
+      
+      // In a real app, this would publish to API/database
+      // For now we'll store in localStorage to persist between page refreshes
+      const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+      localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
+      
+      toast({
+        title: "Quiz published",
+        description: "Your quiz is now live and ready to share",
+      });
+      
+      navigate('/admin-dashboard');
+    } else {
+      toast({
+        title: "Error",
+        description: "You must be logged in to publish a quiz",
+        variant: "destructive",
+      });
+    }
   };
 
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
