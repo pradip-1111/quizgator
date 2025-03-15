@@ -15,3 +15,13 @@ export type QuizData = {
   timeLimit: number;
   questions: Question[];
 };
+
+export type QuizResult = {
+  quizId: string;
+  studentName: string;
+  studentId: string;
+  score: number;
+  totalPoints: number;
+  submittedAt: string;
+  answers: Record<string, any>;
+};

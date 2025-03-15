@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
 import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
 import { Quiz } from '@/components/QuizCard';
-import { Question, QuizData } from '@/types/quiz';
+import { Question, QuizData, QuizResult } from '@/types/quiz';
 
 // Import components
 import QuizRegistration from '@/components/quiz/QuizRegistration';
@@ -41,7 +41,7 @@ const TakeQuiz = () => {
 
   useEffect(() => {
     console.log("TakeQuiz component mounted with quizId:", quizId);
-    const loadQuiz = () => {
+    const loadQuiz = async () => {
       setLoading(true);
       setError(null);
       
@@ -93,6 +93,8 @@ const TakeQuiz = () => {
           localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
         }
         
+        console.log("Quiz questions:", quizQuestions);
+        
         setQuestions(quizQuestions);
         setQuiz({
           id: foundQuiz.id,
@@ -116,6 +118,24 @@ const TakeQuiz = () => {
 
     loadQuiz();
   }, [quizId]);
+  
+  // Set up timer when quiz starts
+  useEffect(() => {
+    if (started && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleSubmitQuiz();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, [started, timeLeft]);
   
   // Function to generate sample questions
   const generateSampleQuestions = (count: number): Question[] => {
@@ -144,7 +164,7 @@ const TakeQuiz = () => {
       
       questions.push({
         id: `${i + 1}`,
-        text: `Question ${i + 1}`,
+        text: `Question ${i + 1}: This is a sample ${type} question.`,
         type,
         options,
         points: 10,
@@ -213,6 +233,33 @@ const TakeQuiz = () => {
     }
   };
   
+  const calculateScore = () => {
+    if (!quiz) return { score: 0, totalPoints: 0 };
+    
+    let score = 0;
+    let totalPoints = 0;
+    
+    quiz.questions.forEach(question => {
+      totalPoints += question.points;
+      
+      if (!answers[question.id]) return;
+      
+      // For multiple choice and true/false
+      if (question.type === 'multiple-choice' || question.type === 'true-false') {
+        const selectedOption = question.options.find(opt => opt.id === answers[question.id]);
+        if (selectedOption && selectedOption.isCorrect) {
+          score += question.points;
+        }
+      } 
+      // For short and long answers - award full points if answered
+      else if (answers[question.id] && answers[question.id].trim().length > 0) {
+        score += question.points;
+      }
+    });
+    
+    return { score, totalPoints };
+  };
+  
   const handleSubmitQuiz = () => {
     if (!quiz) return;
     
@@ -231,6 +278,7 @@ const TakeQuiz = () => {
     }
     
     try {
+      // Update quiz attempts
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
         const quizzes = JSON.parse(storedQuizzes) as Quiz[];
@@ -245,23 +293,48 @@ const TakeQuiz = () => {
         });
         localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
       }
+      
+      // Save results
+      const { score, totalPoints } = calculateScore();
+      const result: QuizResult = {
+        quizId: quizId || '',
+        studentName: name,
+        studentId: rollNumber,
+        score,
+        totalPoints,
+        submittedAt: new Date().toISOString(),
+        answers
+      };
+      
+      // Get existing results or create new array
+      const existingResults = localStorage.getItem(`quiz_results_${quizId}`) || '[]';
+      const results = JSON.parse(existingResults);
+      results.push(result);
+      
+      // Save updated results
+      localStorage.setItem(`quiz_results_${quizId}`, JSON.stringify(results));
+      
+      exitFullscreen();
+      
+      toast({
+        title: "Quiz Submitted",
+        description: `Your score: ${score}/${totalPoints}. Your answers have been recorded.`,
+      });
+      
+      toast({
+        title: "Confirmation Email Sent",
+        description: `A confirmation has been sent to ${rollNumber}@student.example.com`,
+      });
+      
+      navigate('/quiz-complete');
     } catch (error) {
-      console.error('Error updating quiz attempts:', error);
+      console.error('Error submitting quiz:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem submitting your quiz. Please try again.",
+        variant: "destructive",
+      });
     }
-    
-    exitFullscreen();
-    
-    toast({
-      title: "Quiz Submitted",
-      description: "Your answers have been recorded. Thank you!",
-    });
-    
-    toast({
-      title: "Confirmation Email Sent",
-      description: `A confirmation has been sent to ${rollNumber}@student.example.com`,
-    });
-    
-    navigate('/quiz-complete');
   };
   
   if (loading) {
@@ -301,13 +374,24 @@ const TakeQuiz = () => {
           totalQuestions={quiz.questions.length} 
         />
         
-        <QuestionItem
-          question={quiz.questions[currentQuestion]}
-          questionNumber={currentQuestion + 1}
-          totalQuestions={quiz.questions.length}
-          answer={answers[quiz.questions[currentQuestion].id]}
-          onAnswerChange={handleAnswerChange}
-        />
+        {quiz.questions[currentQuestion] ? (
+          <QuestionItem
+            question={quiz.questions[currentQuestion]}
+            questionNumber={currentQuestion + 1}
+            totalQuestions={quiz.questions.length}
+            answer={answers[quiz.questions[currentQuestion].id]}
+            onAnswerChange={handleAnswerChange}
+          />
+        ) : (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Question not available</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>There was a problem loading this question.</p>
+            </CardContent>
+          </Card>
+        )}
         
         <QuizControls
           isLastQuestion={currentQuestion === quiz.questions.length - 1}

@@ -35,6 +35,22 @@ const QuestionItem = ({
   answer,
   onAnswerChange,
 }: QuestionItemProps) => {
+  // Early return if question is not properly loaded
+  if (!question || !question.id) {
+    return (
+      <Card className="mb-8 shadow-subtle border border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">
+            Question not available
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">This question could not be loaded correctly.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <>
       <div className="mb-4 flex justify-between items-center">
@@ -60,14 +76,18 @@ const QuestionItem = ({
               onValueChange={(value) => onAnswerChange(question.id, value)}
               className="space-y-3"
             >
-              {question.options.map((option) => (
-                <div key={option.id} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option.id} id={`option-${option.id}`} />
-                  <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
-                    {option.text}
-                  </Label>
-                </div>
-              ))}
+              {question.options && question.options.length > 0 ? (
+                question.options.map((option) => (
+                  <div key={option.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option.id} id={`option-${option.id}`} />
+                    <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
+                      {option.text}
+                    </Label>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No options available for this question</p>
+              )}
             </RadioGroup>
           )}
           
@@ -77,14 +97,27 @@ const QuestionItem = ({
               onValueChange={(value) => onAnswerChange(question.id, value)}
               className="space-y-3"
             >
-              {question.options.map((option) => (
-                <div key={option.id} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option.id} id={`option-${option.id}`} />
-                  <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
-                    {option.text}
-                  </Label>
+              {question.options && question.options.length > 0 ? (
+                question.options.map((option) => (
+                  <div key={option.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option.id} id={`option-${option.id}`} />
+                    <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
+                      {option.text}
+                    </Label>
+                  </div>
+                ))
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="true" id="option-true" />
+                    <Label htmlFor="option-true" className="cursor-pointer">True</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="false" id="option-false" />
+                    <Label htmlFor="option-false" className="cursor-pointer">False</Label>
+                  </div>
                 </div>
-              ))}
+              )}
             </RadioGroup>
           )}
           
