@@ -31,6 +31,7 @@ const TakeQuiz = () => {
   const [tabSwitchWarnings, setTabSwitchWarnings] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [questions, setQuestions] = useState<any[]>([]);
   
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
@@ -46,15 +47,48 @@ const TakeQuiz = () => {
           
           if (foundQuiz) {
             console.log("Found quiz:", foundQuiz);
+            
+            const generatedQuestions = [];
+            for (let i = 0; i < foundQuiz.questions; i++) {
+              const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+              const type = questionTypes[i % questionTypes.length] as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
+              
+              let options = [];
+              if (type === 'multiple-choice') {
+                options = [
+                  { id: '1', text: 'Option A', isCorrect: i === 0 },
+                  { id: '2', text: 'Option B', isCorrect: false },
+                  { id: '3', text: 'Option C', isCorrect: false },
+                  { id: '4', text: 'Option D', isCorrect: false }
+                ];
+              } else if (type === 'true-false') {
+                options = [
+                  { id: '1', text: 'True', isCorrect: false },
+                  { id: '2', text: 'False', isCorrect: true }
+                ];
+              } else {
+                options = [];
+              }
+              
+              generatedQuestions.push({
+                id: `${i + 1}`,
+                text: `Question ${i + 1}`,
+                type,
+                options,
+                points: 10,
+                required: i < (foundQuiz.questions - 1)
+              });
+            }
+            
+            setQuestions(generatedQuestions);
             setQuiz({
-              ...dummyQuiz,
               id: foundQuiz.id,
               title: foundQuiz.title, 
               description: foundQuiz.description,
-              timeLimit: foundQuiz.duration || dummyQuiz.timeLimit,
-              questions: dummyQuiz.questions
+              timeLimit: foundQuiz.duration,
+              questions: generatedQuestions
             });
-            setTimeLeft((foundQuiz.duration || dummyQuiz.timeLimit) * 60);
+            setTimeLeft(foundQuiz.duration * 60);
           } else {
             console.error("Quiz not found:", quizId);
             toast({
@@ -65,8 +99,11 @@ const TakeQuiz = () => {
           }
         } else {
           console.error("No quizzes in localStorage");
-          setQuiz(dummyQuiz);
-          setTimeLeft(dummyQuiz.timeLimit * 60);
+          toast({
+            title: "Error",
+            description: "No quizzes found",
+            variant: "destructive",
+          });
         }
       } catch (error) {
         console.error('Error loading quiz:', error);
@@ -82,56 +119,6 @@ const TakeQuiz = () => {
 
     loadQuiz();
   }, [quizId, toast]);
-  
-  useEffect(() => {
-    if (started) {
-      const cleanup = setupTabVisibilityTracking((isVisible) => {
-        if (!isVisible && tabSwitchWarnings < 2) {
-          setTabSwitchWarnings(prev => prev + 1);
-          toast({
-            title: "Warning!",
-            description: `Tab switching detected! Warning ${tabSwitchWarnings + 1}/3.`,
-            variant: "destructive",
-          });
-        } else if (!isVisible && tabSwitchWarnings >= 2) {
-          toast({
-            title: "Quiz Terminated",
-            description: "Too many tab switches detected. Your quiz has been submitted.",
-            variant: "destructive",
-          });
-          handleSubmitQuiz();
-        }
-      });
-      
-      return cleanup;
-    }
-  }, [started, tabSwitchWarnings]);
-  
-  useEffect(() => {
-    if (started && timeLeft > 0) {
-      timerRef.current = window.setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            toast({
-              title: "Time's up!",
-              description: "Your quiz has been automatically submitted.",
-              variant: "destructive",
-            });
-            handleSubmitQuiz();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [started]);
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -244,55 +231,6 @@ const TakeQuiz = () => {
     });
     
     navigate('/quiz-complete');
-  };
-  
-  const dummyQuiz = {
-    id: '1',
-    title: 'Midterm Examination',
-    description: 'Comprehensive test covering chapters 1-5',
-    timeLimit: 90,
-    questions: [
-      {
-        id: '1',
-        text: 'What is the capital of France?',
-        type: 'multiple-choice',
-        options: [
-          { id: '1', text: 'Paris', isCorrect: true },
-          { id: '2', text: 'London', isCorrect: false },
-          { id: '3', text: 'Berlin', isCorrect: false },
-          { id: '4', text: 'Rome', isCorrect: false }
-        ],
-        points: 10,
-        required: true
-      },
-      {
-        id: '2',
-        text: 'The Earth is flat.',
-        type: 'true-false',
-        options: [
-          { id: '1', text: 'True', isCorrect: false },
-          { id: '2', text: 'False', isCorrect: true }
-        ],
-        points: 5,
-        required: true
-      },
-      {
-        id: '3',
-        text: 'Briefly explain the water cycle.',
-        type: 'short-answer',
-        options: [],
-        points: 15,
-        required: true
-      },
-      {
-        id: '4',
-        text: 'Write an essay about climate change and its impacts.',
-        type: 'long-answer',
-        options: [],
-        points: 25,
-        required: false
-      }
-    ]
   };
   
   if (loading) {
