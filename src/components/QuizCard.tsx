@@ -99,12 +99,18 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
             <LinkIcon className="h-4 w-4 mr-1" />
             Copy Link
           </Button>
-          <a href={getQuizUrl()} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="outline" type="button">
-              <ExternalLink className="h-4 w-4 mr-1" />
-              Open
-            </Button>
-          </a>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => {
+              const url = getQuizUrl();
+              console.log("Opening quiz at:", url);
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            <ExternalLink className="h-4 w-4 mr-1" />
+            Open
+          </Button>
           <Link to={`/view-results/${quiz.id}`}>
             <Button size="sm" variant="outline">
               <BarChart className="h-4 w-4 mr-1" />
