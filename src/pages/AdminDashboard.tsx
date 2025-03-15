@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Dummy data for demonstration
 const dummyQuizzes: Quiz[] = [
   {
     id: '1',
@@ -75,18 +73,14 @@ const AdminDashboard = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Load quizzes when component mounts or user changes
   useEffect(() => {
     if (user) {
-      // Try to load quizzes from localStorage first
       const storedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
       
-      // If there are stored quizzes, use those
       if (storedQuizzes.length > 0) {
         const userQuizzes = storedQuizzes.filter((quiz: Quiz) => quiz.userId === user.id);
         setQuizzes(userQuizzes);
       } else {
-        // Fallback to dummy quizzes if no stored quizzes
         const userQuizzes = dummyQuizzes.filter(quiz => quiz.userId === user.id);
         setQuizzes(userQuizzes);
       }
@@ -96,8 +90,6 @@ const AdminDashboard = () => {
   }, [user]);
 
   const handleCopyLink = (quizId: string) => {
-    const link = `${window.location.origin}/take-quiz/${quizId}`;
-    navigator.clipboard.writeText(link);
     toast({
       title: "Link copied",
       description: "Quiz link has been copied to clipboard",
@@ -105,7 +97,6 @@ const AdminDashboard = () => {
   };
 
   const clearAllQuizzes = () => {
-    // Clear quizzes from state and localStorage
     setQuizzes([]);
     localStorage.removeItem('quizzes');
     

@@ -30,6 +30,14 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
     completed: 'bg-blue-100 text-blue-800 border-blue-200',
   }[quiz.status];
 
+  // Create a function to handle the copy link action
+  const handleCopyLink = () => {
+    // Create the full URL for the quiz
+    const quizLink = `${window.location.origin}/take-quiz/${quiz.id}`;
+    navigator.clipboard.writeText(quizLink);
+    onCopyLink(quiz.id);
+  };
+
   return (
     <Card className="overflow-hidden card-hover animate-scale-in">
       <CardHeader className="pb-2">
@@ -62,7 +70,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
           Created {new Date(quiz.created).toLocaleDateString()}
         </div>
         <div className="flex space-x-2">
-          <Button size="sm" variant="outline" onClick={() => onCopyLink(quiz.id)}>
+          <Button size="sm" variant="outline" onClick={handleCopyLink}>
             <LinkIcon className="h-4 w-4 mr-1" />
             Copy Link
           </Button>
