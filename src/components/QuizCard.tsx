@@ -141,23 +141,27 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
             <LinkIcon className="h-4 w-4 mr-1" />
             Copy Link
           </Button>
-          <Link to={`/take-quiz/${quiz.id}`} target="_blank" rel="noopener noreferrer" onClick={handleOpenQuiz}>
-            <Button size="sm" variant="outline" asChild>
-              <span>
-                <ExternalLink className="h-4 w-4 mr-1" />
-                Open
-              </span>
-            </Button>
-          </Link>
-          <Link to={`/view-results/${quiz.id}`}>
-            <Button size="sm" variant="outline">
+          
+          {/* Fix nested <a> tags by using span instead of Button with asChild when inside Link */}
+          <Button size="sm" variant="outline" onClick={handleOpenQuiz} asChild>
+            <Link to={`/take-quiz/${quiz.id}`} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Open
+            </Link>
+          </Button>
+          
+          <Button size="sm" variant="outline" asChild>
+            <Link to={`/view-results/${quiz.id}`}>
               <BarChart className="h-4 w-4 mr-1" />
               Results
-            </Button>
-          </Link>
-          <Link to={`/edit-quiz/${quiz.id}`}>
-            <Button size="sm">Edit</Button>
-          </Link>
+            </Link>
+          </Button>
+          
+          <Button size="sm" asChild>
+            <Link to={`/edit-quiz/${quiz.id}`}>
+              Edit
+            </Link>
+          </Button>
         </div>
       </CardFooter>
     </Card>
