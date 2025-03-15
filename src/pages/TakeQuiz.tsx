@@ -14,56 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
 import { enterFullscreen, exitFullscreen, setupTabVisibilityTracking } from '../lib/fullscreen';
 import { AlertCircle, ArrowLeft, ArrowRight, Clock, LogOut, Send } from 'lucide-react';
-
-// Dummy quiz data for demonstration
-const dummyQuiz = {
-  id: '1',
-  title: 'Midterm Examination',
-  description: 'Comprehensive test covering chapters 1-5',
-  timeLimit: 90, // in minutes
-  questions: [
-    {
-      id: '1',
-      text: 'What is the capital of France?',
-      type: 'multiple-choice',
-      options: [
-        { id: '1', text: 'Paris', isCorrect: true },
-        { id: '2', text: 'London', isCorrect: false },
-        { id: '3', text: 'Berlin', isCorrect: false },
-        { id: '4', text: 'Rome', isCorrect: false }
-      ],
-      points: 10,
-      required: true
-    },
-    {
-      id: '2',
-      text: 'The Earth is flat.',
-      type: 'true-false',
-      options: [
-        { id: '1', text: 'True', isCorrect: false },
-        { id: '2', text: 'False', isCorrect: true }
-      ],
-      points: 5,
-      required: true
-    },
-    {
-      id: '3',
-      text: 'Briefly explain the water cycle.',
-      type: 'short-answer',
-      options: [],
-      points: 15,
-      required: true
-    },
-    {
-      id: '4',
-      text: 'Write an essay about climate change and its impacts.',
-      type: 'long-answer',
-      options: [],
-      points: 25,
-      required: false
-    }
-  ]
-};
+import { Quiz } from '@/components/QuizCard';
 
 const TakeQuiz = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -71,18 +22,63 @@ const TakeQuiz = () => {
   const { toast } = useToast();
   const { user, registerStudent } = useAuth();
   
-  const [quiz] = useState(dummyQuiz);
+  const [quiz, setQuiz] = useState<any | null>(null);
   const [name, setName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [started, setStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [timeLeft, setTimeLeft] = useState(quiz.timeLimit * 60); // seconds
+  const [timeLeft, setTimeLeft] = useState(0);
   const [tabSwitchWarnings, setTabSwitchWarnings] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
+
+  // Load the quiz data from localStorage based on the quizId
+  useEffect(() => {
+    const loadQuiz = () => {
+      setLoading(true);
+      try {
+        const storedQuizzes = localStorage.getItem('quizzes');
+        if (storedQuizzes) {
+          const quizzes = JSON.parse(storedQuizzes) as Quiz[];
+          const foundQuiz = quizzes.find(q => q.id === quizId);
+          
+          if (foundQuiz) {
+            // Use the dummy quiz data structure for now, but with the title and description from localStorage
+            setQuiz({
+              ...dummyQuiz,
+              id: foundQuiz.id,
+              title: foundQuiz.title, 
+              description: foundQuiz.description,
+              timeLimit: foundQuiz.duration || dummyQuiz.timeLimit,
+              questions: dummyQuiz.questions // We'll keep using dummy questions for now
+            });
+            setTimeLeft((foundQuiz.duration || dummyQuiz.timeLimit) * 60);
+          } else {
+            toast({
+              title: "Quiz Not Found",
+              description: "The requested quiz couldn't be found",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading quiz:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load quiz data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuiz();
+  }, [quizId, toast]);
   
   // Handle tab visibility changes
   useEffect(() => {
@@ -219,6 +215,26 @@ const TakeQuiz = () => {
       return;
     }
     
+    // Update quiz attempts in localStorage
+    try {
+      const storedQuizzes = localStorage.getItem('quizzes');
+      if (storedQuizzes) {
+        const quizzes = JSON.parse(storedQuizzes) as Quiz[];
+        const updatedQuizzes = quizzes.map(q => {
+          if (q.id === quizId) {
+            return {
+              ...q,
+              attempts: q.attempts + 1
+            };
+          }
+          return q;
+        });
+        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+      }
+    } catch (error) {
+      console.error('Error updating quiz attempts:', error);
+    }
+    
     // In a real app, this would submit to API/database
     exitFullscreen();
     
@@ -235,6 +251,89 @@ const TakeQuiz = () => {
     
     navigate('/quiz-complete');
   };
+  
+  // Dummy quiz data for demonstration
+  const dummyQuiz = {
+    id: '1',
+    title: 'Midterm Examination',
+    description: 'Comprehensive test covering chapters 1-5',
+    timeLimit: 90, // in minutes
+    questions: [
+      {
+        id: '1',
+        text: 'What is the capital of France?',
+        type: 'multiple-choice',
+        options: [
+          { id: '1', text: 'Paris', isCorrect: true },
+          { id: '2', text: 'London', isCorrect: false },
+          { id: '3', text: 'Berlin', isCorrect: false },
+          { id: '4', text: 'Rome', isCorrect: false }
+        ],
+        points: 10,
+        required: true
+      },
+      {
+        id: '2',
+        text: 'The Earth is flat.',
+        type: 'true-false',
+        options: [
+          { id: '1', text: 'True', isCorrect: false },
+          { id: '2', text: 'False', isCorrect: true }
+        ],
+        points: 5,
+        required: true
+      },
+      {
+        id: '3',
+        text: 'Briefly explain the water cycle.',
+        type: 'short-answer',
+        options: [],
+        points: 15,
+        required: true
+      },
+      {
+        id: '4',
+        text: 'Write an essay about climate change and its impacts.',
+        type: 'long-answer',
+        options: [],
+        points: 25,
+        required: false
+      }
+    ]
+  };
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg">Loading quiz...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!quiz) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Quiz Not Found</CardTitle>
+            <CardDescription>
+              The quiz you're looking for doesn't exist or has been removed.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Link to="/">
+              <Button>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Home
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
   
   const progressPercentage = (Object.keys(answers).length / quiz.questions.length) * 100;
   

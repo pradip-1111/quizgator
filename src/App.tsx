@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import QuizComplete from "./pages/QuizComplete";
 import CreateQuiz from "./pages/CreateQuiz";
 import TakeQuiz from "./pages/TakeQuiz";
+import ViewResults from "./pages/ViewResults";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/quiz-complete" element={<QuizComplete />} />
             <Route path="/create-quiz" element={<CreateQuiz />} />
             <Route path="/take-quiz/:quizId" element={<TakeQuiz />} />
+            <Route path="/view-results/:quizId" element={<ViewResults />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
