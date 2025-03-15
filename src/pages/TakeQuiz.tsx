@@ -16,6 +16,16 @@ import { enterFullscreen, exitFullscreen, setupTabVisibilityTracking } from '../
 import { AlertCircle, ArrowLeft, ArrowRight, Clock, LogOut, Send } from 'lucide-react';
 import { Quiz } from '@/components/QuizCard';
 
+// Define a Question type for better type safety
+type Question = {
+  id: string;
+  text: string;
+  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
+  options: Array<{ id: string; text: string; isCorrect: boolean }>;
+  points: number;
+  required: boolean;
+};
+
 const TakeQuiz = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
@@ -32,7 +42,7 @@ const TakeQuiz = () => {
   const [tabSwitchWarnings, setTabSwitchWarnings] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState<string | null>(null);
   
   const timerRef = useRef<number | null>(null);
@@ -75,50 +85,35 @@ const TakeQuiz = () => {
         
         console.log("Found quiz:", foundQuiz);
         
-        const generatedQuestions = [];
-        for (let i = 0; i < foundQuiz.questions; i++) {
-          const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
-          const type = questionTypes[i % questionTypes.length] as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
+        // Get or generate questions for the quiz
+        let quizQuestions: Question[] = [];
+        
+        // Check if there are stored questions for this quiz
+        const storedQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
+        if (storedQuestions) {
+          console.log("Found stored questions for quiz");
+          quizQuestions = JSON.parse(storedQuestions);
+        } else {
+          console.log("Generating questions for quiz");
+          // Generate sample questions if none exist
+          quizQuestions = generateSampleQuestions(foundQuiz.questions);
           
-          let options = [];
-          if (type === 'multiple-choice') {
-            options = [
-              { id: '1', text: 'Option A', isCorrect: i === 0 },
-              { id: '2', text: 'Option B', isCorrect: false },
-              { id: '3', text: 'Option C', isCorrect: false },
-              { id: '4', text: 'Option D', isCorrect: false }
-            ];
-          } else if (type === 'true-false') {
-            options = [
-              { id: '1', text: 'True', isCorrect: false },
-              { id: '2', text: 'False', isCorrect: true }
-            ];
-          } else {
-            options = [];
-          }
-          
-          generatedQuestions.push({
-            id: `${i + 1}`,
-            text: `Question ${i + 1}`,
-            type,
-            options,
-            points: 10,
-            required: i < (foundQuiz.questions - 1)
-          });
+          // Store the questions for future use
+          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
         }
         
-        setQuestions(generatedQuestions);
+        setQuestions(quizQuestions);
         setQuiz({
           id: foundQuiz.id,
           title: foundQuiz.title, 
           description: foundQuiz.description,
           timeLimit: foundQuiz.duration,
-          questions: generatedQuestions
+          questions: quizQuestions
         });
         setTimeLeft(foundQuiz.duration * 60);
         console.log("Quiz setup complete:", { 
           title: foundQuiz.title, 
-          questions: generatedQuestions.length 
+          questions: quizQuestions.length 
         });
       } catch (error) {
         console.error('Error loading quiz:', error);
@@ -130,6 +125,44 @@ const TakeQuiz = () => {
 
     loadQuiz();
   }, [quizId]);
+  
+  // Function to generate sample questions
+  const generateSampleQuestions = (count: number): Question[] => {
+    const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+    const questions: Question[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      const type = questionTypes[i % questionTypes.length] as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
+      
+      let options = [];
+      if (type === 'multiple-choice') {
+        options = [
+          { id: '1', text: 'Option A', isCorrect: i === 0 },
+          { id: '2', text: 'Option B', isCorrect: false },
+          { id: '3', text: 'Option C', isCorrect: false },
+          { id: '4', text: 'Option D', isCorrect: false }
+        ];
+      } else if (type === 'true-false') {
+        options = [
+          { id: '1', text: 'True', isCorrect: false },
+          { id: '2', text: 'False', isCorrect: true }
+        ];
+      } else {
+        options = [];
+      }
+      
+      questions.push({
+        id: `${i + 1}`,
+        text: `Question ${i + 1}`,
+        type,
+        options,
+        points: 10,
+        required: i < (count - 1)
+      });
+    }
+    
+    return questions;
+  };
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

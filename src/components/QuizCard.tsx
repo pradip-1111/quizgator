@@ -31,9 +31,8 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
     completed: 'bg-blue-100 text-blue-800 border-blue-200',
   }[quiz.status];
 
-  // Get the absolute quiz URL for external use with the correct path structure
+  // Get the absolute quiz URL
   const getQuizUrl = () => {
-    // Make sure to use the full origin including protocol and the correct path
     return `${window.location.origin}/take-quiz/${quiz.id}`;
   };
 
@@ -61,6 +60,49 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
         console.error('Failed to copy quiz link:', err);
         toast.error("Failed to copy quiz link");
       });
+  };
+
+  // Add questions to localStorage when clicking "Open" to ensure questions are available
+  const handleOpenQuiz = () => {
+    const questionCount = quiz.questions;
+    
+    // Generate sample questions for this quiz if they don't already exist
+    if (!localStorage.getItem(`quiz_questions_${quiz.id}`)) {
+      const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+      const questions = [];
+      
+      for (let i = 0; i < questionCount; i++) {
+        const type = questionTypes[i % questionTypes.length];
+        
+        let options = [];
+        if (type === 'multiple-choice') {
+          options = [
+            { id: '1', text: 'Option A', isCorrect: i === 0 },
+            { id: '2', text: 'Option B', isCorrect: false },
+            { id: '3', text: 'Option C', isCorrect: false },
+            { id: '4', text: 'Option D', isCorrect: false }
+          ];
+        } else if (type === 'true-false') {
+          options = [
+            { id: '1', text: 'True', isCorrect: false },
+            { id: '2', text: 'False', isCorrect: true }
+          ];
+        }
+        
+        questions.push({
+          id: `${i + 1}`,
+          text: `Question ${i + 1}`,
+          type,
+          options,
+          points: 10,
+          required: i < (questionCount - 1)
+        });
+      }
+      
+      // Store the questions in localStorage
+      localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(questions));
+      console.log(`Stored ${questions.length} questions for quiz ${quiz.id}`);
+    }
   };
 
   return (
@@ -99,8 +141,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
             <LinkIcon className="h-4 w-4 mr-1" />
             Copy Link
           </Button>
-          {/* Use direct Link instead of Button with onClick to avoid navigation issues */}
-          <Link to={`/take-quiz/${quiz.id}`} target="_blank" rel="noopener noreferrer">
+          <Link to={`/take-quiz/${quiz.id}`} target="_blank" rel="noopener noreferrer" onClick={handleOpenQuiz}>
             <Button size="sm" variant="outline" asChild>
               <span>
                 <ExternalLink className="h-4 w-4 mr-1" />
