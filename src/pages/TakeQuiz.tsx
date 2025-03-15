@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,6 @@ const TakeQuiz = () => {
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load the quiz data from localStorage based on the quizId
   useEffect(() => {
     const loadQuiz = () => {
       setLoading(true);
@@ -47,23 +45,28 @@ const TakeQuiz = () => {
           const foundQuiz = quizzes.find(q => q.id === quizId);
           
           if (foundQuiz) {
-            // Use the dummy quiz data structure for now, but with the title and description from localStorage
+            console.log("Found quiz:", foundQuiz);
             setQuiz({
               ...dummyQuiz,
               id: foundQuiz.id,
               title: foundQuiz.title, 
               description: foundQuiz.description,
               timeLimit: foundQuiz.duration || dummyQuiz.timeLimit,
-              questions: dummyQuiz.questions // We'll keep using dummy questions for now
+              questions: dummyQuiz.questions
             });
             setTimeLeft((foundQuiz.duration || dummyQuiz.timeLimit) * 60);
           } else {
+            console.error("Quiz not found:", quizId);
             toast({
               title: "Quiz Not Found",
               description: "The requested quiz couldn't be found",
               variant: "destructive",
             });
           }
+        } else {
+          console.error("No quizzes in localStorage");
+          setQuiz(dummyQuiz);
+          setTimeLeft(dummyQuiz.timeLimit * 60);
         }
       } catch (error) {
         console.error('Error loading quiz:', error);
@@ -80,7 +83,6 @@ const TakeQuiz = () => {
     loadQuiz();
   }, [quizId, toast]);
   
-  // Handle tab visibility changes
   useEffect(() => {
     if (started) {
       const cleanup = setupTabVisibilityTracking((isVisible) => {
@@ -105,7 +107,6 @@ const TakeQuiz = () => {
     }
   }, [started, tabSwitchWarnings]);
   
-  // Timer effect
   useEffect(() => {
     if (started && timeLeft > 0) {
       timerRef.current = window.setInterval(() => {
@@ -132,7 +133,6 @@ const TakeQuiz = () => {
     };
   }, [started]);
   
-  // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -150,10 +150,8 @@ const TakeQuiz = () => {
     }
     
     try {
-      // Register student
       await registerStudent(name, rollNumber, quizId || '1');
       
-      // Enter fullscreen
       if (quizContainerRef.current) {
         enterFullscreen(quizContainerRef.current);
       }
@@ -200,7 +198,6 @@ const TakeQuiz = () => {
   };
   
   const handleSubmitQuiz = () => {
-    // Check if all required questions are answered
     const unansweredRequired = quiz.questions
       .filter(q => q.required)
       .filter(q => !answers[q.id]);
@@ -215,7 +212,6 @@ const TakeQuiz = () => {
       return;
     }
     
-    // Update quiz attempts in localStorage
     try {
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
@@ -224,7 +220,7 @@ const TakeQuiz = () => {
           if (q.id === quizId) {
             return {
               ...q,
-              attempts: q.attempts + 1
+              attempts: (q.attempts || 0) + 1
             };
           }
           return q;
@@ -235,7 +231,6 @@ const TakeQuiz = () => {
       console.error('Error updating quiz attempts:', error);
     }
     
-    // In a real app, this would submit to API/database
     exitFullscreen();
     
     toast({
@@ -243,7 +238,6 @@ const TakeQuiz = () => {
       description: "Your answers have been recorded. Thank you!",
     });
     
-    // Simulate sending confirmation email
     toast({
       title: "Confirmation Email Sent",
       description: `A confirmation has been sent to ${rollNumber}@student.example.com`,
@@ -252,12 +246,11 @@ const TakeQuiz = () => {
     navigate('/quiz-complete');
   };
   
-  // Dummy quiz data for demonstration
   const dummyQuiz = {
     id: '1',
     title: 'Midterm Examination',
     description: 'Comprehensive test covering chapters 1-5',
-    timeLimit: 90, // in minutes
+    timeLimit: 90,
     questions: [
       {
         id: '1',
@@ -337,7 +330,6 @@ const TakeQuiz = () => {
   
   const progressPercentage = (Object.keys(answers).length / quiz.questions.length) * 100;
   
-  // Quiz registration screen
   if (!started) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4 animate-fade-in">
@@ -386,10 +378,8 @@ const TakeQuiz = () => {
     );
   }
   
-  // Quiz taking interface
   return (
     <div ref={quizContainerRef} className="min-h-screen bg-background flex flex-col animate-fade-in fullscreen-mode">
-      {/* Quiz header */}
       <header className="border-b border-border bg-card py-2 px-4">
         <div className="container mx-auto flex justify-between items-center">
           <div>
@@ -412,7 +402,6 @@ const TakeQuiz = () => {
       </header>
       
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
-        {/* Progress indicator */}
         <div className="mb-6">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
             <span>Progress</span>
@@ -421,7 +410,6 @@ const TakeQuiz = () => {
           <Progress value={progressPercentage} className="h-2" />
         </div>
         
-        {/* Current question */}
         <div className="mb-4 flex justify-between items-center">
           <Badge variant="outline" className="bg-primary/10 text-primary">
             Question {currentQuestion + 1} of {quiz.questions.length}
@@ -439,7 +427,6 @@ const TakeQuiz = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Multiple choice question */}
             {quiz.questions[currentQuestion].type === 'multiple-choice' && (
               <RadioGroup
                 value={answers[quiz.questions[currentQuestion].id] || ""}
@@ -457,7 +444,6 @@ const TakeQuiz = () => {
               </RadioGroup>
             )}
             
-            {/* True/False question */}
             {quiz.questions[currentQuestion].type === 'true-false' && (
               <RadioGroup
                 value={answers[quiz.questions[currentQuestion].id] || ""}
@@ -475,7 +461,6 @@ const TakeQuiz = () => {
               </RadioGroup>
             )}
             
-            {/* Short answer question */}
             {quiz.questions[currentQuestion].type === 'short-answer' && (
               <Input
                 placeholder="Type your answer here"
@@ -484,7 +469,6 @@ const TakeQuiz = () => {
               />
             )}
             
-            {/* Long answer question */}
             {quiz.questions[currentQuestion].type === 'long-answer' && (
               <Textarea
                 placeholder="Type your answer here"
@@ -496,7 +480,6 @@ const TakeQuiz = () => {
           </CardContent>
         </Card>
         
-        {/* Navigation buttons */}
         <div className="flex justify-between">
           <Button
             variant="outline"
@@ -521,7 +504,6 @@ const TakeQuiz = () => {
         </div>
       </main>
       
-      {/* Quiz footer with question navigation */}
       <footer className="border-t border-border bg-card py-4 px-4">
         <div className="container mx-auto max-w-3xl">
           <div className="flex flex-wrap gap-2">

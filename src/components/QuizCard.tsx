@@ -8,7 +8,7 @@ import { Clock, FileText, Users, Link as LinkIcon, BarChart } from 'lucide-react
 
 export type Quiz = {
   id: string;
-  userId: string; // Add userId to associate quizzes with specific users
+  userId: string;
   title: string;
   description: string;
   questions: number;
@@ -34,8 +34,15 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
   const handleCopyLink = () => {
     // Create the full URL for the quiz
     const quizLink = `${window.location.origin}/take-quiz/${quiz.id}`;
-    navigator.clipboard.writeText(quizLink);
-    onCopyLink(quiz.id);
+    // Copy to clipboard
+    navigator.clipboard.writeText(quizLink)
+      .then(() => {
+        // Call the callback to show toast
+        onCopyLink(quiz.id);
+      })
+      .catch(err => {
+        console.error('Failed to copy quiz link:', err);
+      });
   };
 
   return (
