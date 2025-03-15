@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Clock, FileText, Users, Link as LinkIcon, BarChart, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 
 export type Quiz = {
   id: string;
@@ -30,14 +31,15 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
     completed: 'bg-blue-100 text-blue-800 border-blue-200',
   }[quiz.status];
 
-  // Get the quiz URL for external use
+  // Get the absolute quiz URL for external use
   const getQuizUrl = () => {
+    // Make sure to use the full origin including protocol
     return `${window.location.origin}/take-quiz/${quiz.id}`;
   };
 
   // Create a function to handle the copy link action
   const handleCopyLink = () => {
-    // Create the full URL for the quiz using absolute path
+    // Get the full URL for the quiz
     const quizLink = getQuizUrl();
     
     // Copy to clipboard
@@ -46,17 +48,27 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
         // Call the callback to show toast
         onCopyLink(quiz.id);
         
+        // Also show a toast using sonner for direct feedback
+        toast.success("Quiz link copied to clipboard", {
+          description: quizLink,
+          duration: 3000,
+        });
+        
         // Log the link to console for debugging
         console.log("Copied quiz link:", quizLink);
       })
       .catch(err => {
         console.error('Failed to copy quiz link:', err);
+        toast.error("Failed to copy quiz link");
       });
   };
 
-  // Function to open quiz in a new tab
+  // Function to open quiz in a new tab with proper URL
   const openInNewTab = () => {
     const quizUrl = getQuizUrl();
+    console.log("Opening quiz in new tab:", quizUrl);
+    
+    // Use the correct URL format and ensure proper window opening
     window.open(quizUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -96,10 +108,12 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
             <LinkIcon className="h-4 w-4 mr-1" />
             Copy Link
           </Button>
-          <Button size="sm" variant="outline" onClick={openInNewTab}>
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Open
-          </Button>
+          <a href={`/take-quiz/${quiz.id}`} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" variant="outline" type="button">
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Open
+            </Button>
+          </a>
           <Link to={`/view-results/${quiz.id}`}>
             <Button size="sm" variant="outline">
               <BarChart className="h-4 w-4 mr-1" />
