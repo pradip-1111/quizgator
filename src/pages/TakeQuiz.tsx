@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
 import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
 import { Quiz } from '@/components/QuizCard';
-import { Question, QuizData, QuizResult } from '@/types/quiz';
+import { Question, QuizData, QuizResult, QuizStatus } from '@/types/quiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Import components
@@ -72,7 +71,7 @@ const TakeQuiz = () => {
               duration: 10,
               created: new Date().toISOString(),
               attempts: 0,
-              status: 'active'
+              status: 'active' as QuizStatus
             }
           ];
           
@@ -115,7 +114,7 @@ const TakeQuiz = () => {
             duration: 10,
             created: new Date().toISOString(),
             attempts: 0,
-            status: 'active'
+            status: 'active' as QuizStatus
           };
           
           quizzes.push(dummyQuiz);
@@ -193,7 +192,6 @@ const TakeQuiz = () => {
     loadQuiz();
   }, [quizId]);
   
-  // Set up timer when quiz starts
   useEffect(() => {
     if (started && timeLeft > 0) {
       const timer = setInterval(() => {
@@ -211,7 +209,6 @@ const TakeQuiz = () => {
     }
   }, [started, timeLeft]);
   
-  // Function to generate sample questions
   const generateSampleQuestions = (count: number): Question[] => {
     console.log(`Generating ${count} sample questions`);
     const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];

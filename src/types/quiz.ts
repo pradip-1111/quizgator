@@ -25,3 +25,5 @@ export type QuizResult = {
   submittedAt: string;
   answers: Record<string, any>;
 };
+
+export type QuizStatus = 'draft' | 'active' | 'completed';
