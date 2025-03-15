@@ -3,8 +3,8 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { Clock, FileText, Users, Link as LinkIcon, BarChart, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, FileText, Users, Link as LinkIcon, BarChart } from 'lucide-react';
 import { toast } from 'sonner';
 
 export type Quiz = {
@@ -25,6 +25,8 @@ type QuizCardProps = {
 };
 
 const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
+  const navigate = useNavigate();
+  
   const statusColor = {
     draft: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     active: 'bg-green-100 text-green-800 border-green-200',
@@ -62,8 +64,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
       });
   };
 
-  // Add questions to localStorage when clicking "Open" to ensure questions are available
+  // Navigate to take quiz page
   const handleOpenQuiz = () => {
+    console.log(`Navigating to take-quiz/${quiz.id}`);
+    
     const questionCount = quiz.questions;
     
     // Generate sample questions for this quiz if they don't already exist
@@ -103,6 +107,21 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
       localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(questions));
       console.log(`Stored ${questions.length} questions for quiz ${quiz.id}`);
     }
+    
+    // Use window.open for external links that need to open in a new tab
+    window.open(`/take-quiz/${quiz.id}`, '_blank');
+  };
+
+  // Navigate to view results
+  const handleViewResults = () => {
+    console.log(`Navigating to view-results/${quiz.id}`);
+    navigate(`/view-results/${quiz.id}`);
+  };
+
+  // Navigate to edit quiz
+  const handleEditQuiz = () => {
+    console.log(`Navigating to edit-quiz/${quiz.id}`);
+    navigate(`/edit-quiz/${quiz.id}`);
   };
 
   return (
@@ -143,23 +162,17 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
           </Button>
           
           <Button size="sm" variant="outline" onClick={handleOpenQuiz}>
-            <Link to={`/take-quiz/${quiz.id}`} className="flex items-center" target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-1" />
-              Open
-            </Link>
+            <LinkIcon className="h-4 w-4 mr-1" />
+            Open
           </Button>
           
-          <Button size="sm" variant="outline">
-            <Link to={`/view-results/${quiz.id}`} className="flex items-center">
-              <BarChart className="h-4 w-4 mr-1" />
-              Results
-            </Link>
+          <Button size="sm" variant="outline" onClick={handleViewResults}>
+            <BarChart className="h-4 w-4 mr-1" />
+            Results
           </Button>
           
-          <Button size="sm">
-            <Link to={`/edit-quiz/${quiz.id}`} className="flex items-center">
-              Edit
-            </Link>
+          <Button size="sm" onClick={handleEditQuiz}>
+            Edit
           </Button>
         </div>
       </CardFooter>

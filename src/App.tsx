@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -15,6 +17,7 @@ import CreateQuiz from "./pages/CreateQuiz";
 import TakeQuiz from "./pages/TakeQuiz";
 import ViewResults from "./pages/ViewResults";
 import EditQuiz from "./pages/EditQuiz";
+import ForgotPassword from "./pages/ForgotPassword";
 
 // Create a new query client
 const queryClient = new QueryClient({
@@ -46,18 +49,7 @@ const App = () => (
             <Route path="/take-quiz/:quizId" element={<TakeQuiz />} />
             <Route path="/view-results/:quizId" element={<ViewResults />} />
             <Route path="/edit-quiz/:quizId" element={<EditQuiz />} />
-            <Route path="/forgot-password" element={<div className="min-h-screen flex items-center justify-center p-4">
-              <Card className="w-full max-w-md">
-                <CardHeader>
-                  <CardTitle>Password Reset</CardTitle>
-                  <CardDescription>Enter your email to reset your password</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p>This feature is not implemented in the demo. Please use the demo credentials instead.</p>
-                  <Button className="mt-4" onClick={() => window.location.href = '/login'}>Back to Login</Button>
-                </CardContent>
-              </Card>
-            </div>} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

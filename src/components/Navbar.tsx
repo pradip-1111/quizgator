@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import {
@@ -40,23 +39,36 @@ const Navbar: React.FC = () => {
     return null;
   }
 
+  // Navigation handler
+  const handleNavigation = (path: string) => {
+    console.log(`Navigating to: ${path}`);
+    navigate(path);
+  };
+
   return (
     <nav className="py-4 border-b border-border animate-fade-in bg-gradient-to-r from-purple-900/95 to-purple-800/95 text-white">
       <div className="container mx-auto px-4 flex justify-between items-center">
         <div className="flex items-center">
-          <Link to="/" className="text-xl font-semibold hover:text-purple-200 transition-colors flex items-center mr-8">
+          <Button 
+            variant="link" 
+            className="text-xl font-semibold hover:text-purple-200 transition-colors flex items-center mr-8 p-0 h-auto text-white"
+            onClick={() => handleNavigation('/')}
+          >
             <GraduationCap className="h-6 w-6 mr-2" />
             <span>QuizGator</span>
-          </Link>
+          </Button>
           
           {user && (
             <NavigationMenu className="hidden md:flex">
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <Link to="/" className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-white/10 text-white")}>
+                  <Button 
+                    onClick={() => handleNavigation('/')} 
+                    className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-white/10 text-white")}
+                  >
                     <Home className="h-4 w-4 mr-2" />
                     Home
-                  </Link>
+                  </Button>
                 </NavigationMenuItem>
                 
                 <NavigationMenuItem>
@@ -78,7 +90,7 @@ const Navbar: React.FC = () => {
                           <Button 
                             variant="outline" 
                             className="mt-4 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                            onClick={() => navigate('/create-quiz')}
+                            onClick={() => handleNavigation('/create-quiz')}
                           >
                             Get Started
                           </Button>
@@ -88,7 +100,7 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => navigate('/admin-dashboard')}
+                          onClick={() => handleNavigation('/admin-dashboard')}
                         >
                           <div className="text-left">
                             <div className="text-sm font-medium leading-none">My Quizzes</div>
@@ -102,7 +114,7 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => navigate('/admin-dashboard?tab=active')}
+                          onClick={() => handleNavigation('/admin-dashboard?tab=active')}
                         >
                           <div className="text-left">
                             <div className="text-sm font-medium leading-none">Active Quizzes</div>
@@ -116,7 +128,7 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => navigate('/admin-dashboard?tab=draft')}
+                          onClick={() => handleNavigation('/admin-dashboard?tab=draft')}
                         >
                           <div className="text-left">
                             <div className="text-sm font-medium leading-none">Draft Quizzes</div>
@@ -141,7 +153,7 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => navigate('/analytics/overview')}
+                          onClick={() => handleNavigation('/analytics/overview')}
                         >
                           <div className="text-left">
                             <div className="text-sm font-medium leading-none">Quiz Performance</div>
@@ -155,7 +167,7 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => navigate('/analytics/responses')}
+                          onClick={() => handleNavigation('/analytics/responses')}
                         >
                           <div className="text-left">
                             <div className="text-sm font-medium leading-none">User Responses</div>
@@ -169,7 +181,7 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => navigate('/analytics/export')}
+                          onClick={() => handleNavigation('/analytics/export')}
                         >
                           <div className="text-left">
                             <div className="text-sm font-medium leading-none">Export Results</div>
@@ -183,7 +195,7 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => navigate('/analytics/insights')}
+                          onClick={() => handleNavigation('/analytics/insights')}
                         >
                           <div className="text-left">
                             <div className="text-sm font-medium leading-none">Insights</div>
@@ -201,7 +213,7 @@ const Navbar: React.FC = () => {
                   <NavigationMenuItem>
                     <Button
                       className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-white/10 text-white")}
-                      onClick={() => navigate('/admin-dashboard')}
+                      onClick={() => handleNavigation('/admin-dashboard')}
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Dashboard
@@ -237,17 +249,23 @@ const Navbar: React.FC = () => {
             </>
           ) : (
             <div className="space-x-2">
-              <Link to="/signup">
-                <Button variant="outline" size="sm" className="bg-purple-700/80 text-white border-purple-600 hover:bg-purple-600">
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline-block">Register</span>
-                </Button>
-              </Link>
-              <Link to="/login">
-                <Button variant="secondary" size="sm" className="bg-white text-purple-900 hover:bg-purple-100">
-                  Login
-                </Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleNavigation('/signup')}
+                className="bg-purple-700/80 text-white border-purple-600 hover:bg-purple-600"
+              >
+                <UserPlus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline-block">Register</span>
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => handleNavigation('/login')}
+                className="bg-white text-purple-900 hover:bg-purple-100"
+              >
+                Login
+              </Button>
             </div>
           )}
         </div>
