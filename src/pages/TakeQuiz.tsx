@@ -1,30 +1,21 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
-import { enterFullscreen, exitFullscreen, setupTabVisibilityTracking } from '../lib/fullscreen';
-import { AlertCircle, ArrowLeft, ArrowRight, Clock, LogOut, Send } from 'lucide-react';
+import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
 import { Quiz } from '@/components/QuizCard';
+import { Question, QuizData } from '@/types/quiz';
 
-// Define a Question type for better type safety
-type Question = {
-  id: string;
-  text: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
-  options: Array<{ id: string; text: string; isCorrect: boolean }>;
-  points: number;
-  required: boolean;
-};
+// Import components
+import QuizRegistration from '@/components/quiz/QuizRegistration';
+import QuizHeader from '@/components/quiz/QuizHeader';
+import QuizProgress from '@/components/quiz/QuizProgress';
+import QuestionItem from '@/components/quiz/QuestionItem';
+import QuizControls from '@/components/quiz/QuizControls';
+import QuizNavigation from '@/components/quiz/QuizNavigation';
+import QuizError from '@/components/quiz/QuizError';
+import QuizLoading from '@/components/quiz/QuizLoading';
 
 const TakeQuiz = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -32,7 +23,7 @@ const TakeQuiz = () => {
   const { toast } = useToast();
   const { user, registerStudent } = useAuth();
   
-  const [quiz, setQuiz] = useState<any | null>(null);
+  const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [name, setName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [started, setStarted] = useState(false);
@@ -164,12 +155,6 @@ const TakeQuiz = () => {
     return questions;
   };
   
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-  
   const handleStartQuiz = async () => {
     if (!name || !rollNumber) {
       toast({
@@ -210,7 +195,7 @@ const TakeQuiz = () => {
   };
   
   const handleNextQuestion = () => {
-    if (currentQuestion < quiz.questions.length - 1) {
+    if (currentQuestion < (quiz?.questions.length || 0) - 1) {
       setCurrentQuestion(currentQuestion + 1);
     }
   };
@@ -229,6 +214,8 @@ const TakeQuiz = () => {
   };
   
   const handleSubmitQuiz = () => {
+    if (!quiz) return;
+    
     const unansweredRequired = quiz.questions
       .filter(q => q.required)
       .filter(q => !answers[q.id]);
@@ -278,239 +265,65 @@ const TakeQuiz = () => {
   };
   
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg">Loading quiz...</p>
-        </div>
-      </div>
-    );
+    return <QuizLoading />;
   }
   
   if (error || !quiz) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Quiz Not Found</CardTitle>
-            <CardDescription>
-              {error || "The quiz you're looking for doesn't exist or has been removed."}
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Link to="/">
-              <Button>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Home
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
-      </div>
-    );
+    return <QuizError error={error} />;
   }
-  
-  const progressPercentage = (Object.keys(answers).length / quiz.questions.length) * 100;
   
   if (!started) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4 animate-fade-in">
-        <Card className="w-full max-w-md shadow-card">
-          <CardHeader>
-            <CardTitle className="text-2xl">{quiz.title}</CardTitle>
-            <CardDescription>{quiz.description}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input 
-                id="name" 
-                placeholder="Enter your full name" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="roll">Roll Number / Student ID</Label>
-              <Input 
-                id="roll" 
-                placeholder="Enter your roll number" 
-                value={rollNumber}
-                onChange={(e) => setRollNumber(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1 text-sm">
-              <div className="flex items-center text-muted-foreground">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>Time limit: {quiz.timeLimit} minutes</span>
-              </div>
-              <div className="flex items-center text-muted-foreground">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                <span>Once started, the quiz will enter fullscreen mode</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full" onClick={handleStartQuiz}>
-              Start Quiz
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+      <QuizRegistration
+        quiz={quiz}
+        name={name}
+        setName={setName}
+        rollNumber={rollNumber}
+        setRollNumber={setRollNumber}
+        onStartQuiz={handleStartQuiz}
+      />
     );
   }
   
   return (
     <div ref={quizContainerRef} className="min-h-screen bg-background flex flex-col animate-fade-in fullscreen-mode">
-      <header className="border-b border-border bg-card py-2 px-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-semibold">{quiz.title}</h1>
-            <div className="text-sm text-muted-foreground">
-              {name} • {rollNumber}
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200 flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              <span className="font-medium">{formatTime(timeLeft)}</span>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleQuitQuiz} className="text-destructive hover:text-destructive">
-              <LogOut className="h-4 w-4 mr-1" />
-              Quit
-            </Button>
-          </div>
-        </div>
-      </header>
+      <QuizHeader
+        quizTitle={quiz.title}
+        studentName={name}
+        studentRollNumber={rollNumber}
+        timeLeft={timeLeft}
+        onQuit={handleQuitQuiz}
+      />
       
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
-        <div className="mb-6">
-          <div className="flex justify-between text-sm text-muted-foreground mb-2">
-            <span>Progress</span>
-            <span>{Object.keys(answers).length} of {quiz.questions.length} questions answered</span>
-          </div>
-          <Progress value={progressPercentage} className="h-2" />
-        </div>
+        <QuizProgress 
+          answeredCount={Object.keys(answers).length} 
+          totalQuestions={quiz.questions.length} 
+        />
         
-        <div className="mb-4 flex justify-between items-center">
-          <Badge variant="outline" className="bg-primary/10 text-primary">
-            Question {currentQuestion + 1} of {quiz.questions.length}
-          </Badge>
-          <Badge variant="outline">
-            {quiz.questions[currentQuestion].points} points
-            {quiz.questions[currentQuestion].required && " • Required"}
-          </Badge>
-        </div>
+        <QuestionItem
+          question={quiz.questions[currentQuestion]}
+          questionNumber={currentQuestion + 1}
+          totalQuestions={quiz.questions.length}
+          answer={answers[quiz.questions[currentQuestion].id]}
+          onAnswerChange={handleAnswerChange}
+        />
         
-        <Card className="mb-8 shadow-subtle border border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">
-              {quiz.questions[currentQuestion].text}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quiz.questions[currentQuestion].type === 'multiple-choice' && (
-              <RadioGroup
-                value={answers[quiz.questions[currentQuestion].id] || ""}
-                onValueChange={(value) => handleAnswerChange(quiz.questions[currentQuestion].id, value)}
-                className="space-y-3"
-              >
-                {quiz.questions[currentQuestion].options.map((option) => (
-                  <div key={option.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option.id} id={`option-${option.id}`} />
-                    <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
-                      {option.text}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            )}
-            
-            {quiz.questions[currentQuestion].type === 'true-false' && (
-              <RadioGroup
-                value={answers[quiz.questions[currentQuestion].id] || ""}
-                onValueChange={(value) => handleAnswerChange(quiz.questions[currentQuestion].id, value)}
-                className="space-y-3"
-              >
-                {quiz.questions[currentQuestion].options.map((option) => (
-                  <div key={option.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option.id} id={`option-${option.id}`} />
-                    <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
-                      {option.text}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            )}
-            
-            {quiz.questions[currentQuestion].type === 'short-answer' && (
-              <Input
-                placeholder="Type your answer here"
-                value={answers[quiz.questions[currentQuestion].id] || ""}
-                onChange={(e) => handleAnswerChange(quiz.questions[currentQuestion].id, e.target.value)}
-              />
-            )}
-            
-            {quiz.questions[currentQuestion].type === 'long-answer' && (
-              <Textarea
-                placeholder="Type your answer here"
-                rows={8}
-                value={answers[quiz.questions[currentQuestion].id] || ""}
-                onChange={(e) => handleAnswerChange(quiz.questions[currentQuestion].id, e.target.value)}
-              />
-            )}
-          </CardContent>
-        </Card>
-        
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestion === 0}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Previous
-          </Button>
-          
-          {currentQuestion < quiz.questions.length - 1 ? (
-            <Button onClick={handleNextQuestion}>
-              Next
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmitQuiz} className="bg-green-600 hover:bg-green-700">
-              <Send className="h-4 w-4 mr-2" />
-              Submit Quiz
-            </Button>
-          )}
-        </div>
+        <QuizControls
+          isLastQuestion={currentQuestion === quiz.questions.length - 1}
+          currentQuestion={currentQuestion}
+          onPrevious={handlePreviousQuestion}
+          onNext={handleNextQuestion}
+          onSubmit={handleSubmitQuiz}
+        />
       </main>
       
-      <footer className="border-t border-border bg-card py-4 px-4">
-        <div className="container mx-auto max-w-3xl">
-          <div className="flex flex-wrap gap-2">
-            {quiz.questions.map((q, index) => (
-              <button
-                key={q.id}
-                onClick={() => setCurrentQuestion(index)}
-                className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-medium 
-                  ${index === currentQuestion 
-                    ? 'bg-primary text-white' 
-                    : answers[q.id] 
-                      ? 'bg-green-100 text-green-800 border border-green-200' 
-                      : 'bg-secondary text-secondary-foreground'
-                  } 
-                  ${q.required && !answers[q.id] && index !== currentQuestion 
-                    ? 'ring-2 ring-red-400' 
-                    : ''
-                  }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <QuizNavigation
+        questions={quiz.questions}
+        currentQuestionIndex={currentQuestion}
+        answers={answers}
+        onQuestionSelect={setCurrentQuestion}
+      />
     </div>
   );
 };
