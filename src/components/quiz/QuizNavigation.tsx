@@ -17,11 +17,17 @@ const QuizNavigation = ({
   answers,
   onQuestionSelect,
 }: QuizNavigationProps) => {
+  // Ensure questions has the right shape before rendering
+  const validQuestions = Array.isArray(questions) ? questions : [];
+  
+  // Debug log questions array
+  console.log("QuizNavigation received questions:", validQuestions, "currentIndex:", currentQuestionIndex);
+  
   return (
-    <footer className="border-t border-border bg-card py-4 px-4">
+    <footer className="border-t border-border bg-card py-4 px-4 sticky bottom-0">
       <div className="container mx-auto max-w-3xl">
-        <div className="flex flex-wrap gap-2">
-          {questions.map((q, index) => (
+        <div className="flex flex-wrap gap-2 justify-center">
+          {validQuestions.map((q, index) => (
             <button
               key={q.id}
               onClick={() => onQuestionSelect(index)}
@@ -36,6 +42,8 @@ const QuizNavigation = ({
                   ? 'ring-2 ring-red-400' 
                   : ''
                 }`}
+              aria-label={`Go to question ${index + 1}`}
+              title={answers[q.id] ? "Answered" : q.required ? "Required" : "Optional"}
             >
               {index + 1}
             </button>

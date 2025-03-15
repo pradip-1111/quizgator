@@ -6,22 +6,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-
-type QuestionOption = {
-  id: string;
-  text: string;
-  isCorrect: boolean;
-};
+import { Question } from '@/types/quiz';
 
 type QuestionItemProps = {
-  question: {
-    id: string;
-    text: string;
-    type: 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
-    options: QuestionOption[];
-    points: number;
-    required: boolean;
-  };
+  question: Question;
   questionNumber: number;
   totalQuestions: number;
   answer: any;

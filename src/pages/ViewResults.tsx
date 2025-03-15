@@ -1,11 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Users, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, Download, Users, FileText, Clock, FileText2 } from 'lucide-react';
 import { Quiz } from '@/components/QuizCard';
-import { QuizResult } from '@/types/quiz';
+import { QuizResult, StudentResponse } from '@/types/quiz';
+import { useToast } from '@/hooks/use-toast';
 
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -13,6 +14,19 @@ const ViewResults = () => {
   const [results, setResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Preprocess student responses for display
+  const studentResponses = useMemo<StudentResponse[]>(() => {
+    return results.map(result => ({
+      studentName: result.studentName,
+      studentId: result.studentId,
+      score: result.score,
+      totalPoints: result.totalPoints,
+      submittedAt: result.submittedAt,
+      percentageScore: Math.round((result.score / result.totalPoints) * 100)
+    }));
+  }, [results]);
 
   useEffect(() => {
     console.log("ViewResults component mounted with quizId:", quizId);
@@ -73,7 +87,7 @@ const ViewResults = () => {
       if (!results.length) return;
       
       // Create CSV content
-      const headers = ["Student Name", "Student ID", "Score", "Total Points", "Submitted At"];
+      const headers = ["Student Name", "Student ID", "Score", "Total Points", "Percentage", "Submitted At"];
       const csvContent = [
         headers.join(","),
         ...results.map(result => [
@@ -81,6 +95,7 @@ const ViewResults = () => {
           result.studentId,
           result.score,
           result.totalPoints,
+          Math.round((result.score / result.totalPoints) * 100) + "%",
           new Date(result.submittedAt).toLocaleString()
         ].join(","))
       ].join("\n");
@@ -95,9 +110,127 @@ const ViewResults = () => {
       link.click();
       document.body.removeChild(link);
       
+      toast({
+        title: "Results Exported",
+        description: "The CSV file has been downloaded to your device",
+      });
+      
       console.log("Downloaded results CSV");
     } catch (error) {
       console.error('Error exporting results:', error);
+      toast({
+        title: "Export Failed",
+        description: "There was a problem exporting the results",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!quiz || !results.length) return;
+    
+    try {
+      // Create a printable div with styled content
+      const printContent = document.createElement('div');
+      printContent.style.width = '210mm';
+      printContent.style.padding = '20mm';
+      printContent.style.backgroundColor = 'white';
+      printContent.style.color = 'black';
+      printContent.style.position = 'absolute';
+      printContent.style.left = '-9999px';
+      printContent.style.top = '0';
+      
+      // Header
+      const header = document.createElement('div');
+      header.innerHTML = `
+        <h1 style="font-size: 24px; margin-bottom: 5px;">${quiz.title} - Results</h1>
+        <p style="font-size: 14px; margin-bottom: 20px; color: #555;">${quiz.description}</p>
+        <div style="display: flex; margin-bottom: 20px;">
+          <div style="margin-right: 30px;">
+            <span style="font-weight: bold;">Total Questions:</span> ${quiz.questions}
+          </div>
+          <div style="margin-right: 30px;">
+            <span style="font-weight: bold;">Duration:</span> ${quiz.duration} minutes
+          </div>
+          <div>
+            <span style="font-weight: bold;">Total Attempts:</span> ${results.length}
+          </div>
+        </div>
+        <hr style="margin-bottom: 20px; border: 1px solid #eee;">
+      `;
+      
+      // Table
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.style.marginBottom = '20px';
+      
+      // Table header
+      const thead = document.createElement('thead');
+      thead.innerHTML = `
+        <tr style="background-color: #f3f4f6;">
+          <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Student Name</th>
+          <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Student ID</th>
+          <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Score</th>
+          <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Percentage</th>
+          <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Submitted At</th>
+        </tr>
+      `;
+      
+      // Table body
+      const tbody = document.createElement('tbody');
+      studentResponses.forEach((response, index) => {
+        const row = document.createElement('tr');
+        row.style.backgroundColor = index % 2 === 0 ? '#fff' : '#f9fafb';
+        
+        row.innerHTML = `
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${response.studentName}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${response.studentId}</td>
+          <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">${response.score}/${response.totalPoints}</td>
+          <td style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">${response.percentageScore}%</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${new Date(response.submittedAt).toLocaleString()}</td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+      
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      
+      // Footer
+      const footer = document.createElement('div');
+      footer.innerHTML = `
+        <hr style="margin-top: 20px; margin-bottom: 20px; border: 1px solid #eee;">
+        <p style="font-size: 12px; color: #555; text-align: center;">
+          Generated on ${new Date().toLocaleString()} | ${quiz.title}
+        </p>
+      `;
+      
+      // Add all elements to the print content
+      printContent.appendChild(header);
+      printContent.appendChild(table);
+      printContent.appendChild(footer);
+      
+      // Append to document, print, then remove
+      document.body.appendChild(printContent);
+      
+      // Use browser's print functionality
+      window.print();
+      
+      // Remove after printing
+      document.body.removeChild(printContent);
+      
+      toast({
+        title: "PDF Export",
+        description: "Your browser's print dialog should be open. Save as PDF to complete the export.",
+      });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast({
+        title: "PDF Export Failed",
+        description: "There was a problem generating the PDF",
+        variant: "destructive",
+      });
     }
   };
 
@@ -124,7 +257,7 @@ const ViewResults = () => {
           <CardFooter>
             <Link to="/admin-dashboard">
               <Button>
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
             </Link>
@@ -139,7 +272,7 @@ const ViewResults = () => {
       <div className="mb-6">
         <Link to="/admin-dashboard">
           <Button variant="outline" className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
         </Link>
@@ -156,10 +289,16 @@ const ViewResults = () => {
             </CardDescription>
           </div>
           {results.length > 0 && (
-            <Button variant="outline" onClick={handleExportResults}>
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={handleExportResults}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button onClick={handleExportPDF}>
+                <FileText2 className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -176,8 +315,8 @@ const ViewResults = () => {
               <div className="bg-secondary/30 p-4 rounded-lg">
                 <div className="text-sm text-muted-foreground">Average Score</div>
                 <div className="text-2xl font-bold">
-                  {results.length > 0 
-                    ? `${Math.round(results.reduce((acc, r) => acc + (r.score / r.totalPoints * 100), 0) / results.length)}%` 
+                  {studentResponses.length > 0 
+                    ? `${Math.round(studentResponses.reduce((acc, r) => acc + r.percentageScore, 0) / studentResponses.length)}%` 
                     : 'N/A'}
                 </div>
               </div>
@@ -200,7 +339,7 @@ const ViewResults = () => {
               </div>
             </div>
 
-            {results.length > 0 ? (
+            {studentResponses.length > 0 ? (
               <div>
                 <h3 className="text-lg font-medium mb-3">Student Results</h3>
                 <div className="overflow-x-auto">
@@ -215,13 +354,13 @@ const ViewResults = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {results.map((result, index) => (
+                      {studentResponses.map((response, index) => (
                         <tr key={index} className="border-t border-border">
-                          <td className="p-2">{result.studentName}</td>
-                          <td className="p-2">{result.studentId}</td>
-                          <td className="p-2">{result.score}/{result.totalPoints}</td>
-                          <td className="p-2">{Math.round((result.score / result.totalPoints) * 100)}%</td>
-                          <td className="p-2">{new Date(result.submittedAt).toLocaleString()}</td>
+                          <td className="p-2">{response.studentName}</td>
+                          <td className="p-2">{response.studentId}</td>
+                          <td className="p-2">{response.score}/{response.totalPoints}</td>
+                          <td className="p-2">{response.percentageScore}%</td>
+                          <td className="p-2">{new Date(response.submittedAt).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
