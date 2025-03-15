@@ -32,13 +32,17 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
 
   // Create a function to handle the copy link action
   const handleCopyLink = () => {
-    // Create the full URL for the quiz
+    // Create the full URL for the quiz using absolute path
     const quizLink = `${window.location.origin}/take-quiz/${quiz.id}`;
+    
     // Copy to clipboard
     navigator.clipboard.writeText(quizLink)
       .then(() => {
         // Call the callback to show toast
         onCopyLink(quiz.id);
+        
+        // Log the link to console for debugging
+        console.log("Copied quiz link:", quizLink);
       })
       .catch(err => {
         console.error('Failed to copy quiz link:', err);
