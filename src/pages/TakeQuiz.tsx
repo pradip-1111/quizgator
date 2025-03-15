@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
 import { Quiz } from '@/components/QuizCard';
 import { Question, QuizData, QuizResult } from '@/types/quiz';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Import components
 import QuizRegistration from '@/components/quiz/QuizRegistration';
