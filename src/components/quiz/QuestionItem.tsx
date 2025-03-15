@@ -37,6 +37,7 @@ const QuestionItem = ({
 }: QuestionItemProps) => {
   // Early return if question is not properly loaded
   if (!question || !question.id) {
+    console.error("Question not properly loaded", question);
     return (
       <Card className="mb-8 shadow-subtle border border-border">
         <CardHeader className="pb-2">
@@ -50,6 +51,8 @@ const QuestionItem = ({
       </Card>
     );
   }
+
+  console.log("Rendering question:", question, "Answer:", answer);
 
   return (
     <>
@@ -79,8 +82,8 @@ const QuestionItem = ({
               {question.options && question.options.length > 0 ? (
                 question.options.map((option) => (
                   <div key={option.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option.id} id={`option-${option.id}`} />
-                    <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
+                    <RadioGroupItem value={option.id} id={`option-${question.id}-${option.id}`} />
+                    <Label htmlFor={`option-${question.id}-${option.id}`} className="cursor-pointer">
                       {option.text}
                     </Label>
                   </div>
@@ -100,8 +103,8 @@ const QuestionItem = ({
               {question.options && question.options.length > 0 ? (
                 question.options.map((option) => (
                   <div key={option.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option.id} id={`option-${option.id}`} />
-                    <Label htmlFor={`option-${option.id}`} className="cursor-pointer">
+                    <RadioGroupItem value={option.id} id={`option-${question.id}-${option.id}`} />
+                    <Label htmlFor={`option-${question.id}-${option.id}`} className="cursor-pointer">
                       {option.text}
                     </Label>
                   </div>
@@ -109,12 +112,12 @@ const QuestionItem = ({
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="true" id="option-true" />
-                    <Label htmlFor="option-true" className="cursor-pointer">True</Label>
+                    <RadioGroupItem value="true" id={`option-${question.id}-true`} />
+                    <Label htmlFor={`option-${question.id}-true`} className="cursor-pointer">True</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="false" id="option-false" />
-                    <Label htmlFor="option-false" className="cursor-pointer">False</Label>
+                    <RadioGroupItem value="false" id={`option-${question.id}-false`} />
+                    <Label htmlFor={`option-${question.id}-false`} className="cursor-pointer">False</Label>
                   </div>
                 </div>
               )}

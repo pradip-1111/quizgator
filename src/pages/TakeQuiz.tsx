@@ -209,6 +209,7 @@ const TakeQuiz = () => {
   };
   
   const handleAnswerChange = (questionId: string, value: any) => {
+    console.log("Answer changed for question", questionId, "to", value);
     setAnswers(prev => ({
       ...prev,
       [questionId]: value
@@ -314,6 +315,7 @@ const TakeQuiz = () => {
       
       // Save updated results
       localStorage.setItem(`quiz_results_${quizId}`, JSON.stringify(results));
+      console.log("Saved quiz results:", result);
       
       exitFullscreen();
       

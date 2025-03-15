@@ -91,7 +91,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
         
         questions.push({
           id: `${i + 1}`,
-          text: `Question ${i + 1}`,
+          text: `Question ${i + 1}: This is a sample ${type} question.`,
           type,
           options,
           points: 10,
@@ -142,23 +142,22 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
             Copy Link
           </Button>
           
-          {/* Fix nested <a> tags by using span instead of Button with asChild when inside Link */}
-          <Button size="sm" variant="outline" onClick={handleOpenQuiz} asChild>
-            <Link to={`/take-quiz/${quiz.id}`} target="_blank" rel="noopener noreferrer">
+          <Button size="sm" variant="outline" onClick={handleOpenQuiz}>
+            <Link to={`/take-quiz/${quiz.id}`} className="flex items-center" target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4 mr-1" />
               Open
             </Link>
           </Button>
           
-          <Button size="sm" variant="outline" asChild>
-            <Link to={`/view-results/${quiz.id}`}>
+          <Button size="sm" variant="outline">
+            <Link to={`/view-results/${quiz.id}`} className="flex items-center">
               <BarChart className="h-4 w-4 mr-1" />
               Results
             </Link>
           </Button>
           
-          <Button size="sm" asChild>
-            <Link to={`/edit-quiz/${quiz.id}`}>
+          <Button size="sm">
+            <Link to={`/edit-quiz/${quiz.id}`} className="flex items-center">
               Edit
             </Link>
           </Button>
