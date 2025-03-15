@@ -32,6 +32,7 @@ const TakeQuiz = () => {
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
@@ -39,86 +40,84 @@ const TakeQuiz = () => {
   useEffect(() => {
     const loadQuiz = () => {
       setLoading(true);
+      setError(null);
+      
       try {
+        console.log("Loading quiz with ID:", quizId);
         const storedQuizzes = localStorage.getItem('quizzes');
-        if (storedQuizzes) {
-          const quizzes = JSON.parse(storedQuizzes) as Quiz[];
-          const foundQuiz = quizzes.find(q => q.id === quizId);
+        
+        if (!storedQuizzes) {
+          console.error("No quizzes found in localStorage");
+          setError("No quizzes found");
+          setLoading(false);
+          return;
+        }
+        
+        const quizzes = JSON.parse(storedQuizzes) as Quiz[];
+        console.log("All quizzes:", quizzes);
+        
+        const foundQuiz = quizzes.find(q => q.id === quizId);
+        
+        if (!foundQuiz) {
+          console.error("Quiz not found with ID:", quizId);
+          setError(`Quiz with ID ${quizId} not found`);
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Found quiz:", foundQuiz);
+        
+        const generatedQuestions = [];
+        for (let i = 0; i < foundQuiz.questions; i++) {
+          const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+          const type = questionTypes[i % questionTypes.length] as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
           
-          if (foundQuiz) {
-            console.log("Found quiz:", foundQuiz);
-            
-            const generatedQuestions = [];
-            for (let i = 0; i < foundQuiz.questions; i++) {
-              const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
-              const type = questionTypes[i % questionTypes.length] as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
-              
-              let options = [];
-              if (type === 'multiple-choice') {
-                options = [
-                  { id: '1', text: 'Option A', isCorrect: i === 0 },
-                  { id: '2', text: 'Option B', isCorrect: false },
-                  { id: '3', text: 'Option C', isCorrect: false },
-                  { id: '4', text: 'Option D', isCorrect: false }
-                ];
-              } else if (type === 'true-false') {
-                options = [
-                  { id: '1', text: 'True', isCorrect: false },
-                  { id: '2', text: 'False', isCorrect: true }
-                ];
-              } else {
-                options = [];
-              }
-              
-              generatedQuestions.push({
-                id: `${i + 1}`,
-                text: `Question ${i + 1}`,
-                type,
-                options,
-                points: 10,
-                required: i < (foundQuiz.questions - 1)
-              });
-            }
-            
-            setQuestions(generatedQuestions);
-            setQuiz({
-              id: foundQuiz.id,
-              title: foundQuiz.title, 
-              description: foundQuiz.description,
-              timeLimit: foundQuiz.duration,
-              questions: generatedQuestions
-            });
-            setTimeLeft(foundQuiz.duration * 60);
+          let options = [];
+          if (type === 'multiple-choice') {
+            options = [
+              { id: '1', text: 'Option A', isCorrect: i === 0 },
+              { id: '2', text: 'Option B', isCorrect: false },
+              { id: '3', text: 'Option C', isCorrect: false },
+              { id: '4', text: 'Option D', isCorrect: false }
+            ];
+          } else if (type === 'true-false') {
+            options = [
+              { id: '1', text: 'True', isCorrect: false },
+              { id: '2', text: 'False', isCorrect: true }
+            ];
           } else {
-            console.error("Quiz not found:", quizId);
-            toast({
-              title: "Quiz Not Found",
-              description: "The requested quiz couldn't be found",
-              variant: "destructive",
-            });
+            options = [];
           }
-        } else {
-          console.error("No quizzes in localStorage");
-          toast({
-            title: "Error",
-            description: "No quizzes found",
-            variant: "destructive",
+          
+          generatedQuestions.push({
+            id: `${i + 1}`,
+            text: `Question ${i + 1}`,
+            type,
+            options,
+            points: 10,
+            required: i < (foundQuiz.questions - 1)
           });
         }
+        
+        setQuestions(generatedQuestions);
+        setQuiz({
+          id: foundQuiz.id,
+          title: foundQuiz.title, 
+          description: foundQuiz.description,
+          timeLimit: foundQuiz.duration,
+          questions: generatedQuestions
+        });
+        setTimeLeft(foundQuiz.duration * 60);
       } catch (error) {
         console.error('Error loading quiz:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load quiz data",
-          variant: "destructive",
-        });
+        setError("Failed to load quiz data");
       } finally {
         setLoading(false);
       }
     };
 
     loadQuiz();
-  }, [quizId, toast]);
+  }, [quizId]);
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -243,14 +242,14 @@ const TakeQuiz = () => {
     );
   }
   
-  if (!quiz) {
+  if (error || !quiz) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Quiz Not Found</CardTitle>
             <CardDescription>
-              The quiz you're looking for doesn't exist or has been removed.
+              {error || "The quiz you're looking for doesn't exist or has been removed."}
             </CardDescription>
           </CardHeader>
           <CardFooter>
