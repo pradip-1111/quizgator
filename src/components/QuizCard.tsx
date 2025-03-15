@@ -8,6 +8,7 @@ import { Clock, FileText, Users, Link as LinkIcon, BarChart } from 'lucide-react
 
 export type Quiz = {
   id: string;
+  userId: string; // Add userId to associate quizzes with specific users
   title: string;
   description: string;
   questions: number;

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import QuizCard, { Quiz } from '../components/QuizCard';
 import Navbar from '../components/Navbar';
 import { Plus, Search, FileDown, ClipboardCheck, Settings, Clock, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ import {
 const dummyQuizzes: Quiz[] = [
   {
     id: '1',
+    userId: '1', // Admin user ID
     title: 'Midterm Examination',
     description: 'Comprehensive test covering chapters 1-5',
     questions: 25,
@@ -34,6 +36,7 @@ const dummyQuizzes: Quiz[] = [
   },
   {
     id: '2',
+    userId: '1', // Admin user ID
     title: 'Weekly Quiz #3',
     description: 'Test on recent material from week 3',
     questions: 10,
@@ -44,6 +47,7 @@ const dummyQuizzes: Quiz[] = [
   },
   {
     id: '3',
+    userId: '2', // Another user ID
     title: 'Final Exam Preparation',
     description: 'Practice quiz for upcoming final exam',
     questions: 40,
@@ -54,6 +58,7 @@ const dummyQuizzes: Quiz[] = [
   },
   {
     id: '4',
+    userId: '1', // Admin user ID
     title: 'Pop Quiz: Chapter 7',
     description: 'Surprise assessment on recent material',
     questions: 8,
@@ -66,8 +71,19 @@ const dummyQuizzes: Quiz[] = [
 
 const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [quizzes, setQuizzes] = useState<Quiz[]>(dummyQuizzes);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Filter quizzes by current user when component loads or user changes
+  useEffect(() => {
+    if (user) {
+      const userQuizzes = dummyQuizzes.filter(quiz => quiz.userId === user.id);
+      setQuizzes(userQuizzes);
+    } else {
+      setQuizzes([]);
+    }
+  }, [user]);
 
   const handleCopyLink = (quizId: string) => {
     const link = `${window.location.origin}/take-quiz/${quizId}`;
