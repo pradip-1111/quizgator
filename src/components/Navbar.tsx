@@ -7,7 +7,6 @@ import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
@@ -54,11 +53,9 @@ const Navbar: React.FC = () => {
             <NavigationMenu className="hidden md:flex">
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <Link to="/">
-                    <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-white/10 text-white")}>
-                      <Home className="h-4 w-4 mr-2" />
-                      Home
-                    </NavigationMenuLink>
+                  <Link to="/" className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-white/10 text-white")}>
+                    <Home className="h-4 w-4 mr-2" />
+                    Home
                   </Link>
                 </NavigationMenuItem>
                 
@@ -70,44 +67,64 @@ const Navbar: React.FC = () => {
                   <NavigationMenuContent>
                     <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                       <li className="row-span-3">
-                        <NavigationMenuLink asChild>
-                          <a
-                            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-purple-800 to-purple-900 p-6 no-underline outline-none focus:shadow-md"
-                            href="/create-quiz"
+                        <div className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-purple-800 to-purple-900 p-6 no-underline outline-none focus:shadow-md">
+                          <Plus className="h-6 w-6 mb-2" />
+                          <div className="mb-2 mt-4 text-lg font-medium">
+                            Create New Quiz
+                          </div>
+                          <p className="text-sm leading-tight text-white/80">
+                            Design your customized quiz with multiple question types and settings
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            className="mt-4 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            onClick={() => navigate('/create-quiz')}
                           >
-                            <Plus className="h-6 w-6 mb-2" />
-                            <div className="mb-2 mt-4 text-lg font-medium">
-                              Create New Quiz
-                            </div>
-                            <p className="text-sm leading-tight text-white/80">
-                              Design your customized quiz with multiple question types and settings
+                            Get Started
+                          </Button>
+                        </div>
+                      </li>
+                      <li>
+                        <Button 
+                          variant="ghost"
+                          className="w-full justify-start" 
+                          onClick={() => navigate('/admin-dashboard')}
+                        >
+                          <div className="text-left">
+                            <div className="text-sm font-medium leading-none">My Quizzes</div>
+                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                              View and manage all your created quizzes
                             </p>
-                          </a>
-                        </NavigationMenuLink>
+                          </div>
+                        </Button>
                       </li>
                       <li>
-                        <Link to="/admin-dashboard" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">My Quizzes</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            View and manage all your created quizzes
-                          </p>
-                        </Link>
+                        <Button 
+                          variant="ghost"
+                          className="w-full justify-start" 
+                          onClick={() => navigate('/admin-dashboard?tab=active')}
+                        >
+                          <div className="text-left">
+                            <div className="text-sm font-medium leading-none">Active Quizzes</div>
+                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                              Currently active quizzes ready to share
+                            </p>
+                          </div>
+                        </Button>
                       </li>
                       <li>
-                        <Link to="/admin-dashboard?tab=active" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">Active Quizzes</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            Currently active quizzes ready to share
-                          </p>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="/admin-dashboard?tab=draft" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">Draft Quizzes</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            Incomplete quizzes saved for later
-                          </p>
-                        </Link>
+                        <Button 
+                          variant="ghost"
+                          className="w-full justify-start" 
+                          onClick={() => navigate('/admin-dashboard?tab=draft')}
+                        >
+                          <div className="text-left">
+                            <div className="text-sm font-medium leading-none">Draft Quizzes</div>
+                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                              Incomplete quizzes saved for later
+                            </p>
+                          </div>
+                        </Button>
                       </li>
                     </ul>
                   </NavigationMenuContent>
@@ -121,36 +138,60 @@ const Navbar: React.FC = () => {
                   <NavigationMenuContent>
                     <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                       <li>
-                        <Link to="/analytics/overview" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">Quiz Performance</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            See overall performance metrics for your quizzes
-                          </p>
-                        </Link>
+                        <Button 
+                          variant="ghost"
+                          className="w-full justify-start" 
+                          onClick={() => navigate('/analytics/overview')}
+                        >
+                          <div className="text-left">
+                            <div className="text-sm font-medium leading-none">Quiz Performance</div>
+                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                              See overall performance metrics for your quizzes
+                            </p>
+                          </div>
+                        </Button>
                       </li>
                       <li>
-                        <Link to="/analytics/responses" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">User Responses</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            Detailed breakdown of individual responses
-                          </p>
-                        </Link>
+                        <Button 
+                          variant="ghost"
+                          className="w-full justify-start" 
+                          onClick={() => navigate('/analytics/responses')}
+                        >
+                          <div className="text-left">
+                            <div className="text-sm font-medium leading-none">User Responses</div>
+                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                              Detailed breakdown of individual responses
+                            </p>
+                          </div>
+                        </Button>
                       </li>
                       <li>
-                        <Link to="/analytics/export" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">Export Results</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            Download quiz results in various formats
-                          </p>
-                        </Link>
+                        <Button 
+                          variant="ghost"
+                          className="w-full justify-start" 
+                          onClick={() => navigate('/analytics/export')}
+                        >
+                          <div className="text-left">
+                            <div className="text-sm font-medium leading-none">Export Results</div>
+                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                              Download quiz results in various formats
+                            </p>
+                          </div>
+                        </Button>
                       </li>
                       <li>
-                        <Link to="/analytics/insights" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">Insights</div>
-                          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                            AI-powered insights about quiz effectiveness
-                          </p>
-                        </Link>
+                        <Button 
+                          variant="ghost"
+                          className="w-full justify-start" 
+                          onClick={() => navigate('/analytics/insights')}
+                        >
+                          <div className="text-left">
+                            <div className="text-sm font-medium leading-none">Insights</div>
+                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                              AI-powered insights about quiz effectiveness
+                            </p>
+                          </div>
+                        </Button>
                       </li>
                     </ul>
                   </NavigationMenuContent>
@@ -158,12 +199,13 @@ const Navbar: React.FC = () => {
                 
                 {user.role === 'admin' && (
                   <NavigationMenuItem>
-                    <Link to="/admin-dashboard">
-                      <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-white/10 text-white")}>
-                        <Settings className="h-4 w-4 mr-2" />
-                        Dashboard
-                      </NavigationMenuLink>
-                    </Link>
+                    <Button
+                      className={cn(navigationMenuTriggerStyle(), "bg-transparent hover:bg-white/10 text-white")}
+                      onClick={() => navigate('/admin-dashboard')}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </Button>
                   </NavigationMenuItem>
                 )}
               </NavigationMenuList>

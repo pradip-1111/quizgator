@@ -36,7 +36,11 @@ const Login = () => {
         title: "Success",
         description: "Logged in successfully",
       });
-      navigate('/admin-dashboard');
+      console.log("Login successful, navigating to admin-dashboard");
+      // Force a clean navigation to ensure the page completely refreshes
+      setTimeout(() => {
+        navigate('/admin-dashboard', { replace: true });
+      }, 100);
     } catch (error) {
       toast({
         title: "Error",
@@ -55,10 +59,14 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4 py-12 animate-fade-in">
       <div className="w-full max-w-md">
-        <Link to="/" className="inline-flex items-center mb-4 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <Button 
+          variant="ghost" 
+          className="inline-flex items-center mb-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => navigate('/')}
+        >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Home
-        </Link>
+        </Button>
         
         <Card className="w-full shadow-card">
           <CardHeader className="space-y-1">
@@ -83,9 +91,14 @@ const Login = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="password">Password</Label>
-                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    onClick={() => navigate('/forgot-password')} 
+                    className="text-xs h-auto p-0"
+                  >
                     Forgot password?
-                  </Link>
+                  </Button>
                 </div>
                 <div className="relative">
                   <Input
@@ -123,9 +136,13 @@ const Login = () => {
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-center text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link to="/signup" className="text-primary hover:underline">
+              <Button 
+                variant="link" 
+                className="text-primary p-0 h-auto"
+                onClick={() => navigate('/signup')}
+              >
                 Sign up
-              </Link>
+              </Button>
             </div>
           </CardFooter>
         </Card>
