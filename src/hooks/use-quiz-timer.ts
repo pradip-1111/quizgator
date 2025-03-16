@@ -15,7 +15,19 @@ export function useQuizTimer(
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
-            // Submit the quiz when time runs out without affecting link validity
+            // Mark the quiz as expired in localStorage
+            try {
+              const params = new URLSearchParams(window.location.search);
+              const quizId = window.location.pathname.split('/').pop() || params.get('id') || '';
+              if (quizId) {
+                localStorage.setItem(`quiz_expired_${quizId}`, 'true');
+                console.log(`Quiz ${quizId} marked as expired`);
+              }
+            } catch (e) {
+              console.error('Error marking quiz as expired:', e);
+            }
+            
+            // Submit the quiz when time runs out
             handleSubmitQuiz();
             return 0;
           }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ const TakeQuiz = () => {
   const [rollNumber, setRollNumber] = useState('');
   const [email, setEmail] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
   
   const quizContainerRef = useRef<HTMLDivElement>(null);
   
@@ -43,6 +45,19 @@ const TakeQuiz = () => {
     handlePreviousQuestion,
     getRemainingQuestionCount
   } = useQuizState();
+  
+  // Check if quiz is expired
+  useEffect(() => {
+    if (!quizId) return;
+    
+    // Check if this quiz is marked as expired
+    const expiredFlag = localStorage.getItem(`quiz_expired_${quizId}`);
+    if (expiredFlag === 'true') {
+      console.log(`Quiz ${quizId} is marked as expired`);
+      setIsExpired(true);
+      setQuizStateError('This quiz has expired because the time limit was reached.');
+    }
+  }, [quizId, setQuizStateError]);
   
   // Clear any previous quiz data first to avoid cross-contamination
   useEffect(() => {
@@ -133,6 +148,11 @@ const TakeQuiz = () => {
   
   // Handle data from useQuizLoader
   useEffect(() => {
+    if (isExpired) {
+      // Don't load quiz data if it's expired
+      return;
+    }
+    
     if (loadedQuiz && !quiz) {
       console.log('Quiz loaded from useQuizLoader:', loadedQuiz.title);
       
@@ -163,7 +183,7 @@ const TakeQuiz = () => {
       console.error("Quiz load error:", quizLoadError);
       setQuizStateError(quizLoadError);
     }
-  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError, quiz, quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setQuizStateError]);
+  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError, quiz, quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setQuizStateError, isExpired]);
   
   const handleSubmitQuiz = () => {
     if (!quiz) return;
@@ -178,6 +198,9 @@ const TakeQuiz = () => {
       // Save the quiz ID before submission to prevent it from being lost
       const currentQuizId = quizId || '';
       const currentQuizTitle = quiz.title || 'Quiz';
+      
+      // Mark the quiz as expired to prevent future access
+      localStorage.setItem(`quiz_expired_${currentQuizId}`, 'true');
       
       submitQuiz(
         currentQuizId, 
@@ -292,12 +315,14 @@ const TakeQuiz = () => {
       // Careful cache clearing - only remove cache for this quiz, not all quizzes
       localStorage.removeItem(`quiz_${quizId}`);
       localStorage.removeItem(`quiz_questions_${quizId}`);
+      localStorage.removeItem(`quiz_expired_${quizId}`);
       
       toast({
         title: "Cache Cleared",
         description: "Quiz cache has been cleared. Retrying quiz load.",
       });
       
+      setIsExpired(false);
       retryLoading();
     }
   };
@@ -310,6 +335,7 @@ const TakeQuiz = () => {
   const handleDebugQuiz = () => {
     console.log("Debugging quiz data:");
     console.log("Quiz ID:", quizId);
+    console.log("Is expired:", isExpired);
     console.log("All localStorage keys:");
     
     for (let i = 0; i < localStorage.length; i++) {
@@ -330,6 +356,14 @@ const TakeQuiz = () => {
       description: "Quiz debug info has been logged to the console (F12)",
     });
   };
+  
+  if (isExpired) {
+    return <QuizError 
+      error="This quiz has expired because the time limit was reached."
+      isExpired={true}
+      onClearCache={handleClearCache}
+    />;
+  }
   
   if (quizStateLoading) {
     return <QuizLoading 
