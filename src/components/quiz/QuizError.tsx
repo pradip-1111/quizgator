@@ -19,7 +19,7 @@ const QuizError = ({
   isRetryable = false,
   fallbackAvailable = false
 }: QuizErrorProps) => {
-  const errorMessage = error instanceof Error ? error.message : error;
+  const errorMessage = error instanceof Error ? error.message : String(error);
   
   const handleRetry = () => {
     if (onRetry) {
@@ -61,7 +61,7 @@ const QuizError = ({
             </p>
           )}
           
-          {!fallbackAvailable && errorMessage?.includes("not found") && (
+          {!fallbackAvailable && (
             <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
               <h3 className="text-sm font-medium mb-2">Troubleshooting Tips:</h3>
               <ul className="text-sm space-y-2">
@@ -71,11 +71,15 @@ const QuizError = ({
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2 text-primary">•</span>
-                  <span>The quiz may have been deleted or is no longer available</span>
+                  <span>The quiz may have been deleted or is not available</span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2 text-primary">•</span>
-                  <span>If you received this link from someone, ask them to share it again</span>
+                  <span>If the quiz was recently created, the creator may need to save it again</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2 text-primary">•</span>
+                  <span>Try clearing your browser cache and reloading the page</span>
                 </li>
               </ul>
             </div>
