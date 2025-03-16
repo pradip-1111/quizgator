@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { Question } from '@/types/quiz';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import QuizHeader from '@/components/quiz/QuizHeader';
 import QuizControls from '@/components/quiz/QuizControls';
 import QuizProgress from '@/components/quiz/QuizProgress';
@@ -76,7 +76,7 @@ const QuizContainer: React.FC<QuizContainerProps> = ({
           />
         ) : (
           <Card className="mb-8">
-            <CardContent>
+            <CardContent className="pt-6">
               <p>There was a problem loading this question. Please contact your instructor.</p>
             </CardContent>
           </Card>

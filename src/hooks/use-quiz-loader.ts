@@ -30,9 +30,16 @@ export function useQuizLoader(quizId: string | undefined) {
             {
               id: '1',
               text: 'What is the capital of France?',
-              options: ['London', 'Berlin', 'Paris', 'Madrid'],
+              options: [
+                { id: 'a', text: 'London', isCorrect: false },
+                { id: 'b', text: 'Berlin', isCorrect: false },
+                { id: 'c', text: 'Paris', isCorrect: true },
+                { id: 'd', text: 'Madrid', isCorrect: false }
+              ],
               correctAnswer: 'Paris',
-              type: 'multiple-choice'
+              type: 'multiple-choice',
+              points: 1,
+              required: true
             },
             // ... more sample questions would go here
           ],
@@ -46,9 +53,16 @@ export function useQuizLoader(quizId: string | undefined) {
           mockQuiz.questions.push({
             id: i.toString(),
             text: `Sample Question ${i}`,
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            options: [
+              { id: 'a', text: 'Option A', isCorrect: true },
+              { id: 'b', text: 'Option B', isCorrect: false },
+              { id: 'c', text: 'Option C', isCorrect: false },
+              { id: 'd', text: 'Option D', isCorrect: false }
+            ],
             correctAnswer: 'Option A',
-            type: 'multiple-choice'
+            type: 'multiple-choice',
+            points: 1,
+            required: true
           });
         }
 

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 export function useQuizTimer(
   started: boolean, 
   timeLeft: number, 
-  setTimeLeft: (value: number) => void, 
+  setTimeLeft: React.Dispatch<React.SetStateAction<number>>, 
   handleSubmitQuiz: () => void
 ) {
   const timerRef = useRef<number | null>(null);
@@ -12,7 +12,7 @@ export function useQuizTimer(
   useEffect(() => {
     if (started && timeLeft > 0) {
       const timer = setInterval(() => {
-        setTimeLeft((prev: number) => {
+        setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
             handleSubmitQuiz();
