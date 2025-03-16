@@ -1,5 +1,5 @@
 
-import { QuizData, QuizResult, Question } from '@/types/quiz';
+import { QuizData, QuizResult } from '@/types/quiz';
 import { supabase } from '@/integrations/supabase/client';
 
 export const calculateScore = (quiz: QuizData, answers: Record<string, any>) => {
@@ -48,15 +48,34 @@ export const submitQuiz = async (
       }
     });
     
+    // Ensure quizId is a valid UUID
+    let validQuizId;
+    try {
+      // Check if quizId is already a valid UUID
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quizId)) {
+        validQuizId = quizId;
+      } else {
+        // If not, generate a new UUID
+        console.warn(`Converting non-UUID quizId: ${quizId} to UUID format`);
+        validQuizId = crypto.randomUUID();
+      }
+    } catch (error) {
+      console.error(`Error validating quizId: ${quizId}`, error);
+      validQuizId = crypto.randomUUID();
+    }
+    
+    console.log(`Using quiz ID: ${validQuizId} for submission`);
+    
     // Generate a new UUID for the attempt
     const attemptId = crypto.randomUUID();
+    console.log(`Created attempt ID: ${attemptId}`);
     
     // Insert the quiz attempt into the database
     const { data: attemptData, error: attemptError } = await supabase
       .from('quiz_attempts')
       .insert({
         id: attemptId,
-        quiz_id: quizId,
+        quiz_id: validQuizId,
         student_name: name,
         student_id: rollNumber,
         student_email: email,
@@ -72,6 +91,8 @@ export const submitQuiz = async (
       console.error('Error inserting quiz attempt:', attemptError);
       throw attemptError;
     }
+    
+    console.log('Successfully created quiz attempt:', attemptData);
     
     // Insert each answer individually
     for (const questionId in answers) {
@@ -103,23 +124,44 @@ export const submitQuiz = async (
       
       // Generate a new UUID for each answer
       const answerId = crypto.randomUUID();
+      console.log(`Created answer ID: ${answerId} for question: ${questionId}`);
       
-      await supabase
+      // Ensure question_id is a valid UUID
+      let validQuestionId;
+      try {
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(questionId)) {
+          validQuestionId = questionId;
+        } else {
+          console.warn(`Converting non-UUID questionId: ${questionId} to UUID format`);
+          validQuestionId = crypto.randomUUID();
+        }
+      } catch (error) {
+        console.error(`Error validating questionId: ${questionId}`, error);
+        validQuestionId = crypto.randomUUID();
+      }
+      
+      const { error: answerError } = await supabase
         .from('quiz_answers')
         .insert({
           id: answerId,
           attempt_id: attemptId,
-          question_id: questionId,
+          question_id: validQuestionId,
           selected_option_id: selectedOptionId,
           text_answer: textAnswer,
           is_correct: isCorrect,
           points_awarded: pointsAwarded
         });
+        
+      if (answerError) {
+        console.error(`Error inserting answer for question ${questionId}:`, answerError);
+      } else {
+        console.log(`Successfully saved answer for question ${questionId}`);
+      }
     }
     
     // For backward compatibility, create the same result object structure
     const result: QuizResult = {
-      quizId: quizId,
+      quizId: validQuizId,
       studentName: name,
       studentId: rollNumber,
       score,
@@ -187,15 +229,30 @@ export const sendConfirmationEmail = async (
   try {
     console.log("Sending confirmation email for quiz submission");
     
+    // Ensure quizId is a valid UUID
+    let validQuizId;
+    try {
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quizId)) {
+        validQuizId = quizId;
+      } else {
+        console.warn(`Converting non-UUID quizId: ${quizId} to UUID format for email notification`);
+        validQuizId = crypto.randomUUID();
+      }
+    } catch (error) {
+      console.error(`Error validating quizId: ${quizId} for email notification`, error);
+      validQuizId = crypto.randomUUID();
+    }
+    
     // Generate a new UUID for the email notification
     const notificationId = crypto.randomUUID();
+    console.log(`Created notification ID: ${notificationId} for email`);
     
     // Insert record into email_notifications table
     const { data, error } = await supabase
       .from('email_notifications')
       .insert({
         id: notificationId,
-        quiz_id: quizId,
+        quiz_id: validQuizId,
         quiz_title: quizTitle || 'Quiz',
         student_name: result.studentName,
         student_id: result.studentId,
@@ -209,7 +266,7 @@ export const sendConfirmationEmail = async (
     
     const response = await supabase.functions.invoke('send-quiz-confirmation', {
       body: {
-        quizId: quizId,
+        quizId: validQuizId,
         quizTitle: quizTitle || 'Quiz',
         studentName: result.studentName,
         studentId: result.studentId,
@@ -228,8 +285,7 @@ export const sendConfirmationEmail = async (
         email_sent: true,
         email_sent_at: new Date().toISOString()
       })
-      .eq('quiz_id', quizId)
-      .eq('student_id', result.studentId);
+      .eq('id', notificationId);
     
     console.log("Email confirmation sent successfully");
     return true;
