@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Download, ArrowLeft, FileText, FileCog } from 'lucide-react';
-import { StudentResponse, QuizResult } from '@/types/quiz';
+import { ArrowLeft, FileText, FileCog } from 'lucide-react';
+import { StudentResponse } from '@/types/quiz';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '../components/Navbar';
 import { useToast } from '@/hooks/use-toast';
@@ -20,45 +19,56 @@ const ViewResults = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadResults = () => {
+    const loadResults = async () => {
       setLoading(true);
       try {
-        // Load quiz info
-        const storedQuizzes = localStorage.getItem('quizzes');
-        if (storedQuizzes) {
-          const quizzes = JSON.parse(storedQuizzes);
-          const quiz = quizzes.find((q: any) => q.id === quizId);
-          if (quiz) {
-            setQuizTitle(quiz.title);
-          }
+        // Load quiz info from Supabase
+        if (!quizId) {
+          throw new Error('Quiz ID is missing');
         }
 
-        // Load quiz results - ensure we only load results for THIS quiz
-        const resultsKey = `quiz_results_${quizId}`;
-        console.log(`Loading results for specific quiz ID: ${quizId} using key: ${resultsKey}`);
-        
-        const storedResults = localStorage.getItem(resultsKey);
-        if (storedResults) {
-          const parsedResults = JSON.parse(storedResults) as QuizResult[];
-          console.log(`Found ${parsedResults.length} results for quiz ID: ${quizId}`);
-          
-          // Validate that these results belong to this quiz
-          const validResults = parsedResults.filter(result => result.quizId === quizId);
-          console.log(`After validation: ${validResults.length} results belong to this quiz`);
-          
-          // Transform results for display
-          const studentResponses = validResults.map(result => {
-            const percentageScore = result.totalPoints > 0 
-              ? Math.round((result.score / result.totalPoints) * 100) 
+        // Fetch quiz details
+        const { data: quizData, error: quizError } = await supabase
+          .from('quizzes')
+          .select('title')
+          .eq('id', quizId)
+          .single();
+
+        if (quizError) {
+          throw quizError;
+        }
+
+        if (quizData) {
+          setQuizTitle(quizData.title);
+        }
+
+        // Fetch quiz attempts for the specific quiz
+        const { data: attemptsData, error: attemptsError } = await supabase
+          .from('quiz_attempts')
+          .select('id, student_name, student_id, score, total_points, submitted_at, security_violations, completed')
+          .eq('quiz_id', quizId)
+          .order('student_id');
+
+        if (attemptsError) {
+          throw attemptsError;
+        }
+
+        if (attemptsData && attemptsData.length > 0) {
+          // Transform data for display
+          const studentResponses = attemptsData.map(attempt => {
+            const percentageScore = attempt.total_points > 0 
+              ? Math.round((attempt.score / attempt.total_points) * 100) 
               : 0;
               
             return {
-              studentName: result.studentName,
-              studentId: result.studentId,
-              score: result.score,
-              totalPoints: result.totalPoints,
-              submittedAt: result.submittedAt,
-              percentageScore
+              studentName: attempt.student_name,
+              studentId: attempt.student_id,
+              score: attempt.score,
+              totalPoints: attempt.total_points,
+              submittedAt: attempt.submitted_at,
+              percentageScore,
+              securityViolations: attempt.security_violations,
+              completed: attempt.completed
             };
           });
           
@@ -78,18 +88,56 @@ const ViewResults = () => {
           
           setResults(sortedResults);
         } else {
-          console.log(`No results found for quiz ID: ${quizId}`);
-          setResults([]);
+          // Fallback to localStorage if no results in Supabase
+          console.log('No results found in Supabase, checking localStorage fallback');
+          const resultsKey = `quiz_results_${quizId}`;
+          const storedResults = localStorage.getItem(resultsKey);
+          
+          if (storedResults) {
+            const parsedResults = JSON.parse(storedResults);
+            console.log(`Found ${parsedResults.length} results in localStorage for quiz ID: ${quizId}`);
+            
+            // Validate that these results belong to this quiz
+            const validResults = parsedResults.filter(result => result.quizId === quizId);
+            
+            // Transform results for display
+            const studentResponses = validResults.map(result => {
+              const percentageScore = result.totalPoints > 0 
+                ? Math.round((result.score / result.totalPoints) * 100) 
+                : 0;
+                
+              return {
+                studentName: result.studentName,
+                studentId: result.studentId,
+                score: result.score,
+                totalPoints: result.totalPoints,
+                submittedAt: result.submittedAt,
+                percentageScore,
+                securityViolations: result.securityViolations,
+                completed: result.completed
+              };
+            });
+            
+            setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
+          } else {
+            console.log(`No results found for quiz ID: ${quizId}`);
+            setResults([]);
+          }
         }
       } catch (error) {
         console.error('Error loading results:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load quiz results. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
     loadResults();
-  }, [quizId]);
+  }, [quizId, toast]);
 
   const handleDownloadCSV = () => {
     try {
