@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,11 +10,62 @@ import QuizSummary from '../components/quiz-creator/QuizSummary';
 import { useQuizCreator } from '../hooks/use-quiz-creator';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const CreateQuiz = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [authChecked, setAuthChecked] = useState(false);
+  
+  useEffect(() => {
+    // Check current authentication session
+    const checkAuth = async () => {
+      try {
+        // For demo account, we don't need to check with Supabase
+        if (user && user.email === 'admin@example.com') {
+          setAuthChecked(true);
+          return;
+        }
+        
+        // For other users, check the actual session
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session check error:", error);
+          toast({
+            title: "Authentication Error",
+            description: "There was a problem verifying your login status",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
+        }
+        
+        if (!data.session) {
+          toast({
+            title: "Authentication Required",
+            description: "You must be logged in to create a quiz",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
+        }
+        
+        setAuthChecked(true);
+      } catch (err) {
+        console.error("Auth check error:", err);
+        toast({
+          title: "Authentication Error",
+          description: "There was a problem verifying your login status",
+          variant: "destructive",
+        });
+        navigate('/login');
+      }
+    };
+    
+    checkAuth();
+  }, [user, navigate, toast]);
   
   const {
     quizTitle, setQuizTitle,
@@ -32,21 +83,8 @@ const CreateQuiz = () => {
     handlePublishQuiz
   } = useQuizCreator();
 
-  useEffect(() => {
-    // Check if user is authenticated
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "You must be logged in to create a quiz",
-        variant: "destructive",
-      });
-      navigate('/login');
-      return;
-    }
-  }, [user, navigate, toast]);
-
-  // Don't render the page at all if there's no user
-  if (!user) {
+  // Don't render the page at all if auth hasn't been checked or there's no user
+  if (!authChecked || !user) {
     return null;
   }
 
