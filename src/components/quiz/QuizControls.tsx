@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Send, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Send, AlertTriangle, Shield } from 'lucide-react';
 
 type QuizControlsProps = {
   isLastQuestion: boolean;
@@ -71,12 +71,19 @@ const QuizControls = ({
         `}>
           <AlertTriangle className={`h-4 w-4 mr-2 ${tabSwitchWarnings >= 2 ? 'animate-bounce' : ''}`} />
           <span className="text-sm font-medium">
-            {tabSwitchWarnings === 1 && "Warning: Tab switching detected. You may switch tabs, but 3 switches will auto-submit!"}
-            {tabSwitchWarnings === 2 && "Warning: One more tab switch will auto-submit your quiz!"}
-            {tabSwitchWarnings >= 3 && "Quiz being auto-submitted due to multiple tab switches!"}
+            {tabSwitchWarnings === 1 && "Warning: Tab switching detected! This is not allowed during the exam."}
+            {tabSwitchWarnings === 2 && "Final Warning: One more tab switch will auto-submit your quiz!"}
+            {tabSwitchWarnings >= 3 && "Quiz is being auto-submitted due to multiple tab switches!"}
           </span>
         </div>
       )}
+      
+      <div className="flex items-center justify-center p-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+        <Shield className="h-4 w-4 mr-2" />
+        <span className="text-sm font-medium">
+          Tab switching is blocked. Please stay on this page until you complete the exam.
+        </span>
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Clock, LogOut, AlertTriangle, Shield } from 'lucide-react';
+import { Clock, LogOut, AlertTriangle, Shield, Eye } from 'lucide-react';
 
 type QuizHeaderProps = {
   quizTitle: string;
@@ -62,6 +62,10 @@ const QuizHeader = ({
           <div className="hidden md:flex items-center bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-200">
             <Shield className="h-4 w-4 mr-1" />
             <span className="font-medium text-xs">Secure Mode</span>
+          </div>
+          <div className="flex items-center bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200">
+            <Eye className="h-4 w-4 mr-1" />
+            <span className="font-medium text-xs">Tab Switching Blocked</span>
           </div>
           <Button variant="outline" size="sm" onClick={onQuit} className="text-destructive hover:text-destructive">
             <LogOut className="h-4 w-4 mr-1" />

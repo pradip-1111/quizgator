@@ -41,11 +41,13 @@ export const setupTabVisibilityTracking = (
   onTabChange: (isVisible: boolean) => void
 ): (() => void) => {
   const handleVisibilityChange = () => {
-    // This counts visibility changes but doesn't block tab switching
+    // Block tab switching by immediately raising a warning
     if (document.hidden) {
       onTabChange(false);
+      // Show a warning to the user
+      alert("Warning: You are not allowed to switch tabs during the exam! Your activity is being monitored.");
     } else {
-      // When coming back, consider this a successful return
+      // When coming back, consider this a successful return but warning was already triggered
       setTimeout(() => {
         onTabChange(true);
       }, 100);
@@ -56,8 +58,6 @@ export const setupTabVisibilityTracking = (
   let isFullscreenChange = false;
   let lastFocusTime = Date.now();
   let lastBlurTime = 0;
-  let switchCount = 0;
-  const MAX_SWITCHES_WITHOUT_WARNING = 0; // This ensures every switch counts
   
   // Track fullscreen changes to avoid false positives
   const handleFullscreenChange = () => {
@@ -75,25 +75,15 @@ export const setupTabVisibilityTracking = (
   const handleBlur = () => {
     if (!isFullscreenChange) {
       lastBlurTime = Date.now();
-      // Only count as a switch if it's been a while since last focus
-      if (lastBlurTime - lastFocusTime > 100) {
-        switchCount++;
-        // Allow a few quick switches before triggering the warning
-        if (switchCount > MAX_SWITCHES_WITHOUT_WARNING) {
-          setTimeout(() => onTabChange(false), 50);
-          switchCount = 0; // Reset after triggering
-        }
-      }
+      // Immediately trigger warning when focus is lost
+      setTimeout(() => onTabChange(false), 50);
     }
   };
   
   // Handle focus events (user returning to the tab)
   const handleFocus = () => {
     lastFocusTime = Date.now();
-    // If returning after a longer time (likely a tab switch)
-    if (lastFocusTime - lastBlurTime > 300 && !isFullscreenChange) {
-      // We don't call onTabChange(true) here to avoid resetting the warning
-    }
+    // We don't call onTabChange(true) here to avoid resetting the warning
   };
   
   window.addEventListener('blur', handleBlur);
@@ -111,6 +101,44 @@ export const setupTabVisibilityTracking = (
   
   document.addEventListener('mouseleave', handleMouseLeave);
 
+  // Block common keyboard shortcuts that might be used to switch tabs
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Alt+Tab, Ctrl+Tab, Alt+F4, Ctrl+N, Ctrl+T, F5, etc.
+    if (
+      (e.altKey && e.key === 'Tab') ||
+      (e.ctrlKey && e.key === 'Tab') ||
+      (e.altKey && e.key === 'F4') ||
+      (e.ctrlKey && e.key === 'n') ||
+      (e.ctrlKey && e.key === 't') ||
+      e.key === 'F5'
+    ) {
+      e.preventDefault();
+      alert("Warning: Keyboard shortcuts are disabled during the exam!");
+      return false;
+    }
+  };
+  
+  document.addEventListener('keydown', handleKeyDown);
+
+  // Detect contextmenu to prevent right-click
+  const handleContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    alert("Right-click is disabled during the exam!");
+    return false;
+  };
+  
+  document.addEventListener('contextmenu', handleContextMenu);
+
+  // Prevent navigation history manipulation
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    e.preventDefault();
+    const message = "Warning! Leaving or refreshing this page will terminate your exam.";
+    e.returnValue = message;
+    return message;
+  };
+  
+  window.addEventListener('beforeunload', handleBeforeUnload);
+
   // Return cleanup function
   return () => {
     document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -118,6 +146,9 @@ export const setupTabVisibilityTracking = (
     window.removeEventListener('blur', handleBlur);
     window.removeEventListener('focus', handleFocus);
     document.removeEventListener('mouseleave', handleMouseLeave);
+    document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener('contextmenu', handleContextMenu);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
   };
 };
 
@@ -162,6 +193,7 @@ export const setupFullscreenMonitoring = (
   const handleFullscreenChange = () => {
     if (isMonitoring && !isFullscreen()) {
       // User exited fullscreen, try to restore it
+      alert("Warning: Fullscreen mode is required during the exam!");
       setTimeout(() => {
         if (isMonitoring) {
           enterFullscreen(element);
