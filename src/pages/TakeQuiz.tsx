@@ -4,14 +4,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
 import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
 
-// Import the hooks and components
 import { useQuizState } from '@/hooks/use-quiz-state';
 import { useQuizLoader } from '@/hooks/use-quiz-loader';
 import { useQuizTimer } from '@/hooks/use-quiz-timer';
 import { useQuizSecurity } from '@/hooks/use-quiz-security';
 import { submitQuiz, sendConfirmationEmail } from '@/utils/quiz-submission';
 
-// Import UI components
 import QuizLoading from '@/components/quiz/QuizLoading';
 import QuizError from '@/components/quiz/QuizError';
 import StudentRegistration from '@/components/quiz/StudentRegistration';
@@ -23,7 +21,6 @@ const TakeQuiz = () => {
   const { toast } = useToast();
   const { user, registerStudent } = useAuth();
   
-  // Personal info state
   const [name, setName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -31,7 +28,6 @@ const TakeQuiz = () => {
   
   const quizContainerRef = useRef<HTMLDivElement>(null);
   
-  // Use our custom hooks
   const {
     quiz, setQuiz,
     started, setStarted,
@@ -48,7 +44,6 @@ const TakeQuiz = () => {
     getRemainingQuestionCount
   } = useQuizState();
   
-  // Load quiz data with enhanced error handling
   const { 
     quiz: loadedQuiz, 
     questions: loadedQuestions, 
@@ -59,20 +54,17 @@ const TakeQuiz = () => {
     fallbackActive
   } = useQuizLoader(quizId);
   
-  // Update quiz state when quiz is loaded
   useEffect(() => {
     if (loadedQuiz) {
       console.log('Quiz loaded successfully:', loadedQuiz.title);
       setQuiz(loadedQuiz);
       setQuestions(loadedQuestions);
-      // Use timeLimit or duration property
       setTimeLeft((loadedQuiz.timeLimit || loadedQuiz.duration) * 60);
     }
     setQuizStateLoading(quizLoading);
     setQuizStateError(quizLoadError);
   }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError]);
   
-  // Setup timer
   const handleSubmitQuiz = () => {
     if (!quiz) return;
     
@@ -121,10 +113,8 @@ const TakeQuiz = () => {
   
   const timerRef = useQuizTimer(started, timeLeft, setTimeLeft, handleSubmitQuiz);
   
-  // Setup security monitoring
   const cleanupTabTrackingRef = useQuizSecurity(started, handleSubmitQuiz);
   
-  // Auth effect
   useEffect(() => {
     if (requiresAuth && !user && !quizStateLoading) {
       toast({
@@ -198,14 +188,12 @@ const TakeQuiz = () => {
     if (quizId) {
       console.log(`Clearing cache for quiz ID: ${quizId}`);
       
-      // Clear all quiz-related items for this quiz
       const keysToRemove = [
         `quiz_questions_${quizId}`,
         `quiz_creator_questions_${quizId}`,
         `quiz_progress_${quizId}`
       ];
       
-      // Also check for other keys that might contain this quizId
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.includes(quizId)) {
@@ -213,7 +201,6 @@ const TakeQuiz = () => {
         }
       }
       
-      // Clear each key
       keysToRemove.forEach(key => {
         try {
           localStorage.removeItem(key);
@@ -223,7 +210,6 @@ const TakeQuiz = () => {
         }
       });
       
-      // Check if quizzes array contains this quiz and remove it
       try {
         const storedQuizzes = localStorage.getItem('quizzes');
         if (storedQuizzes) {
@@ -241,12 +227,10 @@ const TakeQuiz = () => {
         description: "Quiz cache has been cleared. Retrying quiz load.",
       });
       
-      // Retry loading the quiz
       retryLoading();
     }
   };
   
-  // Render loading state
   if (quizStateLoading) {
     return <QuizLoading 
       cancelLoading={handleCancelLoading} 
@@ -262,38 +246,31 @@ const TakeQuiz = () => {
     />;
   }
   
-  // Render error state with cache clearing
   if (quizStateError || !quiz) {
-    const isQuizNotFoundError = quizStateError?.toString().toLowerCase().includes('not found') ||
-                               quizStateError?.toString().toLowerCase().includes('no quiz');
-    
     return <QuizError 
-      error={quizStateError} 
+      error={quizStateError || "Quiz not found. Please check the URL and try again."} 
       onRetry={retryLoading} 
       isRetryable={true} 
-      fallbackAvailable={fallbackActive}
+      fallbackActive={fallbackActive}
       onClearCache={handleClearCache}
     />;
   }
   
-  // Ensure quiz.questions is available
   const quizWithQuestions = {
     ...quiz,
     questions: questions && questions.length > 0 ? questions : (quiz.questions || [])
   };
   
-  // Additional check to make sure we don't proceed with a quiz without questions
   if (quizWithQuestions.questions.length === 0) {
     return <QuizError 
-      error={"This quiz has no questions. Please contact the quiz creator."} 
+      error={`The quiz "${quiz.title}" has no questions. Please add questions to this quiz or select a different quiz.`} 
       onRetry={retryLoading} 
       isRetryable={true} 
-      fallbackAvailable={false}
+      fallbackActive={false}
       onClearCache={handleClearCache}
     />;
   }
   
-  // Render the registration form before starting
   if (!started) {
     return (
       <StudentRegistration
@@ -310,7 +287,6 @@ const TakeQuiz = () => {
     );
   }
   
-  // Render the quiz container once started
   return (
     <QuizContainer
       ref={quizContainerRef}

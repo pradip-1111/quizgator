@@ -108,7 +108,7 @@ const QuizError = ({
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Quiz Not Found</AlertTitle>
               <AlertDescription>
-                {errorMessage || "The quiz you are looking for could not be found."}
+                {errorMessage || "The quiz you are looking for could not be found. Make sure you're using the correct link."}
               </AlertDescription>
             </Alert>
           ) : (
@@ -153,7 +153,7 @@ const QuizError = ({
                 <>
                   <li className="flex items-start">
                     <span className="mr-2 text-primary">•</span>
-                    <span>Check that you're using the correct quiz link</span>
+                    <span>Check that you're using the correct quiz link from the Admin Dashboard</span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2 text-primary">•</span>
@@ -161,7 +161,7 @@ const QuizError = ({
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2 text-primary">•</span>
-                    <span>If the quiz was recently created, the creator may need to save it again</span>
+                    <span>Return to the Admin Dashboard and click the "Share" button on your quiz</span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2 text-primary">•</span>
@@ -192,6 +192,13 @@ const QuizError = ({
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Go Home
+          </Button>
+        </Link>
+        
+        <Link to="/admin-dashboard">
+          <Button variant="default" size="sm">
+            <Database className="mr-2 h-4 w-4" />
+            Go to Dashboard
           </Button>
         </Link>
         

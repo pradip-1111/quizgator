@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Question, QuizData } from '@/types/quiz';
@@ -13,57 +14,6 @@ interface QuizLoaderState {
   loadingStage?: 'initial' | 'database' | 'local' | 'demo' | 'fallback';
   fallbackActive?: boolean;
 }
-
-const createDemoQuiz = (quizId: string): QuizData => {
-  console.log("Creating demo fallback quiz with ID:", quizId);
-  return {
-    id: quizId,
-    title: "Demo Quiz",
-    description: "This is a demo quiz created because no quiz data was found",
-    duration: 15,
-    timeLimit: 15,
-    created: new Date().toISOString(),
-    questions: [
-      {
-        id: "q1",
-        text: "What is the capital of France?",
-        type: "multiple-choice",
-        options: [
-          { id: "q1-a", text: "London", isCorrect: false },
-          { id: "q1-b", text: "Paris", isCorrect: true },
-          { id: "q1-c", text: "Berlin", isCorrect: false },
-          { id: "q1-d", text: "Madrid", isCorrect: false }
-        ],
-        points: 1,
-        required: true
-      },
-      {
-        id: "q2",
-        text: "What is 2+2?",
-        type: "multiple-choice",
-        options: [
-          { id: "q2-a", text: "3", isCorrect: false },
-          { id: "q2-b", text: "4", isCorrect: true },
-          { id: "q2-c", text: "5", isCorrect: false },
-          { id: "q2-d", text: "6", isCorrect: false }
-        ],
-        points: 1,
-        required: true
-      },
-      {
-        id: "q3",
-        text: "The earth is flat.",
-        type: "true-false",
-        options: [
-          { id: "q3-a", text: "True", isCorrect: false },
-          { id: "q3-b", text: "False", isCorrect: true }
-        ],
-        points: 1,
-        required: true
-      }
-    ]
-  };
-};
 
 export const clearQuizCache = (quizId?: string) => {
   console.log("Clearing quiz cache", quizId ? `for quiz ${quizId}` : "for all quizzes");
@@ -164,7 +114,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
 
         let quiz: QuizData | null = null;
         let usedLocalStorage = false;
-        let usedFallback = false;
         
         if (error || !quizData) {
           console.log(`Supabase error or no data, trying localStorage: ${error?.message || 'No data returned'}`);
@@ -236,11 +185,11 @@ export const useQuizLoader = (quizId: string | undefined) => {
           ...prev, 
           quiz, 
           stage: 'loading-questions',
-          fallbackActive: usedLocalStorage || usedFallback,
-          loadingStage: usedFallback ? 'fallback' : (usedLocalStorage ? 'local' : 'database')
+          fallbackActive: usedLocalStorage,
+          loadingStage: usedLocalStorage ? 'local' : 'database'
         }));
         
-        await loadQuestions(quizId, quiz, usedLocalStorage, usedFallback);
+        await loadQuestions(quizId, quiz, usedLocalStorage);
       } catch (error) {
         console.error(`Error loading quiz: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setState(prev => ({ 
@@ -253,23 +202,19 @@ export const useQuizLoader = (quizId: string | undefined) => {
       }
     };
 
-    const loadQuestions = async (quizId: string, quiz: QuizData, usedLocalStorage: boolean, usedFallback: boolean) => {
+    const loadQuestions = async (quizId: string, quiz: QuizData, usedLocalStorage: boolean) => {
       console.log(`Loading questions for quiz: ${quizId}`);
       
       let questions: Question[] = [];
-      let loadedFromFallback = usedLocalStorage || usedFallback;
+      let loadedFromFallback = usedLocalStorage;
       
-      if (usedFallback && quiz && Array.isArray(quiz.questions) && quiz.questions.length > 0) {
-        console.log(`Fallback quiz already contains ${quiz.questions.length} questions`);
-        questions = ensureValidQuestionTypes(quiz.questions);
-      }
-      else if (quiz && Array.isArray(quiz.questions) && quiz.questions.length > 0) {
+      if (quiz && Array.isArray(quiz.questions) && quiz.questions.length > 0) {
         console.log(`Quiz object already contains ${quiz.questions.length} questions`);
         questions = ensureValidQuestionTypes(quiz.questions);
         loadedFromFallback = true;
       } else {
         try {
-          if (!usedLocalStorage && !usedFallback) {
+          if (!usedLocalStorage) {
             const { data: questionsData, error: questionsError } = await supabase
               .from('questions')
               .select(`
@@ -419,8 +364,8 @@ export const useQuizLoader = (quizId: string | undefined) => {
         error: null,
         stage: 'ready',
         retryLoading,
-        loadingStage: usedFallback ? 'fallback' : (loadedFromFallback ? 'local' : 'database'),
-        fallbackActive: loadedFromFallback || usedFallback
+        loadingStage: loadedFromFallback ? 'local' : 'database',
+        fallbackActive: loadedFromFallback
       });
     };
     
