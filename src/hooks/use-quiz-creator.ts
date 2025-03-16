@@ -6,24 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Question } from '@/components/QuestionEditor';
 import { Quiz } from '@/components/QuizCard';
-
-// UUID validation helper
-const isValidUuid = (id: string): boolean => {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-};
-
-// Generate a valid UUID
-const generateUuid = (): string => {
-  return crypto.randomUUID();
-};
-
-// Ensure entity has a valid UUID
-const ensureValidUuid = (id: string | undefined): string => {
-  if (!id || !isValidUuid(id)) {
-    return generateUuid();
-  }
-  return id;
-};
+import { isValidUuid, generateUuid, ensureValidUuid, sanitizeUuidsInObject } from '@/utils/uuid-utils';
 
 export function useQuizCreator() {
   const navigate = useNavigate();
@@ -70,17 +53,12 @@ export function useQuizCreator() {
   };
 
   const handleUpdateQuestion = (updatedQuestion: Question) => {
-    // Create a deep copy of the question to avoid reference issues
-    const safeQuestion: Question = { 
+    // Create a deep copy and sanitize all UUIDs in the question
+    const safeQuestion = sanitizeUuidsInObject({
       ...updatedQuestion,
       id: ensureValidUuid(updatedQuestion.id),
-      options: updatedQuestion.options 
-        ? updatedQuestion.options.map(opt => ({
-            ...opt,
-            id: ensureValidUuid(opt.id)
-          }))
-        : []
-    };
+      options: updatedQuestion.options ? [...updatedQuestion.options] : []
+    });
     
     setQuestions(questions.map(q => 
       q.id === updatedQuestion.id ? safeQuestion : q
@@ -136,27 +114,20 @@ export function useQuizCreator() {
       
       // Generate a fresh UUID for the quiz
       const quizId = generateUuid();
-      
       console.log("Quiz ID generated:", quizId);
       
-      // Sanitize all questions and options before saving to ensure valid UUIDs
+      // Deep sanitize all questions before saving to ensure all UUIDs are valid
       const sanitizedQuestions = questions.map((question, index) => {
-        const sanitizedQuestion = {
+        return sanitizeUuidsInObject({
           ...question,
-          id: ensureValidUuid(question.id)
-        };
-        
-        if (sanitizedQuestion.options) {
-          sanitizedQuestion.options = sanitizedQuestion.options.map(opt => ({
-            ...opt,
-            id: ensureValidUuid(opt.id)
-          }));
-        }
-        
-        return sanitizedQuestion;
+          id: ensureValidUuid(question.id),
+          options: question.options ? [...question.options] : []
+        });
       });
       
-      // Insert the quiz first
+      console.log("Sanitized questions:", JSON.stringify(sanitizedQuestions, null, 2));
+      
+      // Insert the quiz
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .insert({
@@ -175,14 +146,14 @@ export function useQuizCreator() {
       
       console.log("Quiz saved successfully:", quizData);
       
-      // Save questions one by one to ensure proper handling
+      // Save questions one by one with carefully validated UUIDs
       for (let i = 0; i < sanitizedQuestions.length; i++) {
         const question = sanitizedQuestions[i];
         const questionId = question.id;
         
         console.log(`Saving question ${i+1}/${sanitizedQuestions.length} with ID ${questionId}`);
         
-        // Double check the UUID is valid before inserting
+        // Final validation before insert
         if (!isValidUuid(questionId)) {
           console.error(`Invalid question ID detected: ${questionId}`);
           throw new Error(`Invalid question ID format detected: ${questionId}`);
@@ -207,12 +178,15 @@ export function useQuizCreator() {
         
         // Save all options for the question if they exist
         if (question.options && question.options.length > 0) {
+          // Prepare option data with carefully validated UUIDs
           const optionsToInsert = question.options.map((opt, index) => {
-            // Final validation before database insertion
             const optionId = ensureValidUuid(opt.id);
+            console.log(`Option ${index} ID: ${optionId} for question ${questionId}`);
             
-            // Log the option ID for debugging
-            console.log(`Option ${index} ID: ${optionId}`);
+            // Final check
+            if (!isValidUuid(optionId)) {
+              throw new Error(`Invalid option ID format: ${optionId}`);
+            }
             
             return {
               id: optionId,
@@ -224,6 +198,11 @@ export function useQuizCreator() {
           });
           
           console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
+          
+          // Log each option before insert for debugging
+          optionsToInsert.forEach((opt, idx) => {
+            console.log(`Option ${idx} to insert:`, JSON.stringify(opt));
+          });
           
           const { error: optionsError } = await supabase
             .from('options')

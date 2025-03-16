@@ -1,6 +1,6 @@
-
 import { QuizData, QuizResult } from '@/types/quiz';
 import { supabase } from '@/integrations/supabase/client';
+import { isValidUuid, generateUuid, ensureValidUuid, sanitizeUuidsInObject } from '@/utils/uuid-utils';
 
 export const calculateScore = (quiz: QuizData, answers: Record<string, any>) => {
   let score = 0;
@@ -49,25 +49,11 @@ export const submitQuiz = async (
     });
     
     // Ensure quizId is a valid UUID
-    let validQuizId;
-    try {
-      // Check if quizId is already a valid UUID
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quizId)) {
-        validQuizId = quizId;
-      } else {
-        // If not, generate a new UUID
-        console.warn(`Converting non-UUID quizId: ${quizId} to UUID format`);
-        validQuizId = crypto.randomUUID();
-      }
-    } catch (error) {
-      console.error(`Error validating quizId: ${quizId}`, error);
-      validQuizId = crypto.randomUUID();
-    }
-    
-    console.log(`Using quiz ID: ${validQuizId} for submission`);
+    const validQuizId = ensureValidUuid(quizId);
+    console.log(`Using validated quiz ID: ${validQuizId} for submission`);
     
     // Generate a new UUID for the attempt
-    const attemptId = crypto.randomUUID();
+    const attemptId = generateUuid();
     console.log(`Created attempt ID: ${attemptId}`);
     
     // Insert the quiz attempt into the database
@@ -94,7 +80,7 @@ export const submitQuiz = async (
     
     console.log('Successfully created quiz attempt:', attemptData);
     
-    // Insert each answer individually
+    // Insert each answer individually with properly validated UUIDs
     for (const questionId in answers) {
       const question = quiz.questions.find(q => q.id === questionId);
       if (!question) continue;
@@ -106,6 +92,11 @@ export const submitQuiz = async (
       
       if (question.type === 'multiple-choice' || question.type === 'true-false') {
         selectedOptionId = answers[questionId];
+        // Validate the selected option ID
+        if (selectedOptionId) {
+          selectedOptionId = ensureValidUuid(selectedOptionId);
+        }
+        
         const selectedOption = question.options.find(opt => opt.id === selectedOptionId);
         
         if (selectedOption && selectedOption.isCorrect) {
@@ -114,8 +105,6 @@ export const submitQuiz = async (
         }
       } else if (question.type === 'short-answer' || question.type === 'long-answer') {
         textAnswer = answers[questionId];
-        // For text answers, we'll consider them "correct" if they provided an answer
-        // Note: In a real system, these would need manual grading
         isCorrect = !!textAnswer && textAnswer.trim().length > 0;
         if (isCorrect) {
           pointsAwarded = question.points;
@@ -123,22 +112,11 @@ export const submitQuiz = async (
       }
       
       // Generate a new UUID for each answer
-      const answerId = crypto.randomUUID();
+      const answerId = generateUuid();
       console.log(`Created answer ID: ${answerId} for question: ${questionId}`);
       
       // Ensure question_id is a valid UUID
-      let validQuestionId;
-      try {
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(questionId)) {
-          validQuestionId = questionId;
-        } else {
-          console.warn(`Converting non-UUID questionId: ${questionId} to UUID format`);
-          validQuestionId = crypto.randomUUID();
-        }
-      } catch (error) {
-        console.error(`Error validating questionId: ${questionId}`, error);
-        validQuestionId = crypto.randomUUID();
-      }
+      const validQuestionId = ensureValidUuid(questionId);
       
       const { error: answerError } = await supabase
         .from('quiz_answers')
@@ -230,21 +208,11 @@ export const sendConfirmationEmail = async (
     console.log("Sending confirmation email for quiz submission");
     
     // Ensure quizId is a valid UUID
-    let validQuizId;
-    try {
-      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quizId)) {
-        validQuizId = quizId;
-      } else {
-        console.warn(`Converting non-UUID quizId: ${quizId} to UUID format for email notification`);
-        validQuizId = crypto.randomUUID();
-      }
-    } catch (error) {
-      console.error(`Error validating quizId: ${quizId} for email notification`, error);
-      validQuizId = crypto.randomUUID();
-    }
+    const validQuizId = ensureValidUuid(quizId);
+    console.log(`Using validated quiz ID: ${validQuizId} for email notification`);
     
     // Generate a new UUID for the email notification
-    const notificationId = crypto.randomUUID();
+    const notificationId = generateUuid();
     console.log(`Created notification ID: ${notificationId} for email`);
     
     // Insert record into email_notifications table
