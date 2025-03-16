@@ -69,6 +69,7 @@ export interface QuizResult {
   submittedAt: Date;
   securityViolations: number;
   completed: boolean;
+  quizTitle?: string;
 }
 
 // Added missing types
