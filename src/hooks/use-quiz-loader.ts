@@ -9,6 +9,8 @@ export function useQuizLoader(quizId: string | undefined) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingStage, setLoadingStage] = useState<'initial' | 'database' | 'local' | 'demo'>('initial');
+  const [fallbackActive, setFallbackActive] = useState(false);
   const { toast } = useToast();
 
   const fetchQuiz = useCallback(async () => {
@@ -20,15 +22,38 @@ export function useQuizLoader(quizId: string | undefined) {
 
     setLoading(true);
     setError(null);
+    setLoadingStage('initial');
     
     try {
       console.log(`Fetching quiz with ID: ${quizId}`);
       
-      // Try to get quiz from local storage first (for quick loading)
+      // First check for creator questions (highest priority)
+      const creatorStorageKey = `quiz_creator_questions_${quizId}`;
+      const creatorQuestions = localStorage.getItem(creatorStorageKey);
+      
+      // Regular storage key for questions
       const localStorageKey = `quiz_questions_${quizId}`;
+      
+      // First check if we have creator questions (highest priority)
+      if (creatorQuestions) {
+        console.log('Found creator questions in local storage, using these as primary source');
+        try {
+          const parsedQuestions = JSON.parse(creatorQuestions);
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            console.log('Successfully parsed creator questions:', parsedQuestions.length);
+            // Copy creator questions to the regular questions key so the quiz loader will use them
+            localStorage.setItem(localStorageKey, creatorQuestions);
+            setQuestions(parsedQuestions);
+          }
+        } catch (e) {
+          console.error('Error parsing creator questions:', e);
+        }
+      }
+      
+      // Then check for regular stored questions
       const storedQuestions = localStorage.getItem(localStorageKey);
       
-      if (storedQuestions) {
+      if (storedQuestions && !creatorQuestions) {
         console.log('Found locally stored questions, using these while we fetch from database');
         try {
           const parsedQuestions = JSON.parse(storedQuestions);
@@ -42,6 +67,7 @@ export function useQuizLoader(quizId: string | undefined) {
       }
       
       // Fetch the quiz from Supabase
+      setLoadingStage('database');
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .select('*')
@@ -53,14 +79,19 @@ export function useQuizLoader(quizId: string | undefined) {
         throw new Error(`Failed to load quiz: ${quizError.message}`);
       }
 
-      // If quiz not found in database, check if we have any stored questions to create a demo quiz
+      // If quiz not found in database, check if we have any stored questions to create a quiz
       if (!quizData) {
         console.log('Quiz not found in database, checking local storage');
+        setLoadingStage('local');
         
-        if (storedQuestions) {
-          const parsedQuestions = JSON.parse(storedQuestions);
+        // Look for creator questions first, then fallback to regular stored questions
+        const localQuestions = creatorQuestions || storedQuestions;
+        
+        if (localQuestions) {
+          const parsedQuestions = JSON.parse(localQuestions);
           if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
             console.log('Creating quiz from stored questions');
+            setFallbackActive(true);
             
             const mockQuiz: QuizData = {
               id: quizId,
@@ -79,6 +110,7 @@ export function useQuizLoader(quizId: string | undefined) {
         
         // If no stored questions are available, create a demo quiz
         console.log('No stored questions found, creating demo quiz');
+        setLoadingStage('demo');
         
         const mockQuiz: QuizData = {
           id: quizId,
@@ -127,6 +159,32 @@ export function useQuizLoader(quizId: string | undefined) {
 
       console.log('Quiz found:', quizData);
 
+      // Prioritize using creator questions if available, then fetch from database
+      if (creatorQuestions) {
+        try {
+          const parsedQuestions = JSON.parse(creatorQuestions);
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            console.log('Using creator questions for database quiz:', parsedQuestions.length);
+            
+            const fullQuiz: QuizData = {
+              id: quizData.id,
+              title: quizData.title,
+              description: quizData.description,
+              timeLimit: quizData.time_limit,
+              questions: parsedQuestions
+            };
+            
+            setQuiz(fullQuiz);
+            setQuestions(parsedQuestions);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing creator questions:', e);
+        }
+      }
+
+      // If no creator questions, proceed with fetching questions from database
       // Fetch questions for the quiz
       const { data: questionsData, error: questionsError } = await supabase
         .from('questions')
@@ -174,6 +232,7 @@ export function useQuizLoader(quizId: string | undefined) {
         }
       }
       
+      // If we got here, we need to process questions from the database
       for (const q of questionsData || []) {
         const { data: optionsData, error: optionsError } = await supabase
           .from('options')
@@ -204,14 +263,15 @@ export function useQuizLoader(quizId: string | undefined) {
 
       // Check if we have any questions
       if (questionsWithOptions.length === 0) {
-        console.warn('No questions found for this quiz, checking local storage');
+        console.warn('No questions found for this quiz, checking local storage again');
         
-        // Try to get questions from local storage
+        // Try to get questions from local storage again as a final fallback
         if (storedQuestions) {
           try {
             const parsedQuestions = JSON.parse(storedQuestions);
             if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-              console.log('Using stored questions:', parsedQuestions.length);
+              console.log('Using stored questions as fallback:', parsedQuestions.length);
+              setFallbackActive(true);
               
               // Update the local storage key to ensure we use these questions
               localStorage.setItem(localStorageKey, JSON.stringify(parsedQuestions));
@@ -275,27 +335,44 @@ export function useQuizLoader(quizId: string | undefined) {
       });
       
       // If we have questions from localStorage, use those as a fallback
-      const storedQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
-      if (storedQuestions) {
-        try {
-          const parsedQuestions = JSON.parse(storedQuestions);
-          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log('Error occurred, but using stored questions as fallback');
-            
-            const fallbackQuiz: QuizData = {
-              id: quizId,
-              title: 'Your Quiz',
-              description: 'Quiz loaded from local storage due to connection issues',
-              timeLimit: 30,
-              questions: parsedQuestions
-            };
-            
-            setQuiz(fallbackQuiz);
-            setQuestions(parsedQuestions);
+      const storageOptions = [
+        `quiz_creator_questions_${quizId}`,
+        `quiz_questions_${quizId}`
+      ];
+      
+      let foundFallback = false;
+      
+      for (const storageKey of storageOptions) {
+        const storedQuestions = localStorage.getItem(storageKey);
+        if (storedQuestions) {
+          try {
+            const parsedQuestions = JSON.parse(storedQuestions);
+            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+              console.log(`Error occurred, but using ${storageKey} as fallback`);
+              setFallbackActive(true);
+              
+              const fallbackQuiz: QuizData = {
+                id: quizId,
+                title: 'Your Quiz',
+                description: 'Quiz loaded from local storage due to connection issues',
+                timeLimit: 30,
+                questions: parsedQuestions
+              };
+              
+              setQuiz(fallbackQuiz);
+              setQuestions(parsedQuestions);
+              foundFallback = true;
+              break;
+            }
+          } catch (e) {
+            console.error('Error parsing stored questions:', e);
           }
-        } catch (e) {
-          console.error('Error parsing stored questions:', e);
         }
+      }
+      
+      if (!foundFallback) {
+        setQuiz(null);
+        setQuestions([]);
       }
     } finally {
       setLoading(false);
@@ -311,6 +388,8 @@ export function useQuizLoader(quizId: string | undefined) {
     questions, 
     loading, 
     error, 
-    retryLoading: fetchQuiz 
+    retryLoading: fetchQuiz,
+    loadingStage,
+    fallbackActive
   };
 }

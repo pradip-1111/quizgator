@@ -69,9 +69,21 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
 
   // Navigate to take quiz page
   const handleOpenQuiz = () => {
-    // Clear existing quiz data before opening
-    localStorage.removeItem(`quiz_questions_${quiz.id}`);
+    // Instead of clearing existing quiz data, we want to ensure quiz creator questions
+    // are preserved and used when opening the quiz
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
+    
+    // Check if we have creator questions data and ensure it's accessible for the quiz loader
+    const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
+    const questionsKey = `quiz_questions_${quiz.id}`;
+    
+    const creatorQuestions = localStorage.getItem(creatorQuestionsKey);
+    if (creatorQuestions) {
+      // If we have creator questions, copy them to the quiz_questions key
+      // so the loader will use them first
+      localStorage.setItem(questionsKey, creatorQuestions);
+      console.log("Using creator questions for quiz");
+    }
     
     // Navigate directly
     navigate(`/take-quiz/${quiz.id}`);

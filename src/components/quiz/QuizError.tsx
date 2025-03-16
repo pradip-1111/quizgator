@@ -11,23 +11,27 @@ type QuizErrorProps = {
   onRetry?: () => void;
   isRetryable?: boolean;
   showBackButton?: boolean;
+  fallbackAvailable?: boolean;
 };
 
 const QuizError = ({ 
   error, 
   onRetry, 
   isRetryable = false, 
-  showBackButton = true 
+  showBackButton = true,
+  fallbackAvailable = false
 }: QuizErrorProps) => {
   return (
     <Card className="w-full max-w-lg mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center text-red-600">
           <AlertCircle className="h-5 w-5 mr-2" />
-          Error Loading Quiz
+          {fallbackAvailable ? "Warning" : "Error Loading Quiz"}
         </CardTitle>
         <CardDescription className="text-base">
-          {error || "Failed to load quiz. Please try again."}
+          {fallbackAvailable 
+            ? "There was an issue loading quiz data from the database, but we found a local copy of your quiz."
+            : error || "Failed to load quiz. Please try again."}
         </CardDescription>
       </CardHeader>
       
@@ -37,6 +41,7 @@ const QuizError = ({
             <AlertTitle>Connection Issue</AlertTitle>
             <AlertDescription>
               There might be an issue with your network connection or the server is temporarily unavailable.
+              {fallbackAvailable && " We're showing you a local version of the quiz."}
             </AlertDescription>
           </Alert>
         </CardContent>
