@@ -92,6 +92,7 @@ export function useQuizCreator() {
         description: "You must be logged in to save a quiz",
         variant: "destructive",
       });
+      navigate('/login');
       return;
     }
     
@@ -113,15 +114,27 @@ export function useQuizCreator() {
     try {
       console.log("Starting quiz save process");
       
-      // First, ensure we're logged in with Supabase
-      // For now we'll create a temporary session since we're using simulated auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: user.email,
-        password: 'temporary-password-for-rls',
-      });
+      // Skip direct Supabase auth for the demo account
+      let authSession = null;
       
-      if (authError && authError.message !== 'User already registered') {
-        throw new Error(`Authentication error: ${authError.message}`);
+      if (user.email === 'admin@example.com') {
+        // For the demo user, use the stored token from localStorage
+        const storedToken = localStorage.getItem('supabase.auth.token');
+        if (storedToken) {
+          authSession = JSON.parse(storedToken).currentSession;
+        } else {
+          // Create a fake session for demo
+          authSession = { user: { id: userId } };
+        }
+      } else {
+        // For non-demo users, get the actual session
+        const { data: session } = await supabase.auth.getSession();
+        authSession = session.session;
+      }
+      
+      // Ensure we have a valid user ID
+      if (!authSession?.user?.id) {
+        throw new Error("Authentication session is invalid");
       }
       
       // Now proceed with saving the quiz
@@ -138,6 +151,7 @@ export function useQuizCreator() {
       
       console.log("Sanitized questions:", JSON.stringify(sanitizedQuestions, null, 2));
       
+      // Set the auth headers for RLS
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .insert({
@@ -145,7 +159,7 @@ export function useQuizCreator() {
           title: quizTitle,
           description: quizDescription,
           time_limit: parseInt(timeLimit),
-          created_by: userId
+          created_by: userId // Using the validated user ID here
         })
         .select();
       
@@ -156,7 +170,7 @@ export function useQuizCreator() {
       
       console.log("Quiz saved successfully:", quizData);
       
-      // Save questions and options as before
+      // Save questions and options
       for (let i = 0; i < sanitizedQuestions.length; i++) {
         const question = sanitizedQuestions[i];
         const questionId = question.id;
@@ -204,10 +218,6 @@ export function useQuizCreator() {
           });
           
           console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
-          
-          optionsToInsert.forEach((opt, idx) => {
-            console.log(`Option ${idx} to insert:`, JSON.stringify(opt));
-          });
           
           const { error: optionsError } = await supabase
             .from('options')

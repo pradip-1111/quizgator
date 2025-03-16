@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,16 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // If user is already logged in, redirect to dashboard
+  useEffect(() => {
+    if (user) {
+      navigate('/admin-dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,11 +43,7 @@ const Login = () => {
         title: "Success",
         description: "Logged in successfully",
       });
-      console.log("Login successful, navigating to admin-dashboard");
-      // Force a clean navigation to ensure the page completely refreshes
-      setTimeout(() => {
-        navigate('/admin-dashboard', { replace: true });
-      }, 100);
+      navigate('/admin-dashboard', { replace: true });
     } catch (error) {
       toast({
         title: "Error",
@@ -55,6 +58,10 @@ const Login = () => {
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
   };
+
+  if (user) {
+    return null; // Don't render if already logged in
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4 py-12 animate-fade-in">

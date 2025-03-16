@@ -41,11 +41,13 @@ const CreateQuiz = () => {
         variant: "destructive",
       });
       navigate('/login');
+      return;
     }
   }, [user, navigate, toast]);
 
+  // Don't render the page at all if there's no user
   if (!user) {
-    return null; // Don't render anything while redirecting
+    return null;
   }
 
   return (
