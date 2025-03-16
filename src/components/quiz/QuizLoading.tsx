@@ -1,8 +1,15 @@
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const QuizLoading = () => {
+interface QuizLoadingProps {
+  cancelLoading?: () => void;
+}
+
+const QuizLoading = ({ cancelLoading }: QuizLoadingProps) => {
   return (
     <Card className="w-full max-w-lg mx-auto">
       <CardContent className="py-8">
@@ -14,6 +21,17 @@ const QuizLoading = () => {
           </p>
         </div>
       </CardContent>
+      
+      {cancelLoading && (
+        <CardFooter className="flex justify-center">
+          <Link to="/">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Cancel and go back
+            </Button>
+          </Link>
+        </CardFooter>
+      )}
     </Card>
   );
 };

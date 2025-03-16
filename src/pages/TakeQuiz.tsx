@@ -39,9 +39,9 @@ const TakeQuiz = () => {
     currentQuestion, setCurrentQuestion,
     answers, setAnswers,
     timeLeft, setTimeLeft,
-    loading, setLoading,
+    loading: quizStateLoading, setLoading: setQuizStateLoading,
     questions, setQuestions,
-    error, setError,
+    error: quizStateError, setError: setQuizStateError,
     requiresAuth, setRequiresAuth,
     handleAnswerChange,
     handleNextQuestion,
@@ -49,18 +49,26 @@ const TakeQuiz = () => {
     getRemainingQuestionCount
   } = useQuizState();
   
-  // Load quiz data
-  const quizLoader = useQuizLoader(quizId);
+  // Load quiz data with enhanced error handling
+  const { 
+    quiz: loadedQuiz, 
+    questions: loadedQuestions, 
+    loading: quizLoading, 
+    error: quizLoadError,
+    retryLoading
+  } = useQuizLoader(quizId);
   
+  // Update quiz state when quiz is loaded
   useEffect(() => {
-    if (quizLoader.quiz) {
-      setQuiz(quizLoader.quiz);
-      setQuestions(quizLoader.questions);
-      setTimeLeft(quizLoader.quiz.timeLimit * 60);
+    if (loadedQuiz) {
+      console.log('Quiz loaded successfully:', loadedQuiz.title);
+      setQuiz(loadedQuiz);
+      setQuestions(loadedQuestions);
+      setTimeLeft(loadedQuiz.timeLimit * 60);
     }
-    setLoading(quizLoader.loading);
-    setError(quizLoader.error);
-  }, [quizLoader.quiz, quizLoader.questions, quizLoader.loading, quizLoader.error]);
+    setQuizStateLoading(quizLoading);
+    setQuizStateError(quizLoadError);
+  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError]);
   
   // Setup timer
   const handleSubmitQuiz = () => {
@@ -94,9 +102,8 @@ const TakeQuiz = () => {
       });
       
       toast({
-        title: "Quiz Auto-Submitted",
-        description: "Your answers have been recorded. The quiz was submitted automatically due to tab switching.",
-        variant: "destructive",
+        title: "Quiz Submitted",
+        description: "Your answers have been recorded successfully.",
       });
       
       navigate('/quiz-complete');
@@ -117,7 +124,7 @@ const TakeQuiz = () => {
   
   // Auth effect
   useEffect(() => {
-    if (requiresAuth && !user && !loading) {
+    if (requiresAuth && !user && !quizStateLoading) {
       toast({
         title: "Authentication Required",
         description: "Please log in or sign up to take this quiz",
@@ -125,7 +132,7 @@ const TakeQuiz = () => {
       });
       navigate('/login');
     }
-  }, [user, requiresAuth, loading, navigate, toast]);
+  }, [user, requiresAuth, quizStateLoading, navigate, toast]);
   
   const handleStartQuiz = async () => {
     if (!name || !rollNumber || !email) {
@@ -181,14 +188,22 @@ const TakeQuiz = () => {
     }
   };
   
+  const handleCancelLoading = () => {
+    navigate('/');
+  };
+  
   // Render loading state
-  if (loading) {
-    return <QuizLoading />;
+  if (quizStateLoading) {
+    return <QuizLoading cancelLoading={handleCancelLoading} />;
   }
   
   // Render error state
-  if (error || !quiz) {
-    return <QuizError error={error} />;
+  if (quizStateError || !quiz) {
+    return <QuizError 
+      error={quizStateError} 
+      onRetry={retryLoading} 
+      isRetryable={true} 
+    />;
   }
   
   // Render the registration form before starting
