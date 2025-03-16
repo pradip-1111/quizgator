@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 type User = {
   id: string;
@@ -27,20 +28,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check if user is logged in from localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      
+      // Attempt to sign in with Supabase for existing users
+      if (parsedUser.email === 'admin@example.com') {
+        // For demo user, sign in with hardcoded credentials
+        supabase.auth.signInWithPassword({
+          email: parsedUser.email,
+          password: 'password'
+        }).then(({ error }) => {
+          if (error) console.error('Supabase auth error:', error);
+        });
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      // Simulating API call for authentication
-      // In a real app, this would be a call to your authentication service
+      // First authenticate with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (authError) throw new Error(authError.message);
       
       // For demo purposes, we're just checking for admin@example.com / password
       if (email === 'admin@example.com' && password === 'password') {
         const user = {
-          id: '1',
+          id: authData?.user?.id || '1', // Use Supabase user ID if available
           name: 'Admin User',
           email: 'admin@example.com',
           role: 'admin' as const
@@ -58,20 +76,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      // This is a placeholder for actual registration logic
-      // In a real app, this would call your backend API to create a new user
-      console.log('Register user:', { name, email, password });
+      // Register with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name
+          }
+        }
+      });
       
-      // For demo purposes, we'll simulate a successful registration
-      // In a real app, the backend would handle user creation and return the user data
-      // For now, we don't automatically log the user in after registration
+      if (error) throw new Error(error.message);
+      
+      console.log('Register user:', { name, email, password });
+      console.log('Supabase registration:', data);
+      
+      // For demo purposes, we don't automatically log the user in after registration
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Sign out from Supabase
+    await supabase.auth.signOut();
+    
+    // Clear local state
     setUser(null);
     localStorage.removeItem('user');
   };
@@ -79,12 +111,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const registerStudent = async (name: string, rollNumber: string, email: string, quizId: string) => {
     try {
       // In a real app, this would register the student for the quiz
+      // For now, just create a temporary account for the student
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: `temp-pass-${rollNumber}`,
+        options: {
+          data: {
+            name,
+            roll_number: rollNumber
+          }
+        }
+      });
+      
+      if (error && error.message !== 'User already registered') {
+        throw new Error(error.message);
+      }
+      
       const student = {
-        id: rollNumber,
+        id: data?.user?.id || rollNumber,
         name: name,
-        email: email, // Use the provided email instead of generating one
+        email: email,
         role: 'student' as const
       };
+      
       setUser(student);
       localStorage.setItem('user', JSON.stringify(student));
       localStorage.setItem('currentQuizId', quizId);

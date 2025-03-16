@@ -113,6 +113,18 @@ export function useQuizCreator() {
     try {
       console.log("Starting quiz save process");
       
+      // First, ensure we're logged in with Supabase
+      // For now we'll create a temporary session since we're using simulated auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: user.email,
+        password: 'temporary-password-for-rls',
+      });
+      
+      if (authError && authError.message !== 'User already registered') {
+        throw new Error(`Authentication error: ${authError.message}`);
+      }
+      
+      // Now proceed with saving the quiz
       const quizId = generateUuid();
       console.log("Quiz ID generated:", quizId);
       
@@ -144,6 +156,7 @@ export function useQuizCreator() {
       
       console.log("Quiz saved successfully:", quizData);
       
+      // Save questions and options as before
       for (let i = 0; i < sanitizedQuestions.length; i++) {
         const question = sanitizedQuestions[i];
         const questionId = question.id;
@@ -207,6 +220,7 @@ export function useQuizCreator() {
         }
       }
       
+      // Save to local storage for fallback
       const newQuiz: Quiz = {
         id: quizId,
         userId: userId,

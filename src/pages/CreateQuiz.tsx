@@ -1,14 +1,21 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, Send } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import QuizDetails from '../components/quiz-creator/QuizDetails';
 import QuestionsList from '../components/quiz-creator/QuestionsList';
 import QuizSummary from '../components/quiz-creator/QuizSummary';
 import { useQuizCreator } from '../hooks/use-quiz-creator';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const CreateQuiz = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
   const {
     quizTitle, setQuizTitle,
     quizDescription, setQuizDescription,
@@ -24,6 +31,22 @@ const CreateQuiz = () => {
     handleSaveDraft,
     handlePublishQuiz
   } = useQuizCreator();
+
+  useEffect(() => {
+    // Check if user is authenticated
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to create a quiz",
+        variant: "destructive",
+      });
+      navigate('/login');
+    }
+  }, [user, navigate, toast]);
+
+  if (!user) {
+    return null; // Don't render anything while redirecting
+  }
 
   return (
     <div className="min-h-screen bg-background">
