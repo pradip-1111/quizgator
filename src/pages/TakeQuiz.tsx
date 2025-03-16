@@ -243,6 +243,11 @@ const TakeQuiz = () => {
     }
   };
   
+  const handleCancelLoading = () => {
+    console.log("Canceling quiz loading");
+    navigate('/');
+  };
+  
   if (quizStateLoading) {
     return <QuizLoading 
       cancelLoading={handleCancelLoading} 
