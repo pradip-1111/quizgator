@@ -8,16 +8,6 @@ import { Question, QuizData, QuizResult, QuizStatus } from '@/types/quiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 
-// Import components
-import QuizRegistration from '@/components/quiz/QuizRegistration';
-import QuizHeader from '@/components/quiz/QuizHeader';
-import QuizProgress from '@/components/quiz/QuizProgress';
-import QuestionItem from '@/components/quiz/QuestionItem';
-import QuizControls from '@/components/quiz/QuizControls';
-import QuizNavigation from '@/components/quiz/QuizNavigation';
-import QuizError from '@/components/quiz/QuizError';
-import QuizLoading from '@/components/quiz/QuizLoading';
-
 const TakeQuiz = () => {
   
   const { quizId } = useParams<{ quizId: string }>();
@@ -465,6 +455,19 @@ const TakeQuiz = () => {
       }
       
       const { score, totalPoints } = calculateScore();
+      
+      const correctAnswers: Record<string, any> = {};
+      quiz.questions.forEach(question => {
+        if (question.type === 'multiple-choice' || question.type === 'true-false') {
+          const correctOption = question.options.find(opt => opt.isCorrect);
+          if (correctOption) {
+            correctAnswers[question.id] = correctOption.id;
+          }
+        } else if (question.type === 'short-answer' || question.type === 'long-answer') {
+          correctAnswers[question.id] = null;
+        }
+      });
+      
       const result: QuizResult = {
         quizId: quizId || '',
         studentName: name,
@@ -472,7 +475,10 @@ const TakeQuiz = () => {
         score,
         totalPoints,
         submittedAt: new Date().toISOString(),
-        answers
+        answers,
+        correctAnswers,
+        securityViolations: tabSwitchWarnings,
+        completed: tabSwitchWarnings < 3
       };
       
       const resultsKey = `quiz_results_${quizId}`;

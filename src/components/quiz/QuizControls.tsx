@@ -61,11 +61,19 @@ const QuizControls = ({
         </div>
       )}
       
-      {tabSwitchWarnings >= 2 && (
-        <div className="flex items-center justify-center p-2 bg-red-50 text-red-700 border border-red-200 rounded-md animate-pulse">
-          <AlertTriangle className="h-4 w-4 mr-2" />
+      {tabSwitchWarnings > 0 && (
+        <div className={`
+          flex items-center justify-center p-2 
+          ${tabSwitchWarnings === 1 ? 'bg-amber-50 text-amber-700 border-amber-200' : 
+           tabSwitchWarnings === 2 ? 'bg-orange-50 text-orange-700 border-orange-200' : 
+           'bg-red-50 text-red-700 border-red-200'}
+          border rounded-md ${tabSwitchWarnings >= 2 ? 'animate-pulse' : ''}
+        `}>
+          <AlertTriangle className={`h-4 w-4 mr-2 ${tabSwitchWarnings >= 2 ? 'animate-bounce' : ''}`} />
           <span className="text-sm font-medium">
-            Warning: One more violation will auto-submit your quiz!
+            {tabSwitchWarnings === 1 && "Warning: First violation detected! Stay in the quiz."}
+            {tabSwitchWarnings === 2 && "Warning: One more violation will auto-submit your quiz!"}
+            {tabSwitchWarnings >= 3 && "Quiz being auto-submitted due to security violations!"}
           </span>
         </div>
       )}

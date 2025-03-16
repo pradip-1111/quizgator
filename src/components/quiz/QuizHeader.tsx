@@ -26,6 +26,13 @@ const QuizHeader = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getWarningStyles = (warnings: number) => {
+    if (warnings === 0) return 'hidden';
+    if (warnings === 1) return 'bg-amber-50 text-amber-700 border-amber-200';
+    if (warnings === 2) return 'bg-orange-50 text-orange-700 border-orange-200 animate-pulse';
+    return 'bg-red-50 text-red-700 border-red-200 animate-pulse';
+  };
+
   return (
     <header className="border-b border-border bg-card py-2 px-4 sticky top-0 z-10 shadow-sm">
       <div className="container mx-auto flex justify-between items-center">
@@ -36,19 +43,16 @@ const QuizHeader = ({
           </div>
         </div>
         <div className="flex items-center space-x-4">
-          {tabSwitchWarnings > 0 && (
-            <div className={`
-              ${tabSwitchWarnings >= 2 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'} 
-              px-3 py-1 rounded-full border flex items-center 
-              ${tabSwitchWarnings >= 2 ? 'animate-pulse shadow-md' : 'animate-pulse'}
-            `}>
-              <AlertTriangle className={`h-4 w-4 mr-1 ${tabSwitchWarnings >= 2 ? 'animate-ping-once' : ''}`} />
-              <span className="font-medium">Warnings: {tabSwitchWarnings}/3</span>
-              {tabSwitchWarnings >= 2 && (
-                <span className="ml-1 text-xs font-bold">Final warning!</span>
-              )}
-            </div>
-          )}
+          <div className={`
+            px-3 py-1 rounded-full border flex items-center 
+            ${getWarningStyles(tabSwitchWarnings)}
+          `}>
+            <AlertTriangle className={`h-4 w-4 mr-1 ${tabSwitchWarnings >= 2 ? 'animate-ping opacity-70' : ''}`} />
+            <span className="font-medium">Warnings: {tabSwitchWarnings}/3</span>
+            {tabSwitchWarnings >= 2 && (
+              <span className="ml-1 text-xs font-bold">Final warning!</span>
+            )}
+          </div>
           <div className="bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200 flex items-center">
             <Clock className="h-4 w-4 mr-1" />
             <span className="font-medium">{formatTime(timeLeft)}</span>

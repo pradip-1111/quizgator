@@ -1,3 +1,4 @@
+
 // Functions for handling fullscreen mode and tab visibility detection
 
 export const enterFullscreen = (element: HTMLElement = document.documentElement) => {
@@ -51,6 +52,8 @@ export const setupTabVisibilityTracking = (
 
   // Add a flag to track if focus was lost due to a fullscreen change
   let isFullscreenChange = false;
+  let lastFocusTime = Date.now();
+  let lastBlurTime = 0;
   
   // Track fullscreen changes to avoid false positives
   const handleFullscreenChange = () => {
@@ -64,16 +67,35 @@ export const setupTabVisibilityTracking = (
   document.addEventListener('visibilitychange', handleVisibilityChange);
   document.addEventListener('fullscreenchange', handleFullscreenChange);
   
-  // Track window focus/blur for better detection
-  window.addEventListener('blur', () => {
+  // Use a more aggressive approach to detect tab switching
+  const handleBlur = () => {
     if (!isFullscreenChange) {
-      setTimeout(() => onTabChange(false), 100);
+      lastBlurTime = Date.now();
+      // If it's been more than 100ms since focus (not just a click outside the window)
+      if (lastBlurTime - lastFocusTime > 100) {
+        setTimeout(() => onTabChange(false), 50);
+      }
     }
-  });
+  };
   
-  window.addEventListener('focus', () => {
-    if (!isFullscreenChange) {
-      setTimeout(() => onTabChange(true), 100);
+  const handleFocus = () => {
+    lastFocusTime = Date.now();
+    // If it's been more than 300ms since blur (likely a tab switch, not just a click)
+    if (lastFocusTime - lastBlurTime > 300 && !isFullscreenChange) {
+      setTimeout(() => onTabChange(true), 50);
+    }
+  };
+  
+  window.addEventListener('blur', handleBlur);
+  window.addEventListener('focus', handleFocus);
+  
+  // Add mouse leave detection as an additional signal
+  document.addEventListener('mouseleave', () => {
+    // Mouse leaving the document can be a sign of tab switching
+    const now = Date.now();
+    if (now - lastBlurTime > 500 && now - lastFocusTime > 500) {
+      // Only count if we haven't already detected blur recently
+      setTimeout(() => onTabChange(false), 100);
     }
   });
 
@@ -81,8 +103,9 @@ export const setupTabVisibilityTracking = (
   return () => {
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    window.removeEventListener('blur', () => onTabChange(false));
-    window.removeEventListener('focus', () => onTabChange(true));
+    window.removeEventListener('blur', handleBlur);
+    window.removeEventListener('focus', handleFocus);
+    document.removeEventListener('mouseleave', () => {});
   };
 };
 
