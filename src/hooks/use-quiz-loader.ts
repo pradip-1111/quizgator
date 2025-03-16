@@ -102,7 +102,8 @@ export const useQuizLoader = (quizId: string | undefined) => {
         ...prev, 
         loading: true, 
         stage: 'loading-quiz',
-        loadingStage: 'database' 
+        loadingStage: 'database',
+        error: null // Reset error state on new load attempt
       }));
 
       try {
@@ -118,57 +119,48 @@ export const useQuizLoader = (quizId: string | undefined) => {
         
         if (error || !quizData) {
           console.log(`Supabase error or no data: ${error?.message || 'No data returned'}`);
+          console.log(`Attempting to find quiz with ID ${quizId} in localStorage`);
+          
           setState(prev => ({ 
             ...prev, 
             loadingStage: 'local' 
           }));
           
-          // Try to load from localStorage as a backup, but ONLY the exact quiz ID requested
-          try {
-            const storedQuizzes = localStorage.getItem('quizzes');
-            if (storedQuizzes) {
-              try {
-                const quizzes = JSON.parse(storedQuizzes);
-                
-                if (!Array.isArray(quizzes)) {
-                  throw new Error('Invalid quiz data in localStorage: not an array');
-                }
-                
-                // Find the exact quiz with the matching ID
-                const foundQuiz = quizzes.find((q: any) => q.id === quizId);
-                
-                if (foundQuiz) {
-                  if (typeof foundQuiz !== 'object' || foundQuiz === null) {
-                    throw new Error('Invalid quiz data in localStorage: quiz is not an object');
-                  }
-                  
-                  quiz = {
-                    id: foundQuiz.id || quizId,
-                    title: foundQuiz.title || 'Untitled Quiz',
-                    description: foundQuiz.description || '',
-                    duration: foundQuiz.duration || foundQuiz.timeLimit || 30,
-                    timeLimit: foundQuiz.duration || foundQuiz.timeLimit || 30,
-                    created: foundQuiz.created || new Date().toISOString(),
-                    questions: Array.isArray(foundQuiz.questions) ? foundQuiz.questions : []
-                  };
-                  usedLocalStorage = true;
-                  console.log(`Found quiz in localStorage: ${quiz.title}`);
-                } else {
-                  // If the exact quiz not found in localStorage, throw an error
-                  throw new Error(`Quiz with ID ${quizId} not found in localStorage`);
-                }
-              } catch (e) {
-                console.error('Error parsing quizzes from localStorage:', e);
-                throw new Error(`Invalid quiz data in localStorage: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          // Try to load from localStorage ONLY for the specific quiz ID
+          const storedQuizzes = localStorage.getItem('quizzes');
+          if (storedQuizzes) {
+            try {
+              const quizzes = JSON.parse(storedQuizzes);
+              
+              if (!Array.isArray(quizzes)) {
+                throw new Error('Invalid quiz data in localStorage: not an array');
               }
-            } else {
-              throw new Error('No quizzes found in localStorage');
+              
+              // Find the exact quiz with the matching ID
+              const foundQuiz = quizzes.find((q: any) => q.id === quizId);
+              console.log(`Looking for quiz with ID ${quizId} in localStorage. Found:`, foundQuiz ? 'Yes' : 'No');
+              
+              if (foundQuiz) {
+                quiz = {
+                  id: foundQuiz.id,
+                  title: foundQuiz.title || 'Untitled Quiz',
+                  description: foundQuiz.description || '',
+                  duration: foundQuiz.duration || foundQuiz.timeLimit || 30,
+                  timeLimit: foundQuiz.duration || foundQuiz.timeLimit || 30,
+                  created: foundQuiz.created || new Date().toISOString(),
+                  questions: Array.isArray(foundQuiz.questions) ? foundQuiz.questions : []
+                };
+                usedLocalStorage = true;
+                console.log(`Found quiz in localStorage: ${quiz.title}`);
+              } else {
+                throw new Error(`Quiz with ID ${quizId} not found in localStorage`);
+              }
+            } catch (e) {
+              console.error('Error finding quiz in localStorage:', e);
+              throw new Error(`Quiz with ID ${quizId} not found. Please make sure the quiz exists and try again.`);
             }
-          } catch (localError) {
-            console.log(`LocalStorage error: ${localError instanceof Error ? localError.message : 'Unknown error'}`);
-            
-            // If the exact quiz not found in database or localStorage, show a clear error
-            throw new Error(`Quiz with ID ${quizId} not found. Please make sure the quiz exists and try again.`);
+          } else {
+            throw new Error(`No quizzes found in localStorage. Quiz with ID ${quizId} not found.`);
           }
         } else {
           // Quiz found in database
@@ -286,7 +278,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
           }
           
           if (questions.length === 0) {
-            // Last resort - check if full quiz object has questions
+            // Check if full quiz object has questions
             const storedQuizzes = localStorage.getItem('quizzes');
             if (storedQuizzes) {
               try {
@@ -303,6 +295,8 @@ export const useQuizLoader = (quizId: string | undefined) => {
                   if (quiz && !quiz.questions) {
                     quiz.questions = questions;
                   }
+                } else {
+                  console.log(`No questions found in full quiz object with ID ${quizId}`);
                 }
               } catch (e) {
                 console.error('Error parsing quizzes from localStorage:', e);
@@ -331,17 +325,32 @@ export const useQuizLoader = (quizId: string | undefined) => {
         localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
         console.log(`Saved ${questions.length} questions to localStorage for future access`);
         
+        // Update the quiz in localStorage with the questions attached
         const storedQuizzes = localStorage.getItem('quizzes');
         if (storedQuizzes) {
           try {
             const quizzes = JSON.parse(storedQuizzes);
+            let quizFound = false;
+            
             const updatedQuizzes = quizzes.map((q: any) => {
               if (q.id === quizId) {
+                quizFound = true;
                 return { ...q, questions: questions };
               }
               return q;
             });
+            
+            if (!quizFound) {
+              // If the quiz wasn't found in localStorage, add it
+              updatedQuizzes.push({
+                ...quiz,
+                questions
+              });
+              console.log(`Added quiz ${quizId} to localStorage as it wasn't found`);
+            }
+            
             localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+            console.log(`Updated quiz ${quizId} in localStorage with ${questions.length} questions`);
           } catch (e) {
             console.error('Error updating quizzes array:', e);
             
@@ -350,6 +359,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
               questions
             }];
             localStorage.setItem('quizzes', JSON.stringify(newQuizzes));
+            console.log(`Created new quizzes array in localStorage with quiz ${quizId}`);
           }
         } else {
           const newQuizzes = [{
@@ -357,6 +367,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
             questions
           }];
           localStorage.setItem('quizzes', JSON.stringify(newQuizzes));
+          console.log(`Created new quizzes array in localStorage with quiz ${quizId}`);
         }
       } catch (e) {
         console.error('Error saving questions to localStorage:', e);

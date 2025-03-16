@@ -64,7 +64,7 @@ const TakeQuiz = () => {
     }
     setQuizStateLoading(quizLoading);
     setQuizStateError(quizLoadError);
-  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError]);
+  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setQuizStateError]);
   
   const handleSubmitQuiz = () => {
     if (!quiz) return;

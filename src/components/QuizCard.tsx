@@ -128,41 +128,41 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     
     try {
       quizzes = storedQuizzesJson ? JSON.parse(storedQuizzesJson) : [];
+      
+      // Ensure quizzes is an array
+      if (!Array.isArray(quizzes)) {
+        console.warn('Stored quizzes was not an array, creating new array');
+        quizzes = [];
+      }
     } catch (e) {
       console.error('Error parsing stored quizzes, creating new array', e);
       quizzes = [];
     }
     
-    // Make sure we're actually storing an array
-    if (!Array.isArray(quizzes)) {
-      quizzes = [];
-    }
+    // Remove any existing quiz with the same ID to avoid duplicates
+    quizzes = quizzes.filter((q: any) => q.id !== quiz.id);
     
-    const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
+    // Add the current quiz
+    quizzes.push(completeQuiz);
     
-    if (existingQuizIndex === -1) {
-      // If not already in localStorage, add it
-      quizzes.push(completeQuiz);
-    } else {
-      // If already in localStorage, update it
-      quizzes[existingQuizIndex] = completeQuiz;
-    }
-    
+    // Save the updated quizzes array
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
     console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // Also save questions separately to both storage locations for better accessibility
+    // Also save questions separately for better accessibility
     if (validatedQuestions.length > 0) {
       localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
       localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
       console.log(`Saved ${validatedQuestions.length} questions in separate storage for quiz ${quiz.id}`);
     }
+    
+    return completeQuiz;
   };
 
   // Create a function to handle the copy link action
   const handleCopyLink = () => {
     // Save quiz to localStorage before copying link
-    saveQuizToLocalStorage();
+    const savedQuiz = saveQuizToLocalStorage();
     
     // Get the full URL for the quiz
     const quizLink = getQuizUrl();
@@ -191,7 +191,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   // Navigate to take quiz page
   const handleOpenQuiz = () => {
     // Save quiz to localStorage before opening
-    saveQuizToLocalStorage();
+    const savedQuiz = saveQuizToLocalStorage();
     
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
     

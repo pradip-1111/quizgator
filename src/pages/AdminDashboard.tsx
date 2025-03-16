@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,14 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
   
   const prepareQuizzes = (loadedQuizzes: Quiz[]) => {
+    console.log(`Preparing ${loadedQuizzes.length} quizzes`);
+    
     return loadedQuizzes.map(quiz => {
+      if (!quiz.id) {
+        console.warn("Found quiz without ID, generating one");
+        quiz.id = `quiz-${Math.random().toString(36).substr(2, 9)}`;
+      }
+      
       if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
         console.log(`Quiz ${quiz.id} already has ${quiz.questions.length} questions array`);
         return quiz;
@@ -89,16 +97,34 @@ const AdminDashboard = () => {
   
   useEffect(() => {
     try {
+      console.log("Loading quizzes from localStorage");
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
-        const parsedQuizzes = JSON.parse(storedQuizzes);
-        const preparedQuizzes = prepareQuizzes(parsedQuizzes);
-        setQuizzes(preparedQuizzes);
-        
-        localStorage.setItem('quizzes', JSON.stringify(preparedQuizzes));
-        console.log(`Loaded and prepared ${preparedQuizzes.length} quizzes`);
+        try {
+          const parsedQuizzes = JSON.parse(storedQuizzes);
+          
+          if (!Array.isArray(parsedQuizzes)) {
+            console.error('Invalid quizzes data: not an array');
+            localStorage.setItem('quizzes', JSON.stringify([]));
+            setQuizzes([]);
+            return;
+          }
+          
+          const preparedQuizzes = prepareQuizzes(parsedQuizzes);
+          setQuizzes(preparedQuizzes);
+          
+          // Save the prepared quizzes back to localStorage
+          localStorage.setItem('quizzes', JSON.stringify(preparedQuizzes));
+          console.log(`Loaded and prepared ${preparedQuizzes.length} quizzes`);
+        } catch (parseError) {
+          console.error('Error parsing quizzes:', parseError);
+          localStorage.setItem('quizzes', JSON.stringify([]));
+          setQuizzes([]);
+        }
       } else {
+        console.log('No quizzes found in localStorage, initializing empty array');
         localStorage.setItem('quizzes', JSON.stringify([]));
+        setQuizzes([]);
       }
     } catch (error) {
       console.error('Error loading quizzes:', error);
@@ -132,6 +158,7 @@ const AdminDashboard = () => {
   
   const handleDeleteQuiz = (quizId: string) => {
     try {
+      console.log(`Deleting quiz with ID: ${quizId}`);
       const updatedQuizzes = quizzes.filter(quiz => quiz.id !== quizId);
       
       localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
