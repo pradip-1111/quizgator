@@ -123,7 +123,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
             loadingStage: 'local' 
           }));
           
-          // Try to load from localStorage as a backup
+          // Try to load from localStorage as a backup, but ONLY the exact quiz ID requested
           try {
             const storedQuizzes = localStorage.getItem('quizzes');
             if (storedQuizzes) {
@@ -134,6 +134,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
                   throw new Error('Invalid quiz data in localStorage: not an array');
                 }
                 
+                // Find the exact quiz with the matching ID
                 const foundQuiz = quizzes.find((q: any) => q.id === quizId);
                 
                 if (foundQuiz) {
@@ -153,7 +154,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
                   usedLocalStorage = true;
                   console.log(`Found quiz in localStorage: ${quiz.title}`);
                 } else {
-                  // If quiz not found in localStorage, throw an error
+                  // If the exact quiz not found in localStorage, throw an error
                   throw new Error(`Quiz with ID ${quizId} not found in localStorage`);
                 }
               } catch (e) {
@@ -166,10 +167,11 @@ export const useQuizLoader = (quizId: string | undefined) => {
           } catch (localError) {
             console.log(`LocalStorage error: ${localError instanceof Error ? localError.message : 'Unknown error'}`);
             
-            // If quiz not found in database or localStorage, show a clear error
+            // If the exact quiz not found in database or localStorage, show a clear error
             throw new Error(`Quiz with ID ${quizId} not found. Please make sure the quiz exists and try again.`);
           }
         } else {
+          // Quiz found in database
           quiz = {
             id: quizId,
             title: quizData.title || 'Untitled Quiz',
@@ -219,6 +221,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
       } else {
         try {
           if (!usedLocalStorage) {
+            // Try to get questions from database
             const { data: questionsData, error: questionsError } = await supabase
               .from('questions')
               .select(`
@@ -258,7 +261,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
               fallbackActive: true
             }));
             
-            // Try to load questions from localStorage
+            // Try to load questions from localStorage for ONLY the requested quiz ID
             const possibleKeys = [
               `quiz_questions_${quizId}`,
               `quiz_creator_questions_${quizId}`
@@ -283,6 +286,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
           }
           
           if (questions.length === 0) {
+            // Last resort - check if full quiz object has questions
             const storedQuizzes = localStorage.getItem('quizzes');
             if (storedQuizzes) {
               try {

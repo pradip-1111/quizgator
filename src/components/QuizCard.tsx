@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -132,6 +133,11 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
       quizzes = [];
     }
     
+    // Make sure we're actually storing an array
+    if (!Array.isArray(quizzes)) {
+      quizzes = [];
+    }
+    
     const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
     
     if (existingQuizIndex === -1) {
@@ -145,7 +151,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
     console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // Also save questions separately to both storage locations
+    // Also save questions separately to both storage locations for better accessibility
     if (validatedQuestions.length > 0) {
       localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
       localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
@@ -189,7 +195,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
     
-    // Navigate directly
+    // Navigate directly to the quiz page
     navigate(`/take-quiz/${quiz.id}`);
   };
 

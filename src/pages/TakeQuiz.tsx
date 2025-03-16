@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -5,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
 
 import { useQuizState } from '@/hooks/use-quiz-state';
-import { useQuizLoader } from '@/hooks/use-quiz-loader';
+import { useQuizLoader, clearQuizCache } from '@/hooks/use-quiz-loader';
 import { useQuizTimer } from '@/hooks/use-quiz-timer';
 import { useQuizSecurity } from '@/hooks/use-quiz-security';
 import { submitQuiz, sendConfirmationEmail } from '@/utils/quiz-submission';
@@ -188,39 +189,8 @@ const TakeQuiz = () => {
     if (quizId) {
       console.log(`Clearing cache for quiz ID: ${quizId}`);
       
-      const keysToRemove = [
-        `quiz_questions_${quizId}`,
-        `quiz_creator_questions_${quizId}`,
-        `quiz_progress_${quizId}`
-      ];
-      
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.includes(quizId)) {
-          keysToRemove.push(key);
-        }
-      }
-      
-      keysToRemove.forEach(key => {
-        try {
-          localStorage.removeItem(key);
-          console.log(`Removed ${key} from localStorage`);
-        } catch (e) {
-          console.error(`Failed to remove ${key}:`, e);
-        }
-      });
-      
-      try {
-        const storedQuizzes = localStorage.getItem('quizzes');
-        if (storedQuizzes) {
-          const quizzes = JSON.parse(storedQuizzes);
-          const filteredQuizzes = quizzes.filter((q: any) => q.id !== quizId);
-          localStorage.setItem('quizzes', JSON.stringify(filteredQuizzes));
-          console.log(`Removed quiz ${quizId} from quizzes array`);
-        }
-      } catch (e) {
-        console.error('Error updating quizzes array:', e);
-      }
+      // Use the clearQuizCache utility function
+      clearQuizCache(quizId);
       
       toast({
         title: "Cache Cleared",
@@ -246,9 +216,13 @@ const TakeQuiz = () => {
     />;
   }
   
+  // Display an error if the quiz wasn't found or there was an error loading it
   if (quizStateError || !quiz) {
+    const isQuizNotFoundError = quizStateError?.toLowerCase().includes('not found') || 
+                               quizStateError?.toLowerCase().includes('no quiz');
+                               
     return <QuizError 
-      error={quizStateError || "Quiz not found. Please check the URL and try again."} 
+      error={quizStateError || `Quiz with ID ${quizId} not found. Please check the URL and try again.`} 
       onRetry={retryLoading} 
       isRetryable={true} 
       fallbackActive={fallbackActive}
@@ -256,11 +230,13 @@ const TakeQuiz = () => {
     />;
   }
   
+  // Get questions from either the quiz.questions array or the separate questions state
   const quizWithQuestions = {
     ...quiz,
     questions: questions && questions.length > 0 ? questions : (quiz.questions || [])
   };
   
+  // Show an error if there are no questions
   if (quizWithQuestions.questions.length === 0) {
     return <QuizError 
       error={`The quiz "${quiz.title}" has no questions. Please add questions to this quiz or select a different quiz.`} 
