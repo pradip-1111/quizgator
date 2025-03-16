@@ -56,7 +56,7 @@ const TakeQuiz = () => {
     setCurrentQuestion(0);
     setStarted(false);
     setTimeLeft(0);
-    setError(null);
+    setQuizStateError(null);
     
     // Clear other quizzes from localStorage to prevent conflicts
     for (let i = 0; i < localStorage.length; i++) {
@@ -117,7 +117,7 @@ const TakeQuiz = () => {
     }
     
     console.log("No direct quiz found in localStorage, will use useQuizLoader");
-  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setError]);
+  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setQuizStateError]);
   
   // Fallback to useQuizLoader if direct loading fails
   const { 
