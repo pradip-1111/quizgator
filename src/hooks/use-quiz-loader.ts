@@ -27,182 +27,147 @@ export function useQuizLoader(quizId: string | undefined) {
     try {
       console.log(`Fetching quiz with ID: ${quizId}`);
       
-      // First check for quiz data in local storage to avoid showing demo content
+      // First priority: Check if we have the quiz and its questions in localStorage
       const storedQuizzesString = localStorage.getItem('quizzes');
+      let quizFromLocalStorage = null;
+      let questionsFromLocalStorage = null;
+      
       if (storedQuizzesString) {
-        const storedQuizzes = JSON.parse(storedQuizzesString);
-        const matchedQuiz = storedQuizzes.find((q: any) => q.id === quizId);
-        
-        if (matchedQuiz) {
-          console.log('Found matching quiz in localStorage:', matchedQuiz.title);
+        try {
+          const storedQuizzes = JSON.parse(storedQuizzesString);
+          quizFromLocalStorage = storedQuizzes.find((q: any) => q.id === quizId);
           
-          // Check for creator questions (highest priority)
-          const creatorStorageKey = `quiz_creator_questions_${quizId}`;
-          const creatorQuestions = localStorage.getItem(creatorStorageKey);
-          
-          if (creatorQuestions) {
-            try {
-              const parsedQuestions = JSON.parse(creatorQuestions);
-              if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-                console.log('Using creator questions for quiz:', parsedQuestions.length);
-                
-                const fullQuiz: QuizData = {
-                  id: matchedQuiz.id,
-                  title: matchedQuiz.title,
-                  description: matchedQuiz.description,
-                  timeLimit: matchedQuiz.duration || 30,
-                  questions: parsedQuestions
-                };
-                
-                setQuiz(fullQuiz);
-                setQuestions(parsedQuestions);
-                setLoading(false);
-                return;
+          if (quizFromLocalStorage) {
+            console.log('Found matching quiz in localStorage:', quizFromLocalStorage.title);
+            
+            // Check for questions in all possible locations
+            const possibleQuestionKeys = [
+              `quiz_creator_questions_${quizId}`,
+              `quiz_questions_${quizId}`
+            ];
+            
+            // If quiz.questions is an array, it contains the actual questions
+            if (Array.isArray(quizFromLocalStorage.questions) && quizFromLocalStorage.questions.length > 0) {
+              console.log('Quiz object contains questions array');
+              questionsFromLocalStorage = quizFromLocalStorage.questions;
+            } else {
+              // Check all possible storage locations for questions
+              for (const key of possibleQuestionKeys) {
+                const storedQuestions = localStorage.getItem(key);
+                if (storedQuestions) {
+                  try {
+                    const parsedQuestions = JSON.parse(storedQuestions);
+                    if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+                      console.log(`Found ${parsedQuestions.length} questions in ${key}`);
+                      questionsFromLocalStorage = parsedQuestions;
+                      break;
+                    }
+                  } catch (e) {
+                    console.error(`Error parsing questions from ${key}:`, e);
+                  }
+                }
               }
-            } catch (e) {
-              console.error('Error parsing creator questions:', e);
             }
-          } else {
-            // If no creator questions but we have the quiz in localStorage,
-            // look for questions in the quiz object
-            if (matchedQuiz.questions && Array.isArray(matchedQuiz.questions)) {
-              console.log('Using questions from local quiz object:', matchedQuiz.questions.length);
+            
+            // If we have both quiz and questions, use them
+            if (questionsFromLocalStorage) {
+              console.log(`Using locally stored quiz with ${questionsFromLocalStorage.length} questions`);
+              setLoadingStage('local');
               
               const fullQuiz: QuizData = {
-                id: matchedQuiz.id,
-                title: matchedQuiz.title,
-                description: matchedQuiz.description,
-                timeLimit: matchedQuiz.duration || 30,
-                questions: matchedQuiz.questions
+                id: quizFromLocalStorage.id,
+                title: quizFromLocalStorage.title,
+                description: quizFromLocalStorage.description,
+                timeLimit: quizFromLocalStorage.duration || 30,
+                questions: questionsFromLocalStorage
               };
               
+              // Save this data to both storage locations to ensure it's available next time
+              localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questionsFromLocalStorage));
+              localStorage.setItem(`quiz_creator_questions_${quizId}`, JSON.stringify(questionsFromLocalStorage));
+              
               setQuiz(fullQuiz);
-              setQuestions(matchedQuiz.questions);
+              setQuestions(questionsFromLocalStorage);
+              setFallbackActive(true);
               setLoading(false);
               return;
             }
           }
-        }
-      }
-      
-      // Check for creator questions (highest priority)
-      const creatorStorageKey = `quiz_creator_questions_${quizId}`;
-      const creatorQuestions = localStorage.getItem(creatorStorageKey);
-      
-      // Regular storage key for questions
-      const localStorageKey = `quiz_questions_${quizId}`;
-      
-      // First check if we have creator questions (highest priority)
-      if (creatorQuestions) {
-        console.log('Found creator questions in local storage, using these as primary source');
-        try {
-          const parsedQuestions = JSON.parse(creatorQuestions);
-          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log('Successfully parsed creator questions:', parsedQuestions.length);
-            // Copy creator questions to the regular questions key so the quiz loader will use them
-            localStorage.setItem(localStorageKey, creatorQuestions);
-            setQuestions(parsedQuestions);
-          }
         } catch (e) {
-          console.error('Error parsing creator questions:', e);
+          console.error('Error parsing stored quizzes:', e);
         }
       }
       
-      // Then check for regular stored questions
-      const storedQuestions = localStorage.getItem(localStorageKey);
-      
-      if (storedQuestions && !creatorQuestions) {
-        console.log('Found locally stored questions, using these while we fetch from database');
-        try {
-          const parsedQuestions = JSON.parse(storedQuestions);
-          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log('Successfully parsed local questions:', parsedQuestions.length);
-            setQuestions(parsedQuestions);
-          }
-        } catch (e) {
-          console.error('Error parsing stored questions:', e);
-        }
-      }
-      
-      // Fetch the quiz from Supabase
+      // Second priority: Try to fetch from Supabase
+      console.log('Attempting to fetch quiz from Supabase');
       setLoadingStage('database');
+      
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .select('*')
         .eq('id', quizId)
         .maybeSingle();
-
+      
       if (quizError) {
-        console.error('Error fetching quiz:', quizError);
+        console.error('Error fetching quiz from Supabase:', quizError);
         throw new Error(`Failed to load quiz: ${quizError.message}`);
       }
-
-      // If quiz not found in database, check if we have any stored questions to create a quiz
-      if (!quizData) {
-        console.log('Quiz not found in database, checking local storage');
-        setLoadingStage('local');
+      
+      // If no quiz found in Supabase but we have a quiz in localStorage without questions
+      if (!quizData && quizFromLocalStorage) {
+        console.log('Quiz not found in Supabase, but found in localStorage without questions');
+        setLoadingStage('demo');
         
-        // Look for creator questions first, then fallback to regular stored questions
-        const localQuestions = creatorQuestions || storedQuestions;
-        
-        if (localQuestions) {
-          const parsedQuestions = JSON.parse(localQuestions);
-          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log('Creating quiz from stored questions');
-            setFallbackActive(true);
-            
-            // See if we have a matching quiz in local storage quizzes array
-            const storedQuizzesStr = localStorage.getItem('quizzes');
-            if (storedQuizzesStr) {
-              try {
-                const localQuizzes = JSON.parse(storedQuizzesStr);
-                const matchedLocalQuiz = localQuizzes.find((q: any) => q.id === quizId);
-                
-                if (matchedLocalQuiz) {
-                  console.log('Found matching quiz in localStorage quizzes array');
-                  
-                  const fullQuiz: QuizData = {
-                    id: quizId,
-                    title: matchedLocalQuiz.title,
-                    description: matchedLocalQuiz.description,
-                    timeLimit: matchedLocalQuiz.duration || 30,
-                    questions: parsedQuestions
-                  };
-                  
-                  setQuiz(fullQuiz);
-                  setQuestions(parsedQuestions);
-                  setLoading(false);
-                  return;
-                }
-              } catch (err) {
-                console.error('Error parsing stored quizzes:', err);
-              }
+        // Create a demo quiz with the title and description from localStorage
+        const mockQuiz: QuizData = {
+          id: quizId,
+          title: quizFromLocalStorage.title || 'Demo Quiz',
+          description: quizFromLocalStorage.description || 'This is a demo quiz',
+          timeLimit: quizFromLocalStorage.duration || 30,
+          questions: [
+            {
+              id: '1',
+              text: 'What is the capital of France?',
+              options: [
+                { id: 'a', text: 'London', isCorrect: false },
+                { id: 'b', text: 'Berlin', isCorrect: false },
+                { id: 'c', text: 'Paris', isCorrect: true },
+                { id: 'd', text: 'Madrid', isCorrect: false }
+              ],
+              type: 'multiple-choice',
+              points: 1,
+              required: true
+            },
+            // Add more sample questions
+            {
+              id: '2',
+              text: 'Sample Question 2',
+              options: [
+                { id: 'a', text: 'Option A', isCorrect: true },
+                { id: 'b', text: 'Option B', isCorrect: false }
+              ],
+              type: 'multiple-choice',
+              points: 1,
+              required: true
             }
-            
-            // If we didn't find a matching quiz in local storage quizzes array, use the questions only
-            const mockQuiz: QuizData = {
-              id: quizId,
-              title: 'Your Quiz',
-              description: 'Quiz loaded from local storage',
-              timeLimit: 30,
-              questions: parsedQuestions
-            };
-            
-            setQuiz(mockQuiz);
-            setQuestions(parsedQuestions);
-            setLoading(false);
-            return;
-          }
-        }
+          ]
+        };
         
-        // If no stored questions are available, create a demo quiz - only as last resort
-        console.log('No stored questions found, creating demo quiz');
+        setQuiz(mockQuiz);
+        setQuestions(mockQuiz.questions);
+        setLoading(false);
+        return;
+      }
+      
+      // If quiz not found in Supabase or localStorage, create a demo quiz
+      if (!quizData && !quizFromLocalStorage) {
+        console.log('Quiz not found in Supabase or localStorage, creating demo quiz');
         setLoadingStage('demo');
         
         const mockQuiz: QuizData = {
           id: quizId,
           title: 'Demo Quiz',
-          description: 'This is a demo quiz with 5 questions',
+          description: 'This is a demo quiz with sample questions',
           timeLimit: 30,
           questions: [
             {
@@ -220,7 +185,7 @@ export function useQuizLoader(quizId: string | undefined) {
             }
           ]
         };
-
+        
         // Add more sample questions
         for (let i = 2; i <= 5; i++) {
           mockQuiz.questions.push({
@@ -237,258 +202,244 @@ export function useQuizLoader(quizId: string | undefined) {
             required: true
           });
         }
-
+        
         setQuiz(mockQuiz);
         setQuestions(mockQuiz.questions);
         setLoading(false);
         return;
       }
-
-      console.log('Quiz found:', quizData);
-
-      // Prioritize using creator questions if available, then fetch from database
-      if (creatorQuestions) {
-        try {
-          const parsedQuestions = JSON.parse(creatorQuestions);
-          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            console.log('Using creator questions for database quiz:', parsedQuestions.length);
-            
-            const fullQuiz: QuizData = {
-              id: quizData.id,
-              title: quizData.title,
-              description: quizData.description,
-              timeLimit: quizData.time_limit,
-              questions: parsedQuestions
-            };
-            
-            setQuiz(fullQuiz);
-            setQuestions(parsedQuestions);
-            setLoading(false);
-            return;
-          }
-        } catch (e) {
-          console.error('Error parsing creator questions:', e);
-        }
-      }
-
-      // If no creator questions, proceed with fetching questions from database
-      // Fetch questions for the quiz
-      const { data: questionsData, error: questionsError } = await supabase
-        .from('questions')
-        .select('id, text, type, points, required, order_number')
-        .eq('quiz_id', quizId)
-        .order('order_number');
-
-      if (questionsError) {
-        console.error('Error fetching questions:', questionsError);
-        throw new Error(`Failed to load questions: ${questionsError.message}`);
-      }
-
-      console.log(`Found ${questionsData?.length || 0} questions from database`);
-
-      // For each question, fetch its options
-      const questionsWithOptions: Question[] = [];
       
-      // Check if we have any stored questions to use as a fallback
-      let shouldUseStoredQuestions = false;
-      
-      if ((!questionsData || questionsData.length === 0) && storedQuestions) {
-        console.log('No questions found in database, using stored questions');
-        shouldUseStoredQuestions = true;
-      }
-      
-      if (shouldUseStoredQuestions && storedQuestions) {
-        try {
-          const parsedQuestions = JSON.parse(storedQuestions);
-          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            const fullQuiz: QuizData = {
-              id: quizData.id,
-              title: quizData.title,
-              description: quizData.description,
-              timeLimit: quizData.time_limit,
-              questions: parsedQuestions
-            };
-            
-            setQuiz(fullQuiz);
-            setQuestions(parsedQuestions);
-            setLoading(false);
-            return;
-          }
-        } catch (e) {
-          console.error('Error parsing stored questions:', e);
-        }
-      }
-      
-      // If we got here, we need to process questions from the database
-      for (const q of questionsData || []) {
-        const { data: optionsData, error: optionsError } = await supabase
-          .from('options')
-          .select('id, text, is_correct')
-          .eq('question_id', q.id)
-          .order('order_number');
-
-        if (optionsError) {
-          console.error(`Error fetching options for question ${q.id}:`, optionsError);
-          throw new Error(`Failed to load options: ${optionsError.message}`);
-        }
-
-        const questionWithOptions: Question = {
-          id: q.id,
-          text: q.text,
-          type: q.type as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer',
-          points: q.points,
-          required: q.required,
-          options: (optionsData || []).map(opt => ({
-            id: opt.id,
-            text: opt.text,
-            isCorrect: opt.is_correct
-          }))
-        };
-
-        questionsWithOptions.push(questionWithOptions);
-      }
-
-      // Check if we have any questions
-      if (questionsWithOptions.length === 0) {
-        console.warn('No questions found for this quiz, checking local storage again');
+      // If we have quiz data from Supabase, try to load questions
+      if (quizData) {
+        console.log('Quiz found in Supabase:', quizData);
         
-        // Try to get questions from local storage again as a final fallback
-        if (storedQuestions) {
-          try {
-            const parsedQuestions = JSON.parse(storedQuestions);
-            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-              console.log('Using stored questions as fallback:', parsedQuestions.length);
-              setFallbackActive(true);
-              
-              // Update the local storage key to ensure we use these questions
-              localStorage.setItem(localStorageKey, JSON.stringify(parsedQuestions));
-              
-              const fullQuiz: QuizData = {
-                id: quizData.id,
-                title: quizData.title,
-                description: quizData.description,
-                timeLimit: quizData.time_limit,
-                questions: parsedQuestions
-              };
-              
-              setQuiz(fullQuiz);
-              setQuestions(parsedQuestions);
-              setLoading(false);
-              return;
+        // First check if we have questions in localStorage
+        const possibleQuestionKeys = [
+          `quiz_creator_questions_${quizId}`,
+          `quiz_questions_${quizId}`
+        ];
+        
+        let localQuestions = null;
+        
+        for (const key of possibleQuestionKeys) {
+          const storedQuestions = localStorage.getItem(key);
+          if (storedQuestions) {
+            try {
+              const parsedQuestions = JSON.parse(storedQuestions);
+              if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+                console.log(`Found ${parsedQuestions.length} questions in ${key}`);
+                localQuestions = parsedQuestions;
+                break;
+              }
+            } catch (e) {
+              console.error(`Error parsing questions from ${key}:`, e);
             }
-          } catch (e) {
-            console.error('Error parsing stored questions:', e);
           }
         }
         
-        console.warn('Creating a sample question as fallback');
-        // Add a sample question if none exist
-        questionsWithOptions.push({
-          id: '1',
-          text: 'Sample Question',
-          options: [
-            { id: 'a', text: 'Option A', isCorrect: true },
-            { id: 'b', text: 'Option B', isCorrect: false }
-          ],
-          type: 'multiple-choice',
-          points: 1,
-          required: true
-        });
+        // If we have questions in localStorage, use them
+        if (localQuestions) {
+          console.log('Using questions from localStorage with database quiz');
+          
+          const fullQuiz: QuizData = {
+            id: quizData.id,
+            title: quizData.title,
+            description: quizData.description,
+            timeLimit: quizData.time_limit,
+            questions: localQuestions
+          };
+          
+          setQuiz(fullQuiz);
+          setQuestions(localQuestions);
+          setLoading(false);
+          return;
+        }
+        
+        // If no questions in localStorage, fetch from Supabase
+        console.log('Fetching questions from Supabase');
+        
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('questions')
+          .select('id, text, type, points, required, order_number')
+          .eq('quiz_id', quizId)
+          .order('order_number');
+        
+        if (questionsError) {
+          console.error('Error fetching questions from Supabase:', questionsError);
+          throw new Error(`Failed to load questions: ${questionsError.message}`);
+        }
+        
+        console.log(`Found ${questionsData?.length || 0} questions from database`);
+        
+        // If no questions in database, use default questions
+        if (!questionsData || questionsData.length === 0) {
+          console.log('No questions found in database, using default questions');
+          
+          const defaultQuestions = [
+            {
+              id: '1',
+              text: 'What is the capital of France?',
+              options: [
+                { id: 'a', text: 'London', isCorrect: false },
+                { id: 'b', text: 'Berlin', isCorrect: false },
+                { id: 'c', text: 'Paris', isCorrect: true },
+                { id: 'd', text: 'Madrid', isCorrect: false }
+              ],
+              type: 'multiple-choice',
+              points: 1,
+              required: true
+            },
+            {
+              id: '2',
+              text: 'Sample Question',
+              options: [
+                { id: 'a', text: 'Option A', isCorrect: true },
+                { id: 'b', text: 'Option B', isCorrect: false }
+              ],
+              type: 'multiple-choice',
+              points: 1,
+              required: true
+            }
+          ];
+          
+          const fullQuiz: QuizData = {
+            id: quizData.id,
+            title: quizData.title,
+            description: quizData.description,
+            timeLimit: quizData.time_limit,
+            questions: defaultQuestions
+          };
+          
+          setQuiz(fullQuiz);
+          setQuestions(defaultQuestions);
+          setLoading(false);
+          return;
+        }
+        
+        // For each question, fetch its options
+        const questionsWithOptions: Question[] = [];
+        
+        for (const q of questionsData) {
+          const { data: optionsData, error: optionsError } = await supabase
+            .from('options')
+            .select('id, text, is_correct')
+            .eq('question_id', q.id)
+            .order('order_number');
+          
+          if (optionsError) {
+            console.error(`Error fetching options for question ${q.id}:`, optionsError);
+            throw new Error(`Failed to load options: ${optionsError.message}`);
+          }
+          
+          const questionWithOptions: Question = {
+            id: q.id,
+            text: q.text,
+            type: q.type as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer',
+            points: q.points,
+            required: q.required,
+            options: (optionsData || []).map(opt => ({
+              id: opt.id,
+              text: opt.text,
+              isCorrect: opt.is_correct
+            }))
+          };
+          
+          questionsWithOptions.push(questionWithOptions);
+        }
+        
+        // Save questions to localStorage for future use
+        localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questionsWithOptions));
+        localStorage.setItem(`quiz_creator_questions_${quizId}`, JSON.stringify(questionsWithOptions));
+        
+        // Construct the full quiz object
+        const fullQuiz: QuizData = {
+          id: quizData.id,
+          title: quizData.title,
+          description: quizData.description,
+          timeLimit: quizData.time_limit,
+          questions: questionsWithOptions
+        };
+        
+        setQuiz(fullQuiz);
+        setQuestions(questionsWithOptions);
+        setLoading(false);
       }
-
-      // Construct the full quiz object
-      const fullQuiz: QuizData = {
-        id: quizData.id,
-        title: quizData.title,
-        description: quizData.description,
-        timeLimit: quizData.time_limit,
-        questions: questionsWithOptions
-      };
-
-      // Update the local storage with the retrieved questions for faster loading next time
-      localStorage.setItem(localStorageKey, JSON.stringify(questionsWithOptions));
-      
-      setQuiz(fullQuiz);
-      setQuestions(questionsWithOptions);
       
     } catch (err) {
       console.error('Error loading quiz:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load quiz. Please try again.';
       setError(errorMessage);
-      toast({
-        title: "Error",
-        description: "Failed to load quiz data",
-        variant: "destructive"
-      });
       
-      // If we have questions from localStorage, use those as a fallback
-      const storageOptions = [
+      // Try to use localStorage as fallback
+      const possibleQuestionKeys = [
         `quiz_creator_questions_${quizId}`,
         `quiz_questions_${quizId}`
       ];
       
       let foundFallback = false;
       
-      for (const storageKey of storageOptions) {
-        const storedQuestions = localStorage.getItem(storageKey);
+      for (const key of possibleQuestionKeys) {
+        const storedQuestions = localStorage.getItem(key);
         if (storedQuestions) {
           try {
             const parsedQuestions = JSON.parse(storedQuestions);
             if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-              console.log(`Error occurred, but using ${storageKey} as fallback`);
-              setFallbackActive(true);
+              console.log(`Using ${parsedQuestions.length} questions from ${key} as fallback`);
               
-              // Check if we have a matching quiz in local storage quizzes array
-              const storedQuizzesStr = localStorage.getItem('quizzes');
-              if (storedQuizzesStr) {
+              // Get quiz info from localStorage if available
+              const storedQuizzesString = localStorage.getItem('quizzes');
+              let fallbackTitle = 'Your Quiz';
+              let fallbackDescription = 'Quiz loaded from local storage due to connection issues';
+              let fallbackTimeLimit = 30;
+              
+              if (storedQuizzesString) {
                 try {
-                  const localQuizzes = JSON.parse(storedQuizzesStr);
-                  const matchedLocalQuiz = localQuizzes.find((q: any) => q.id === quizId);
+                  const storedQuizzes = JSON.parse(storedQuizzesString);
+                  const matchedQuiz = storedQuizzes.find((q: any) => q.id === quizId);
                   
-                  if (matchedLocalQuiz) {
-                    console.log('Found matching quiz in localStorage quizzes array');
-                    
-                    const fullQuiz: QuizData = {
-                      id: quizId,
-                      title: matchedLocalQuiz.title,
-                      description: matchedLocalQuiz.description,
-                      timeLimit: matchedLocalQuiz.duration || 30,
-                      questions: parsedQuestions
-                    };
-                    
-                    setQuiz(fullQuiz);
-                    setQuestions(parsedQuestions);
-                    foundFallback = true;
-                    break;
+                  if (matchedQuiz) {
+                    fallbackTitle = matchedQuiz.title;
+                    fallbackDescription = matchedQuiz.description;
+                    fallbackTimeLimit = matchedQuiz.duration || 30;
                   }
-                } catch (err) {
-                  console.error('Error parsing stored quizzes:', err);
+                } catch (e) {
+                  console.error('Error parsing stored quizzes:', e);
                 }
               }
               
-              // If no matching quiz found, use questions with generic title
               const fallbackQuiz: QuizData = {
                 id: quizId,
-                title: 'Your Quiz',
-                description: 'Quiz loaded from local storage due to connection issues',
-                timeLimit: 30,
+                title: fallbackTitle,
+                description: fallbackDescription,
+                timeLimit: fallbackTimeLimit,
                 questions: parsedQuestions
               };
               
               setQuiz(fallbackQuiz);
               setQuestions(parsedQuestions);
+              setFallbackActive(true);
               foundFallback = true;
+              
+              toast({
+                title: "Using local data",
+                description: "Could not connect to the server. Using locally stored quiz.",
+                variant: "default"
+              });
+              
               break;
             }
           } catch (e) {
-            console.error('Error parsing stored questions:', e);
+            console.error(`Error parsing questions from ${key}:`, e);
           }
         }
       }
       
       if (!foundFallback) {
-        setQuiz(null);
-        setQuestions([]);
+        toast({
+          title: "Error",
+          description: "Failed to load quiz data",
+          variant: "destructive"
+        });
       }
     } finally {
       setLoading(false);

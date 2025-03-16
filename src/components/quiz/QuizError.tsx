@@ -31,7 +31,7 @@ const QuizError = ({
       <CardContent className="py-6">
         <div className="space-y-4">
           {fallbackAvailable ? (
-            <Alert variant="warning">
+            <Alert variant="default" className="bg-yellow-50 border-yellow-200 text-yellow-800">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Connection Issue</AlertTitle>
               <AlertDescription>

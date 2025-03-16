@@ -13,7 +13,7 @@ export type Quiz = {
   userId: string;
   title: string;
   description: string;
-  questions: number;
+  questions: number | any[]; // Can be either a count or array of questions
   duration: number; // in minutes
   created: string; // ISO date string
   attempts: number;
@@ -41,9 +41,11 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     return `${window.location.origin}/take-quiz/${quiz.id}`;
   };
 
-  // Create a function to save the quiz to localStorage
+  // Create a function to save the quiz to localStorage with improved question handling
   const saveQuizToLocalStorage = () => {
-    // Save current quiz to localStorage as full quiz object
+    console.log(`Attempting to save quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
+    
+    // Save current quiz to localStorage
     const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
     const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
     
@@ -58,34 +60,53 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
     console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // Get the creator questions
-    const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
-    const creatorQuestions = localStorage.getItem(creatorQuestionsKey);
+    // Handle questions - check all possible locations
+    const questionLocations = [
+      `quiz_creator_questions_${quiz.id}`,
+      `quiz_questions_${quiz.id}`
+    ];
     
-    if (creatorQuestions) {
-      // Store questions in both creator and regular question keys
-      localStorage.setItem(`quiz_questions_${quiz.id}`, creatorQuestions);
-      console.log(`Saved creator questions for quiz ${quiz.id}`);
+    let questionsFound = false;
+    
+    // If quiz.questions is an array, it contains the actual questions
+    if (Array.isArray(quiz.questions)) {
+      console.log(`Quiz object contains questions array with ${quiz.questions.length} questions`);
       
-      // Make sure the actual questions are also logged
-      try {
-        const questionsArray = JSON.parse(creatorQuestions);
-        console.log(`Question count: ${questionsArray.length}`, questionsArray);
-      } catch (err) {
-        console.error("Failed to parse questions for logging:", err);
+      // Save questions directly to both storage locations
+      localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(quiz.questions));
+      localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(quiz.questions));
+      
+      console.log(`Saved ${quiz.questions.length} questions for quiz ${quiz.id} from quiz object`);
+      questionsFound = true;
+    }
+    
+    if (!questionsFound) {
+      // Check each possible storage location for questions
+      for (const location of questionLocations) {
+        const questions = localStorage.getItem(location);
+        
+        if (questions) {
+          try {
+            const parsedQuestions = JSON.parse(questions);
+            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+              console.log(`Found ${parsedQuestions.length} questions in ${location}`);
+              
+              // Save to both locations to ensure they're available
+              localStorage.setItem(`quiz_questions_${quiz.id}`, questions);
+              localStorage.setItem(`quiz_creator_questions_${quiz.id}`, questions);
+              
+              questionsFound = true;
+              break;
+            }
+          } catch (err) {
+            console.error(`Error parsing questions from ${location}:`, err);
+          }
+        }
       }
-    } else {
-      console.warn(`No creator questions found for quiz ${quiz.id}`);
-      
-      // Fallback: Check if we have questions in the storage from a different key
-      const questionsKey = `quiz_questions_${quiz.id}`;
-      const existingQuestions = localStorage.getItem(questionsKey);
-      
-      if (existingQuestions) {
-        console.log(`Found existing questions for quiz ${quiz.id}`);
-      } else {
-        console.warn(`No questions found for quiz ${quiz.id} in any storage location`);
-      }
+    }
+    
+    if (!questionsFound && typeof quiz.questions === 'number') {
+      console.warn(`No questions found for quiz ${quiz.id} in any storage location. Quiz only has question count: ${quiz.questions}`);
     }
   };
 
