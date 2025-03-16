@@ -1,4 +1,3 @@
-
 // Functions for handling fullscreen mode and tab visibility detection
 
 export const enterFullscreen = (element: HTMLElement = document.documentElement) => {
@@ -42,18 +41,23 @@ export const setupTabVisibilityTracking = (
   onTabChange: (isVisible: boolean) => void
 ): (() => void) => {
   const handleVisibilityChange = () => {
-    onTabChange(!document.hidden);
+    // This counts visibility changes but doesn't block tab switching
+    if (document.hidden) {
+      onTabChange(false);
+    } else {
+      // When coming back, consider this a successful return
+      setTimeout(() => {
+        onTabChange(true);
+      }, 100);
+    }
   };
 
-  // Initial check
-  if (document.hidden) {
-    onTabChange(false);
-  }
-
-  // Add a flag to track if focus was lost due to a fullscreen change
+  // Initial check - no need to trigger warning on initial setup
   let isFullscreenChange = false;
   let lastFocusTime = Date.now();
   let lastBlurTime = 0;
+  let switchCount = 0;
+  const MAX_SWITCHES_WITHOUT_WARNING = 0; // This ensures every switch counts
   
   // Track fullscreen changes to avoid false positives
   const handleFullscreenChange = () => {
@@ -63,26 +67,32 @@ export const setupTabVisibilityTracking = (
     }, 500);
   };
 
-  // Setup event listeners with a slight delay to avoid false positives
+  // Setup event listeners
   document.addEventListener('visibilitychange', handleVisibilityChange);
   document.addEventListener('fullscreenchange', handleFullscreenChange);
   
-  // Use a more aggressive approach to detect tab switching
+  // Handle blur events (user switching away from the tab)
   const handleBlur = () => {
     if (!isFullscreenChange) {
       lastBlurTime = Date.now();
-      // If it's been more than 100ms since focus (not just a click outside the window)
+      // Only count as a switch if it's been a while since last focus
       if (lastBlurTime - lastFocusTime > 100) {
-        setTimeout(() => onTabChange(false), 50);
+        switchCount++;
+        // Allow a few quick switches before triggering the warning
+        if (switchCount > MAX_SWITCHES_WITHOUT_WARNING) {
+          setTimeout(() => onTabChange(false), 50);
+          switchCount = 0; // Reset after triggering
+        }
       }
     }
   };
   
+  // Handle focus events (user returning to the tab)
   const handleFocus = () => {
     lastFocusTime = Date.now();
-    // If it's been more than 300ms since blur (likely a tab switch, not just a click)
+    // If returning after a longer time (likely a tab switch)
     if (lastFocusTime - lastBlurTime > 300 && !isFullscreenChange) {
-      setTimeout(() => onTabChange(true), 50);
+      // We don't call onTabChange(true) here to avoid resetting the warning
     }
   };
   
@@ -90,14 +100,16 @@ export const setupTabVisibilityTracking = (
   window.addEventListener('focus', handleFocus);
   
   // Add mouse leave detection as an additional signal
-  document.addEventListener('mouseleave', () => {
+  const handleMouseLeave = () => {
     // Mouse leaving the document can be a sign of tab switching
     const now = Date.now();
     if (now - lastBlurTime > 500 && now - lastFocusTime > 500) {
       // Only count if we haven't already detected blur recently
       setTimeout(() => onTabChange(false), 100);
     }
-  });
+  };
+  
+  document.addEventListener('mouseleave', handleMouseLeave);
 
   // Return cleanup function
   return () => {
@@ -105,7 +117,7 @@ export const setupTabVisibilityTracking = (
     document.removeEventListener('fullscreenchange', handleFullscreenChange);
     window.removeEventListener('blur', handleBlur);
     window.removeEventListener('focus', handleFocus);
-    document.removeEventListener('mouseleave', () => {});
+    document.removeEventListener('mouseleave', handleMouseLeave);
   };
 };
 

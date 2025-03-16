@@ -50,7 +50,9 @@ const QuizHeader = ({
             <AlertTriangle className={`h-4 w-4 mr-1 ${tabSwitchWarnings >= 2 ? 'animate-ping opacity-70' : ''}`} />
             <span className="font-medium">Warnings: {tabSwitchWarnings}/3</span>
             {tabSwitchWarnings >= 2 && (
-              <span className="ml-1 text-xs font-bold">Final warning!</span>
+              <span className="ml-1 text-xs font-bold">
+                {tabSwitchWarnings === 3 ? 'Auto-submitting!' : 'Final warning!'}
+              </span>
             )}
           </div>
           <div className="bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200 flex items-center">

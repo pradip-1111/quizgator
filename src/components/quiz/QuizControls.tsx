@@ -71,9 +71,9 @@ const QuizControls = ({
         `}>
           <AlertTriangle className={`h-4 w-4 mr-2 ${tabSwitchWarnings >= 2 ? 'animate-bounce' : ''}`} />
           <span className="text-sm font-medium">
-            {tabSwitchWarnings === 1 && "Warning: First violation detected! Stay in the quiz."}
-            {tabSwitchWarnings === 2 && "Warning: One more violation will auto-submit your quiz!"}
-            {tabSwitchWarnings >= 3 && "Quiz being auto-submitted due to security violations!"}
+            {tabSwitchWarnings === 1 && "Warning: Tab switching detected. You may switch tabs, but 3 switches will auto-submit!"}
+            {tabSwitchWarnings === 2 && "Warning: One more tab switch will auto-submit your quiz!"}
+            {tabSwitchWarnings >= 3 && "Quiz being auto-submitted due to multiple tab switches!"}
           </span>
         </div>
       )}

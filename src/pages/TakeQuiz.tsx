@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +8,6 @@ import { Question, QuizData, QuizResult, QuizStatus } from '@/types/quiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 
-// Import missing component references
 import QuizHeader from '@/components/quiz/QuizHeader';
 import QuizControls from '@/components/quiz/QuizControls';
 import QuizProgress from '@/components/quiz/QuizProgress';
@@ -243,7 +241,10 @@ const TakeQuiz = () => {
                 description: "You've switched tabs multiple times. Your quiz has been automatically submitted.",
                 variant: "destructive",
               });
-              handleSubmitQuiz();
+              
+              setTimeout(() => {
+                handleSubmitQuiz();
+              }, 1500);
             }
             
             return newCount;
@@ -259,7 +260,7 @@ const TakeQuiz = () => {
         }
       };
     }
-  }, [started, toast]);
+  }, [started]);
   
   const generateSampleQuestions = (count: number): Question[] => {
     console.log(`Generating ${count} sample questions`);
@@ -439,7 +440,7 @@ const TakeQuiz = () => {
       .filter(q => q.required)
       .filter(q => !answers[q.id]);
     
-    if (unansweredRequired.length > 0 && !confirmed) {
+    if (unansweredRequired.length > 0 && !confirmed && tabSwitchWarnings < 3) {
       toast({
         title: "Warning",
         description: `You have ${unansweredRequired.length} unanswered required questions. Are you sure you want to submit?`,
