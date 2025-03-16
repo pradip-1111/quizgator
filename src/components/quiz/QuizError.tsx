@@ -28,6 +28,9 @@ const QuizError = ({
                              errorMessage.toLowerCase().includes('local storage') ||
                              errorMessage.toLowerCase().includes('no quizzes found');
   
+  const isQuizNotFoundError = errorMessage.toLowerCase().includes('not found') ||
+                              errorMessage.toLowerCase().includes('no quiz');
+  
   const handleRetry = () => {
     if (onRetry) {
       console.log("Retrying quiz load...");
@@ -87,7 +90,7 @@ const QuizError = ({
     <Card className="w-full max-w-lg mx-auto shadow-lg">
       <CardHeader className="pb-2">
         <CardTitle className="text-center text-xl text-destructive">
-          Quiz Loading Error
+          {isQuizNotFoundError ? "Quiz Not Found" : "Quiz Loading Error"}
         </CardTitle>
       </CardHeader>
       <CardContent className="py-6">
@@ -98,6 +101,14 @@ const QuizError = ({
               <AlertTitle>Connection Issue</AlertTitle>
               <AlertDescription>
                 There was a problem connecting to the server, but we found a locally stored version of this quiz.
+              </AlertDescription>
+            </Alert>
+          ) : isQuizNotFoundError ? (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Quiz Not Found</AlertTitle>
+              <AlertDescription>
+                {errorMessage || "The quiz you are looking for could not be found."}
               </AlertDescription>
             </Alert>
           ) : (
@@ -119,22 +130,45 @@ const QuizError = ({
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
             <h3 className="text-sm font-medium mb-2">Troubleshooting Tips:</h3>
             <ul className="text-sm space-y-2">
-              <li className="flex items-start">
-                <span className="mr-2 text-primary">•</span>
-                <span>Check that you're using the correct quiz link</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-primary">•</span>
-                <span>The quiz may have been deleted or is not available</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-primary">•</span>
-                <span>If the quiz was recently created, the creator may need to save it again</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-primary">•</span>
-                <span>Try clearing your browser cache and reloading the page</span>
-              </li>
+              {isQuizNotFoundError ? (
+                <>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>Make sure you're using the correct quiz link</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>Check if the quiz has been deleted or unpublished</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>If you're the quiz creator, try re-publishing the quiz</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>Return to the dashboard and select a valid quiz</span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>Check that you're using the correct quiz link</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>The quiz may have been deleted or is not available</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>If the quiz was recently created, the creator may need to save it again</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2 text-primary">•</span>
+                    <span>Try clearing your browser cache and reloading the page</span>
+                  </li>
+                </>
+              )}
               {isLocalStorageError && (
                 <li className="flex items-start text-destructive">
                   <span className="mr-2 text-destructive">•</span>
@@ -168,7 +202,7 @@ const QuizError = ({
           </Button>
         )}
         
-        {isLocalStorageError && (
+        {(isLocalStorageError || isQuizNotFoundError) && (
           <Button onClick={handleClearCache} variant="destructive" size="sm">
             <Trash2 className="mr-2 h-4 w-4" />
             Clear Cache

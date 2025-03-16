@@ -202,7 +202,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
                   usedLocalStorage = true;
                   console.log(`Found quiz in localStorage: ${quiz.title}`);
                 } else {
-                  throw new Error('Quiz not found in localStorage');
+                  throw new Error(`Quiz with ID ${quizId} not found in localStorage`);
                 }
               } catch (e) {
                 console.error('Error parsing quizzes from localStorage:', e);
@@ -212,23 +212,9 @@ export const useQuizLoader = (quizId: string | undefined) => {
               throw new Error('No quizzes found in localStorage');
             }
           } catch (localError) {
-            console.log(`LocalStorage error, creating fallback quiz: ${localError instanceof Error ? localError.message : 'Unknown error'}`);
+            console.log(`LocalStorage error: ${localError instanceof Error ? localError.message : 'Unknown error'}`);
             
-            setState(prev => ({ 
-              ...prev, 
-              loadingStage: 'fallback'
-            }));
-            
-            quiz = createDemoQuiz(quizId);
-            usedFallback = true;
-            
-            try {
-              const demoQuizzes = [quiz];
-              localStorage.setItem('quizzes', JSON.stringify(demoQuizzes));
-              console.log("Saved fallback quiz to localStorage");
-            } catch (e) {
-              console.error("Failed to save fallback quiz to localStorage:", e);
-            }
+            throw new Error(`Quiz with ID ${quizId} not found. Please make sure the quiz exists and try again.`);
           }
         } else {
           quiz = {
@@ -370,25 +356,8 @@ export const useQuizLoader = (quizId: string | undefined) => {
             }
           }
           
-          if (questions.length === 0 && !usedFallback) {
-            console.log("No questions found, creating demo questions");
-            setState(prev => ({ 
-              ...prev, 
-              loadingStage: 'fallback'
-            }));
-            
-            const demoQuiz = createDemoQuiz(quizId);
-            questions = demoQuiz.questions;
-            loadedFromFallback = true;
-            
-            if (quiz) {
-              quiz.title = demoQuiz.title;
-              quiz.description = demoQuiz.description;
-            }
-          }
-          
           if (questions.length === 0) {
-            throw new Error('No questions found for this quiz');
+            throw new Error(`No questions found for quiz ${quizId}. Please make sure the quiz has questions.`);
           }
         } catch (error) {
           console.error(`Error loading questions: ${error instanceof Error ? error.message : 'Unknown error'}`);

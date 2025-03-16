@@ -257,11 +257,16 @@ const TakeQuiz = () => {
           ? "Using locally stored quiz due to connection issues." 
           : undefined
       }
+      onRetry={retryLoading}
+      onClearCache={handleClearCache}
     />;
   }
   
   // Render error state with cache clearing
   if (quizStateError || !quiz) {
+    const isQuizNotFoundError = quizStateError?.toString().toLowerCase().includes('not found') ||
+                               quizStateError?.toString().toLowerCase().includes('no quiz');
+    
     return <QuizError 
       error={quizStateError} 
       onRetry={retryLoading} 
@@ -276,6 +281,17 @@ const TakeQuiz = () => {
     ...quiz,
     questions: questions && questions.length > 0 ? questions : (quiz.questions || [])
   };
+  
+  // Additional check to make sure we don't proceed with a quiz without questions
+  if (quizWithQuestions.questions.length === 0) {
+    return <QuizError 
+      error={"This quiz has no questions. Please contact the quiz creator."} 
+      onRetry={retryLoading} 
+      isRetryable={true} 
+      fallbackAvailable={false}
+      onClearCache={handleClearCache}
+    />;
+  }
   
   // Render the registration form before starting
   if (!started) {
