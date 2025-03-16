@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -44,12 +45,14 @@ const TakeQuiz = () => {
     getRemainingQuestionCount
   } = useQuizState();
   
+  // First try to load quiz directly from localStorage
   useEffect(() => {
     if (!quizId) return;
     
     console.log(`Attempting to load quiz with ID: ${quizId} directly from localStorage`);
     
     try {
+      // Try to get the quiz data directly from localStorage first
       const directQuizData = localStorage.getItem(`quiz_${quizId}`);
       
       if (directQuizData) {
@@ -58,10 +61,12 @@ const TakeQuiz = () => {
         
         setQuiz(parsedQuiz);
         
+        // Check if questions are included in the quiz data
         if (Array.isArray(parsedQuiz.questions) && parsedQuiz.questions.length > 0) {
           console.log(`Using ${parsedQuiz.questions.length} questions from direct quiz data`);
           setQuestions(parsedQuiz.questions);
         } else {
+          // Try to load questions separately from localStorage
           const questionsData = localStorage.getItem(`quiz_questions_${quizId}`);
           if (questionsData) {
             const parsedQuestions = JSON.parse(questionsData);
@@ -72,9 +77,17 @@ const TakeQuiz = () => {
           }
         }
         
+        // Set time limit
         setTimeLeft((parsedQuiz.timeLimit || parsedQuiz.duration) * 60);
         setQuizStateLoading(false);
         return;
+      }
+      
+      // Debug: List all localStorage keys to check what's available
+      console.log("LocalStorage keys:");
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        console.log(key);
       }
     } catch (error) {
       console.error("Error loading quiz directly from localStorage:", error);
@@ -83,6 +96,7 @@ const TakeQuiz = () => {
     console.log("No direct quiz found in localStorage, will use useQuizLoader");
   }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading]);
   
+  // Fallback to useQuizLoader if direct loading fails
   const { 
     quiz: loadedQuiz, 
     questions: loadedQuestions, 
@@ -93,12 +107,23 @@ const TakeQuiz = () => {
     fallbackActive
   } = useQuizLoader(quizId);
   
+  // Handle data from useQuizLoader
   useEffect(() => {
     if (loadedQuiz && !quiz) {
       console.log('Quiz loaded from useQuizLoader:', loadedQuiz.title);
       setQuiz(loadedQuiz);
       setQuestions(loadedQuestions);
       setTimeLeft((loadedQuiz.timeLimit || loadedQuiz.duration) * 60);
+      
+      // Save to localStorage for future direct access
+      try {
+        localStorage.setItem(`quiz_${quizId}`, JSON.stringify(loadedQuiz));
+        if (loadedQuestions && loadedQuestions.length > 0) {
+          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(loadedQuestions));
+        }
+      } catch (err) {
+        console.error("Failed to save quiz to localStorage:", err);
+      }
     }
     
     setQuizStateLoading(quizLoading);
@@ -107,7 +132,7 @@ const TakeQuiz = () => {
       console.error("Quiz load error:", quizLoadError);
       setQuizStateError(quizLoadError);
     }
-  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError, quiz, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setQuizStateError]);
+  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError, quiz, quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setQuizStateError]);
   
   const handleSubmitQuiz = () => {
     if (!quiz) return;
@@ -248,6 +273,30 @@ const TakeQuiz = () => {
     navigate('/');
   };
   
+  const handleDebugQuiz = () => {
+    console.log("Debugging quiz data:");
+    console.log("Quiz ID:", quizId);
+    console.log("All localStorage keys:");
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('quiz')) {
+        console.log(`Key: ${key}`);
+        try {
+          const value = localStorage.getItem(key);
+          console.log(`Value: ${value ? value.substring(0, 100) + '...' : 'null'}`);
+        } catch (e) {
+          console.log('Error accessing value');
+        }
+      }
+    }
+    
+    toast({
+      title: "Debug Information",
+      description: "Quiz debug info has been logged to the console (F12)",
+    });
+  };
+  
   if (quizStateLoading) {
     return <QuizLoading 
       cancelLoading={handleCancelLoading} 
@@ -273,6 +322,7 @@ const TakeQuiz = () => {
       isRetryable={true} 
       fallbackActive={fallbackActive}
       onClearCache={handleClearCache}
+      onDebug={handleDebugQuiz}
     />;
   }
   
@@ -288,6 +338,7 @@ const TakeQuiz = () => {
       isRetryable={true} 
       fallbackActive={false}
       onClearCache={handleClearCache}
+      onDebug={handleDebugQuiz}
     />;
   }
   
