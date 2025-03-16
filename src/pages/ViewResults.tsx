@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,12 @@ import QuizLoading from '@/components/quiz/QuizLoading';
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const { toast } = useToast();
-  const { results, quizTitle, loading, error } = useResultsLoader(quizId);
+  const { results, quizTitle, loading, error, hasResults } = useResultsLoader(quizId);
+
+  console.log("View Results Component - quizId:", quizId);
+  console.log("View Results Component - loading:", loading);
+  console.log("View Results Component - error:", error);
+  console.log("View Results Component - results:", results);
 
   const handleDownloadCSV = () => {
     try {
@@ -156,17 +161,30 @@ const ViewResults = () => {
       <div className="min-h-screen">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
+          <Link to="/admin-dashboard" className="mb-6 block">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
           <QuizLoading />
         </div>
       </div>
     );
   }
 
-  if (error && results.length === 0) {
+  // Show error page only if there's an error AND no results available
+  if (error && !hasResults) {
     return (
       <div className="min-h-screen">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
+          <Link to="/admin-dashboard" className="mb-6 block">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </Link>
           <QuizError error={error} />
         </div>
       </div>

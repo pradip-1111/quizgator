@@ -13,121 +13,128 @@ export function useResultsLoader(quizId: string | undefined) {
 
   useEffect(() => {
     const loadResults = async () => {
+      // Reset state at the beginning of each load attempt
       setLoading(true);
       setError(null);
       
-      try {
-        // Validate quiz ID
-        if (!quizId) {
-          throw new Error('Quiz ID is missing');
-        }
+      if (!quizId) {
+        console.error('No quiz ID provided');
+        setError('Quiz ID is missing');
+        setLoading(false);
+        return;
+      }
 
-        console.log(`Loading results for quiz ID: ${quizId}`);
-        
-        // First try local storage
-        const resultsKey = `quiz_results_${quizId}`;
-        const storedResults = localStorage.getItem(resultsKey);
-        let foundLocalResults = false;
-        
-        if (storedResults) {
-          try {
-            const parsedResults = JSON.parse(storedResults);
-            console.log(`Found ${parsedResults.length} results in localStorage`);
-            
-            if (parsedResults.length > 0) {
-              foundLocalResults = true;
-              setQuizTitle(parsedResults[0].quizTitle || 'Quiz Results');
-              
-              // Transform results for display
-              const studentResponses = parsedResults.map(result => ({
-                studentName: result.studentName,
-                studentId: result.studentId,
-                score: result.score,
-                totalPoints: result.totalPoints,
-                submittedAt: result.submittedAt,
-                percentageScore: result.totalPoints > 0 
-                  ? Math.round((result.score / result.totalPoints) * 100) 
-                  : 0,
-                securityViolations: result.securityViolations,
-                completed: result.completed
-              }));
-              
-              setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
-            }
-          } catch (parseError) {
-            console.error('Error parsing stored results:', parseError);
-          }
-        }
-        
-        // If no local results or we want to try to get more up-to-date data from Supabase
+      console.log(`Loading results for quiz ID: ${quizId}`);
+      
+      // First check local storage regardless of Supabase status
+      const resultsKey = `quiz_results_${quizId}`;
+      const storedResults = localStorage.getItem(resultsKey);
+      let foundLocalResults = false;
+      
+      if (storedResults) {
         try {
-          // Fetch quiz title first
-          const { data: quizData, error: quizError } = await supabase
-            .from('quizzes')
-            .select('title')
-            .eq('id', quizId)
-            .maybeSingle();
-
-          if (quizError) throw quizError;
+          const parsedResults = JSON.parse(storedResults);
+          console.log(`Found ${parsedResults.length} results in localStorage for key: ${resultsKey}`);
           
-          if (quizData) {
-            console.log('Found quiz in database:', quizData.title);
-            setQuizTitle(quizData.title);
-          } else if (!foundLocalResults) {
-            console.log('Quiz not found in database, using default title');
-            setQuizTitle('Quiz Results');
-          }
-
-          // Fetch quiz attempts
-          const { data: attemptsData, error: attemptsError } = await supabase
-            .from('quiz_attempts')
-            .select('id, student_name, student_id, score, total_points, submitted_at, security_violations, completed')
-            .eq('quiz_id', quizId)
-            .order('student_id');
-
-          if (attemptsError) throw attemptsError;
-          
-          if (attemptsData && attemptsData.length > 0) {
-            console.log(`Found ${attemptsData.length} attempts in database`);
+          if (parsedResults.length > 0) {
+            foundLocalResults = true;
+            setQuizTitle(parsedResults[0].quizTitle || 'Quiz Results');
             
-            // Transform data
-            const studentResponses = attemptsData.map(attempt => ({
-              studentName: attempt.student_name,
-              studentId: attempt.student_id,
-              score: attempt.score,
-              totalPoints: attempt.total_points,
-              submittedAt: attempt.submitted_at,
-              percentageScore: attempt.total_points > 0 
-                ? Math.round((attempt.score / attempt.total_points) * 100) 
+            // Transform results for display
+            const studentResponses = parsedResults.map(result => ({
+              studentName: result.studentName,
+              studentId: result.studentId,
+              score: result.score,
+              totalPoints: result.totalPoints,
+              submittedAt: result.submittedAt,
+              percentageScore: result.totalPoints > 0 
+                ? Math.round((result.score / result.totalPoints) * 100) 
                 : 0,
-              securityViolations: attempt.security_violations,
-              completed: attempt.completed
+              securityViolations: result.securityViolations,
+              completed: result.completed
             }));
             
             setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
-          } else if (!foundLocalResults) {
-            console.log('No results found anywhere');
-            setResults([]);
           }
-        } catch (supabaseError) {
-          console.error('Supabase error:', supabaseError);
-          if (!foundLocalResults) {
-            setError('Unable to load quiz data from the server. Using local data if available.');
-            toast({
-              title: "Connection Error",
-              description: "Unable to load from server. Using local data if available.",
-              variant: "destructive",
-            });
-          }
+        } catch (parseError) {
+          console.error('Error parsing stored results:', parseError);
         }
-      } catch (error) {
-        console.error('Error loading results:', error);
-        setError('Failed to load quiz results. Please try again.');
-        toast({
-          title: "Error",
-          description: "Failed to load quiz results. Please try again.",
-          variant: "destructive",
-        });
+      } else {
+        console.log(`No local storage results found for key: ${resultsKey}`);
+      }
+      
+      // Always try to get data from Supabase regardless of local results
+      try {
+        // Fetch quiz title first
+        const { data: quizData, error: quizError } = await supabase
+          .from('quizzes')
+          .select('title')
+          .eq('id', quizId)
+          .maybeSingle();
+
+        if (quizError) {
+          console.error('Error fetching quiz:', quizError);
+          if (!foundLocalResults) {
+            setError('Failed to retrieve quiz information');
+          }
+        } else if (quizData) {
+          console.log('Found quiz in database:', quizData.title);
+          setQuizTitle(quizData.title);
+        } else if (!foundLocalResults) {
+          console.log('Quiz not found in database');
+          setQuizTitle('Quiz Results');
+          // Only set error if we didn't find local results
+          setError('Quiz not found in database');
+        }
+
+        // Fetch quiz attempts even if the quiz title fetch failed
+        const { data: attemptsData, error: attemptsError } = await supabase
+          .from('quiz_attempts')
+          .select('id, student_name, student_id, score, total_points, submitted_at, security_violations, completed')
+          .eq('quiz_id', quizId)
+          .order('student_id');
+
+        if (attemptsError) {
+          console.error('Error fetching attempts:', attemptsError);
+          if (!foundLocalResults) {
+            setError(error => error ? `${error}. Also failed to load quiz attempts.` : 'Failed to load quiz attempts');
+          }
+        } else if (attemptsData && attemptsData.length > 0) {
+          console.log(`Found ${attemptsData.length} attempts in database`);
+          
+          // Transform data
+          const studentResponses = attemptsData.map(attempt => ({
+            studentName: attempt.student_name,
+            studentId: attempt.student_id,
+            score: attempt.score,
+            totalPoints: attempt.total_points,
+            submittedAt: attempt.submitted_at,
+            percentageScore: attempt.total_points > 0 
+              ? Math.round((attempt.score / attempt.total_points) * 100) 
+              : 0,
+            securityViolations: attempt.security_violations,
+            completed: attempt.completed
+          }));
+          
+          setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
+          // Clear any error if we successfully retrieved attempts
+          if (!quizError) {
+            setError(null);
+          }
+        } else if (!foundLocalResults) {
+          console.log('No attempts found in database');
+          setResults([]);
+        }
+      } catch (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        if (!foundLocalResults) {
+          setError('Unable to connect to the server. Using local data if available.');
+          toast({
+            title: "Connection Error",
+            description: "Unable to connect to server. Using local data if available.",
+            variant: "destructive",
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -136,5 +143,11 @@ export function useResultsLoader(quizId: string | undefined) {
     loadResults();
   }, [quizId, toast]);
 
-  return { results, quizTitle, loading, error };
+  return { 
+    results, 
+    quizTitle, 
+    loading, 
+    error,
+    hasResults: results.length > 0 
+  };
 }
