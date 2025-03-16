@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, forwardRef } from 'react';
 import { Question } from '@/types/quiz';
 import { Card, CardContent } from '@/components/ui/card';
 import QuizHeader from '@/components/quiz/QuizHeader';
@@ -25,7 +25,7 @@ interface QuizContainerProps {
   onAnswerChange: (questionId: string, value: any) => void;
 }
 
-const QuizContainer: React.FC<QuizContainerProps> = ({
+const QuizContainer = forwardRef<HTMLDivElement, QuizContainerProps>(({
   quizTitle,
   studentName,
   studentRollNumber,
@@ -40,8 +40,7 @@ const QuizContainer: React.FC<QuizContainerProps> = ({
   onSubmit,
   onQuestionSelect,
   onAnswerChange
-}) => {
-  const quizContainerRef = useRef<HTMLDivElement>(null);
+}, ref) => {
   const isLastQuestion = currentQuestion === totalQuestions - 1;
   const remainingQuestions = questions.filter(q => !answers[q.id]).length;
   
@@ -51,7 +50,7 @@ const QuizContainer: React.FC<QuizContainerProps> = ({
     currentQuestion < questions.length;
   
   return (
-    <div ref={quizContainerRef} className="min-h-screen bg-background flex flex-col animate-fade-in fullscreen-mode">
+    <div ref={ref} className="min-h-screen bg-background flex flex-col animate-fade-in fullscreen-mode">
       <QuizHeader
         quizTitle={quizTitle}
         studentName={studentName}
@@ -100,6 +99,8 @@ const QuizContainer: React.FC<QuizContainerProps> = ({
       />
     </div>
   );
-};
+});
+
+QuizContainer.displayName = 'QuizContainer';
 
 export default QuizContainer;
