@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ interface QuizErrorProps {
   error: Error | string | null;
   onRetry?: () => void;
   isRetryable?: boolean;
-  fallbackAvailable?: boolean;
+  fallbackActive?: boolean;
   onClearCache?: () => void;
 }
 
@@ -19,7 +18,7 @@ const QuizError = ({
   error, 
   onRetry, 
   isRetryable = false,
-  fallbackAvailable = false,
+  fallbackActive = false,
   onClearCache
 }: QuizErrorProps) => {
   const { toast } = useToast();
@@ -95,7 +94,7 @@ const QuizError = ({
       </CardHeader>
       <CardContent className="py-6">
         <div className="space-y-4">
-          {fallbackAvailable ? (
+          {fallbackActive ? (
             <Alert variant="default" className="bg-yellow-50 border-yellow-200 text-yellow-800">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Connection Issue</AlertTitle>
@@ -121,7 +120,7 @@ const QuizError = ({
             </Alert>
           )}
           
-          {fallbackAvailable && (
+          {fallbackActive && (
             <p className="text-sm text-center text-muted-foreground">
               The quiz will continue with locally stored questions.
             </p>
