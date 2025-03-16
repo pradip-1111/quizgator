@@ -34,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending quiz confirmation email to ${studentEmail} for ${studentName}`);
 
     // Store in the email_notifications table
-    const { error: dbError } = await fetch(
+    const { data: insertData, error: dbError } = await fetch(
       `${Deno.env.get("SUPABASE_URL")}/rest/v1/email_notifications`,
       {
         method: "POST",
@@ -57,6 +57,8 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error storing email notification:", dbError);
       throw new Error("Failed to store email notification");
     }
+    
+    console.log("Email notification stored:", insertData);
     
     // Send the email
     const emailResponse = await resend.emails.send({
@@ -88,33 +90,35 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("Email sending response:", emailResponse);
 
-    // Update the notification record to mark email as sent
-    if (emailResponse.id) {
-      const { error: updateError } = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/rest/v1/email_notifications?id=eq.${emailResponse.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-            "Prefer": "return=minimal",
-          },
-          body: JSON.stringify({
-            email_sent: true,
-            email_sent_at: new Date().toISOString(),
-          }),
-        }
-      ).then(res => res.json());
-
-      if (updateError) {
-        console.error("Error updating email notification:", updateError);
-      }
+    if (!emailResponse.id) {
+      throw new Error("Failed to send email");
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    // Update the notification record to mark email as sent
+    const { error: updateError } = await fetch(
+      `${Deno.env.get("SUPABASE_URL")}/rest/v1/email_notifications?id=eq.${insertData?.id || ""}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify({
+          email_sent: true,
+          email_sent_at: new Date().toISOString(),
+        }),
+      }
+    ).then(res => res.json());
+
+    if (updateError) {
+      console.error("Error updating email notification:", updateError);
+    }
+
+    return new Response(JSON.stringify({ success: true, emailId: emailResponse.id }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
