@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -96,7 +95,6 @@ export function useQuizCreator() {
       return;
     }
     
-    // Ensure user.id is a valid UUID
     const userId = isValidUuid(user.id) ? user.id : generateUuid();
     console.log("User ID for quiz:", userId);
     
@@ -135,7 +133,7 @@ export function useQuizCreator() {
           title: quizTitle,
           description: quizDescription,
           time_limit: parseInt(timeLimit),
-          created_by: userId  // Use our validated userId instead of user.id directly
+          created_by: userId
         })
         .select();
       
@@ -211,7 +209,7 @@ export function useQuizCreator() {
       
       const newQuiz: Quiz = {
         id: quizId,
-        userId: userId,  // Use our validated userId here too
+        userId: userId,
         title: quizTitle,
         description: quizDescription,
         questions: questions.length,
