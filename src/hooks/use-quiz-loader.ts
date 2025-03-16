@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Question, QuizData } from '@/types/quiz';
-import { generateUUID } from '@/utils/uuid-utils';
+import { generateUuid } from '@/utils/uuid-utils';
 
 interface QuizLoaderState {
   quiz: QuizData | null;
@@ -15,7 +14,6 @@ interface QuizLoaderState {
   fallbackActive?: boolean;
 }
 
-// Create a demo quiz as a fallback when nothing is available
 const createDemoQuiz = (quizId: string): QuizData => {
   console.log("Creating demo fallback quiz with ID:", quizId);
   return {
@@ -67,18 +65,15 @@ const createDemoQuiz = (quizId: string): QuizData => {
   };
 };
 
-// Helper function to clear quiz cache
 export const clearQuizCache = (quizId?: string) => {
   console.log("Clearing quiz cache", quizId ? `for quiz ${quizId}` : "for all quizzes");
   
   try {
     if (quizId) {
-      // Clear specific quiz data
       localStorage.removeItem(`quiz_questions_${quizId}`);
       localStorage.removeItem(`quiz_creator_questions_${quizId}`);
       localStorage.removeItem(`quiz_results_${quizId}`);
       
-      // Update quizzes array to remove this quiz
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
         try {
@@ -90,7 +85,6 @@ export const clearQuizCache = (quizId?: string) => {
         }
       }
     } else {
-      // Clear all quiz-related data
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -118,10 +112,9 @@ export const useQuizLoader = (quizId: string | undefined) => {
     stage: 'idle',
     loadingStage: 'initial',
     fallbackActive: false,
-    retryLoading: () => {} // Will be properly defined below
+    retryLoading: () => {}
   });
 
-  // Function to retry loading the quiz
   const retryLoading = () => {
     console.log("Retrying quiz loading for ID:", quizId);
     setState(prev => ({
@@ -134,7 +127,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
     }));
   };
 
-  // Make sure retryLoading is properly attached to the state
   useEffect(() => {
     setState(prev => ({
       ...prev,
@@ -164,7 +156,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
       }));
 
       try {
-        // Try to load from Supabase first
         const { data: quizData, error } = await supabase
           .from('quizzes')
           .select('title, description, time_limit, created_at')
@@ -182,7 +173,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
             loadingStage: 'local' 
           }));
           
-          // Try to get quiz from localStorage
           try {
             const storedQuizzes = localStorage.getItem('quizzes');
             if (storedQuizzes) {
@@ -229,11 +219,9 @@ export const useQuizLoader = (quizId: string | undefined) => {
               loadingStage: 'fallback'
             }));
             
-            // Create a demo quiz as fallback
             quiz = createDemoQuiz(quizId);
             usedFallback = true;
             
-            // Save this fallback quiz to localStorage for future use
             try {
               const demoQuizzes = [quiz];
               localStorage.setItem('quizzes', JSON.stringify(demoQuizzes));
@@ -243,7 +231,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
             }
           }
         } else {
-          // Format the Supabase quiz data to match our app's format
           quiz = {
             id: quizId,
             title: quizData.title || 'Untitled Quiz',
@@ -267,7 +254,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
           loadingStage: usedFallback ? 'fallback' : (usedLocalStorage ? 'local' : 'database')
         }));
         
-        // Now load questions
         await loadQuestions(quizId, quiz, usedLocalStorage, usedFallback);
       } catch (error) {
         console.error(`Error loading quiz: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -287,12 +273,10 @@ export const useQuizLoader = (quizId: string | undefined) => {
       let questions: Question[] = [];
       let loadedFromFallback = usedLocalStorage || usedFallback;
       
-      // If the fallback quiz was used, it already has questions
       if (usedFallback && quiz && Array.isArray(quiz.questions) && quiz.questions.length > 0) {
         console.log(`Fallback quiz already contains ${quiz.questions.length} questions`);
         questions = ensureValidQuestionTypes(quiz.questions);
       }
-      // Check if the quiz object already contains questions from localStorage
       else if (quiz && Array.isArray(quiz.questions) && quiz.questions.length > 0) {
         console.log(`Quiz object already contains ${quiz.questions.length} questions`);
         questions = ensureValidQuestionTypes(quiz.questions);
@@ -300,7 +284,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
       } else {
         try {
           if (!usedLocalStorage && !usedFallback) {
-            // First, try to load from Supabase
             const { data: questionsData, error: questionsError } = await supabase
               .from('questions')
               .select(`
@@ -317,7 +300,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
                 loadingStage: 'local' 
               }));
             } else if (questionsData && questionsData.length > 0) {
-              // Format Supabase question data to match our app's format
               questions = questionsData.map(q => ({
                 id: q.id,
                 text: q.text,
@@ -334,7 +316,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
             }
           }
           
-          // If no questions found in Supabase, try localStorage
           if (questions.length === 0) {
             setState(prev => ({ 
               ...prev, 
@@ -342,7 +323,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
               fallbackActive: true
             }));
             
-            // Try all possible storage keys
             const possibleKeys = [
               `quiz_questions_${quizId}`,
               `quiz_creator_questions_${quizId}`
@@ -366,9 +346,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
             }
           }
           
-          // If still no questions, try to look in quiz object
           if (questions.length === 0) {
-            // Try to find quizzes in localStorage to check if any contain the full questions
             const storedQuizzes = localStorage.getItem('quizzes');
             if (storedQuizzes) {
               try {
@@ -380,10 +358,8 @@ export const useQuizLoader = (quizId: string | undefined) => {
                   console.log(`Found ${questions.length} questions in full quiz object`);
                   loadedFromFallback = true;
                   
-                  // Save these questions to localStorage for future use
                   localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
                   
-                  // Update the quiz object to include questions
                   if (quiz && !quiz.questions) {
                     quiz.questions = questions;
                   }
@@ -394,7 +370,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
             }
           }
           
-          // Final fallback - if still no questions, create demo ones
           if (questions.length === 0 && !usedFallback) {
             console.log("No questions found, creating demo questions");
             setState(prev => ({ 
@@ -402,12 +377,10 @@ export const useQuizLoader = (quizId: string | undefined) => {
               loadingStage: 'fallback'
             }));
             
-            // Create demo questions
             const demoQuiz = createDemoQuiz(quizId);
             questions = demoQuiz.questions;
             loadedFromFallback = true;
             
-            // Update our quiz with demo title and description if it was loaded from database but has no questions
             if (quiz) {
               quiz.title = demoQuiz.title;
               quiz.description = demoQuiz.description;
@@ -431,12 +404,10 @@ export const useQuizLoader = (quizId: string | undefined) => {
         }
       }
       
-      // Save loaded questions to localStorage for future access
       try {
         localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
         console.log(`Saved ${questions.length} questions to localStorage for future access`);
         
-        // Also update the quiz object in localStorage to include questions
         const storedQuizzes = localStorage.getItem('quizzes');
         if (storedQuizzes) {
           try {
@@ -451,7 +422,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
           } catch (e) {
             console.error('Error updating quizzes array:', e);
             
-            // If parsing fails, create a new array with just this quiz
             const newQuizzes = [{
               ...quiz,
               questions
@@ -459,7 +429,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
             localStorage.setItem('quizzes', JSON.stringify(newQuizzes));
           }
         } else {
-          // If no quizzes array yet, create one
           const newQuizzes = [{
             ...quiz,
             questions
@@ -470,12 +439,10 @@ export const useQuizLoader = (quizId: string | undefined) => {
         console.error('Error saving questions to localStorage:', e);
       }
 
-      // Ensure the quiz object includes the questions
       if (quiz && (!quiz.questions || quiz.questions.length === 0)) {
         quiz.questions = questions;
       }
 
-      // Successfully loaded everything
       setState({ 
         quiz, 
         questions, 
@@ -494,7 +461,6 @@ export const useQuizLoader = (quizId: string | undefined) => {
   return state;
 };
 
-// Helper function to ensure question type is valid
 function ensureValidQuestionType(type: string): "multiple-choice" | "true-false" | "short-answer" | "long-answer" {
   const validTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
   return validTypes.includes(type) 
@@ -502,16 +468,15 @@ function ensureValidQuestionType(type: string): "multiple-choice" | "true-false"
     : "multiple-choice";
 }
 
-// Helper function to validate a full question array
 function ensureValidQuestionTypes(questions: any[]): Question[] {
   return questions.map(q => ({
     ...q,
-    id: q.id || `question-${generateUUID()}`,
+    id: q.id || `question-${generateUuid()}`,
     text: q.text || 'Unknown question',
     type: ensureValidQuestionType(q.type),
     options: Array.isArray(q.options) ? q.options.map((o: any) => ({
       ...o,
-      id: o.id || `option-${generateUUID()}`,
+      id: o.id || `option-${generateUuid()}`,
       text: o.text || '',
       isCorrect: Boolean(o.isCorrect)
     })) : [],
