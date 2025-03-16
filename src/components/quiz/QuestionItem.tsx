@@ -23,9 +23,9 @@ const QuestionItem = ({
   answer,
   onAnswerChange,
 }: QuestionItemProps) => {
-  // Validate question object
-  if (!question || !question.id || !question.text) {
-    console.error("Invalid question object:", question);
+  // Perform more thorough validation of the question object
+  if (!question || typeof question !== 'object') {
+    console.error("Question is null, undefined, or not an object:", question);
     return (
       <Card className="mb-8 shadow-subtle border border-border">
         <CardHeader className="pb-2">
@@ -40,8 +40,44 @@ const QuestionItem = ({
     );
   }
 
-  // Determine question type with fallback
-  const questionType = question.type || 'multiple-choice';
+  // Validate required question properties
+  if (!question.id || !question.text) {
+    console.error("Question is missing required properties:", question);
+    return (
+      <Card className="mb-8 shadow-subtle border border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">
+            Question is incomplete
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">This question is missing required information.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Make sure options is an array for multiple-choice and true-false questions
+  if ((question.type === 'multiple-choice' || question.type === 'true-false') && 
+      (!Array.isArray(question.options) || question.options.length === 0)) {
+    console.error("Question options are invalid:", question.options);
+    
+    // Create default options for true-false questions
+    if (question.type === 'true-false') {
+      question.options = [
+        { id: 'true', text: 'True', isCorrect: false },
+        { id: 'false', text: 'False', isCorrect: false }
+      ];
+    }
+  }
+
+  // Determine question type with fallback and validation
+  const questionType = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'].includes(question.type)
+    ? question.type
+    : 'multiple-choice';
+  
+  // Ensure points is a number
+  const points = typeof question.points === 'number' ? question.points : 1;
   
   return (
     <>
@@ -50,7 +86,7 @@ const QuestionItem = ({
           Question {questionNumber} of {totalQuestions}
         </Badge>
         <Badge variant="outline">
-          {question.points} points
+          {points} {points === 1 ? 'point' : 'points'}
           {question.required && " • Required"}
         </Badge>
       </div>
@@ -68,12 +104,12 @@ const QuestionItem = ({
               onValueChange={(value) => onAnswerChange(question.id, value)}
               className="space-y-3"
             >
-              {question.options && question.options.length > 0 ? (
+              {Array.isArray(question.options) && question.options.length > 0 ? (
                 question.options.map((option) => (
                   <div key={option.id} className="flex items-center space-x-2">
                     <RadioGroupItem value={option.id} id={`option-${question.id}-${option.id}`} />
                     <Label htmlFor={`option-${question.id}-${option.id}`} className="cursor-pointer">
-                      {option.text}
+                      {option.text || `Option ${option.id}`}
                     </Label>
                   </div>
                 ))
@@ -89,7 +125,7 @@ const QuestionItem = ({
               onValueChange={(value) => onAnswerChange(question.id, value)}
               className="space-y-3"
             >
-              {question.options && question.options.length > 0 ? (
+              {Array.isArray(question.options) && question.options.length > 0 ? (
                 question.options.map((option) => (
                   <div key={option.id} className="flex items-center space-x-2">
                     <RadioGroupItem value={option.id} id={`option-${question.id}-${option.id}`} />
