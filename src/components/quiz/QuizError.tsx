@@ -36,19 +36,47 @@ const QuizError = ({
   
   const handleClearAllCache = () => {
     // First remove all demo quizzes
+    let demoQuizCount = 0;
+    let totalQuizCount = 0;
+    
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.includes('demo') || key.includes('Demo'))) {
-        localStorage.removeItem(key);
+      if (key) {
+        if (key.includes('quiz') || key.includes('Quiz')) {
+          totalQuizCount++;
+          
+          if (key.includes('demo') || key.includes('Demo')) {
+            localStorage.removeItem(key);
+            demoQuizCount++;
+          }
+        }
       }
     }
     
     // Then clear all quiz cache
     clearQuizCache();
     
+    // Also update the quizzes array to remove demo quizzes
+    const storedQuizzesJson = localStorage.getItem('quizzes');
+    if (storedQuizzesJson) {
+      try {
+        const quizzes = JSON.parse(storedQuizzesJson);
+        if (Array.isArray(quizzes)) {
+          const filteredQuizzes = quizzes.filter((q: any) => {
+            const title = (q.title || '').toLowerCase();
+            const desc = (q.description || '').toLowerCase();
+            return !title.includes('demo') && !desc.includes('demo');
+          });
+          localStorage.setItem('quizzes', JSON.stringify(filteredQuizzes));
+        }
+      } catch (e) {
+        console.error('Error filtering demo quizzes:', e);
+      }
+    }
+    
     toast({
       title: "Cache Cleared",
-      description: "All quiz data has been cleared from your browser. Returning to dashboard.",
+      description: `Cleared ${demoQuizCount} demo quiz items out of ${totalQuizCount} total quiz items. Returning to dashboard.`,
       duration: 3000
     });
     

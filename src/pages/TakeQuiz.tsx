@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -176,15 +175,19 @@ const TakeQuiz = () => {
     try {
       exitFullscreen();
       
+      // Save the quiz ID before submission to prevent it from being lost
+      const currentQuizId = quizId || '';
+      const currentQuizTitle = quiz.title || 'Quiz';
+      
       submitQuiz(
-        quizId || '', 
+        currentQuizId, 
         quiz, 
         answers, 
         name, 
         rollNumber, 
         email
       ).then(result => {
-        sendConfirmationEmail(quizId || '', quiz.title, result, user?.email || email)
+        sendConfirmationEmail(currentQuizId, currentQuizTitle, result, user?.email || email)
           .then(() => {
             toast({
               title: "Confirmation Email Sent",
@@ -201,6 +204,7 @@ const TakeQuiz = () => {
         description: "Your answers have been recorded successfully.",
       });
       
+      // Don't clear the quiz data immediately
       navigate('/quiz-complete');
     } catch (error) {
       console.error('Error submitting quiz:', error);
@@ -285,16 +289,9 @@ const TakeQuiz = () => {
     if (quizId) {
       console.log(`Clearing cache for quiz ID: ${quizId}`);
       
-      // Thorough cache clearing - remove ALL quiz data from localStorage
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.includes('quiz') || key.includes('Quiz'))) {
-          console.log(`Clearing: ${key}`);
-          localStorage.removeItem(key);
-        }
-      }
-      
-      clearQuizCache();
+      // Careful cache clearing - only remove cache for this quiz, not all quizzes
+      localStorage.removeItem(`quiz_${quizId}`);
+      localStorage.removeItem(`quiz_questions_${quizId}`);
       
       toast({
         title: "Cache Cleared",

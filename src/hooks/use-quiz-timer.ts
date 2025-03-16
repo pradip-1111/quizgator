@@ -15,6 +15,7 @@ export function useQuizTimer(
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
+            // Submit the quiz when time runs out without affecting link validity
             handleSubmitQuiz();
             return 0;
           }
@@ -24,7 +25,11 @@ export function useQuizTimer(
       
       timerRef.current = timer as unknown as number;
       
-      return () => clearInterval(timer);
+      return () => {
+        if (timer) {
+          clearInterval(timer);
+        }
+      };
     }
   }, [started, timeLeft, setTimeLeft, handleSubmitQuiz]);
   
