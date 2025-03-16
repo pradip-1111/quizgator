@@ -27,7 +27,65 @@ export function useQuizLoader(quizId: string | undefined) {
     try {
       console.log(`Fetching quiz with ID: ${quizId}`);
       
-      // First check for creator questions (highest priority)
+      // First check for quiz data in local storage to avoid showing demo content
+      const storedQuizzesString = localStorage.getItem('quizzes');
+      if (storedQuizzesString) {
+        const storedQuizzes = JSON.parse(storedQuizzesString);
+        const matchedQuiz = storedQuizzes.find((q: any) => q.id === quizId);
+        
+        if (matchedQuiz) {
+          console.log('Found matching quiz in localStorage:', matchedQuiz.title);
+          
+          // Check for creator questions (highest priority)
+          const creatorStorageKey = `quiz_creator_questions_${quizId}`;
+          const creatorQuestions = localStorage.getItem(creatorStorageKey);
+          
+          if (creatorQuestions) {
+            try {
+              const parsedQuestions = JSON.parse(creatorQuestions);
+              if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+                console.log('Using creator questions for quiz:', parsedQuestions.length);
+                
+                const fullQuiz: QuizData = {
+                  id: matchedQuiz.id,
+                  title: matchedQuiz.title,
+                  description: matchedQuiz.description,
+                  timeLimit: matchedQuiz.duration || 30,
+                  questions: parsedQuestions
+                };
+                
+                setQuiz(fullQuiz);
+                setQuestions(parsedQuestions);
+                setLoading(false);
+                return;
+              }
+            } catch (e) {
+              console.error('Error parsing creator questions:', e);
+            }
+          } else {
+            // If no creator questions but we have the quiz in localStorage,
+            // look for questions in the quiz object
+            if (matchedQuiz.questions && Array.isArray(matchedQuiz.questions)) {
+              console.log('Using questions from local quiz object:', matchedQuiz.questions.length);
+              
+              const fullQuiz: QuizData = {
+                id: matchedQuiz.id,
+                title: matchedQuiz.title,
+                description: matchedQuiz.description,
+                timeLimit: matchedQuiz.duration || 30,
+                questions: matchedQuiz.questions
+              };
+              
+              setQuiz(fullQuiz);
+              setQuestions(matchedQuiz.questions);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+      }
+      
+      // Check for creator questions (highest priority)
       const creatorStorageKey = `quiz_creator_questions_${quizId}`;
       const creatorQuestions = localStorage.getItem(creatorStorageKey);
       
@@ -93,6 +151,35 @@ export function useQuizLoader(quizId: string | undefined) {
             console.log('Creating quiz from stored questions');
             setFallbackActive(true);
             
+            // See if we have a matching quiz in local storage quizzes array
+            const storedQuizzesStr = localStorage.getItem('quizzes');
+            if (storedQuizzesStr) {
+              try {
+                const localQuizzes = JSON.parse(storedQuizzesStr);
+                const matchedLocalQuiz = localQuizzes.find((q: any) => q.id === quizId);
+                
+                if (matchedLocalQuiz) {
+                  console.log('Found matching quiz in localStorage quizzes array');
+                  
+                  const fullQuiz: QuizData = {
+                    id: quizId,
+                    title: matchedLocalQuiz.title,
+                    description: matchedLocalQuiz.description,
+                    timeLimit: matchedLocalQuiz.duration || 30,
+                    questions: parsedQuestions
+                  };
+                  
+                  setQuiz(fullQuiz);
+                  setQuestions(parsedQuestions);
+                  setLoading(false);
+                  return;
+                }
+              } catch (err) {
+                console.error('Error parsing stored quizzes:', err);
+              }
+            }
+            
+            // If we didn't find a matching quiz in local storage quizzes array, use the questions only
             const mockQuiz: QuizData = {
               id: quizId,
               title: 'Your Quiz',
@@ -108,7 +195,7 @@ export function useQuizLoader(quizId: string | undefined) {
           }
         }
         
-        // If no stored questions are available, create a demo quiz
+        // If no stored questions are available, create a demo quiz - only as last resort
         console.log('No stored questions found, creating demo quiz');
         setLoadingStage('demo');
         
@@ -351,6 +438,35 @@ export function useQuizLoader(quizId: string | undefined) {
               console.log(`Error occurred, but using ${storageKey} as fallback`);
               setFallbackActive(true);
               
+              // Check if we have a matching quiz in local storage quizzes array
+              const storedQuizzesStr = localStorage.getItem('quizzes');
+              if (storedQuizzesStr) {
+                try {
+                  const localQuizzes = JSON.parse(storedQuizzesStr);
+                  const matchedLocalQuiz = localQuizzes.find((q: any) => q.id === quizId);
+                  
+                  if (matchedLocalQuiz) {
+                    console.log('Found matching quiz in localStorage quizzes array');
+                    
+                    const fullQuiz: QuizData = {
+                      id: quizId,
+                      title: matchedLocalQuiz.title,
+                      description: matchedLocalQuiz.description,
+                      timeLimit: matchedLocalQuiz.duration || 30,
+                      questions: parsedQuestions
+                    };
+                    
+                    setQuiz(fullQuiz);
+                    setQuestions(parsedQuestions);
+                    foundFallback = true;
+                    break;
+                  }
+                } catch (err) {
+                  console.error('Error parsing stored quizzes:', err);
+                }
+              }
+              
+              // If no matching quiz found, use questions with generic title
               const fallbackQuiz: QuizData = {
                 id: quizId,
                 title: 'Your Quiz',

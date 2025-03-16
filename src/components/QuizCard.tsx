@@ -43,6 +43,17 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
 
   // Create a function to handle the copy link action
   const handleCopyLink = () => {
+    // Save current quiz to localStorage as full quiz object
+    const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+    const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
+    
+    if (existingQuizIndex === -1) {
+      // If not already in localStorage, add it
+      quizzes.push(quiz);
+      localStorage.setItem('quizzes', JSON.stringify(quizzes));
+      console.log(`Added quiz to localStorage: ${quiz.title}`);
+    }
+    
     // Get the full URL for the quiz
     const quizLink = getQuizUrl();
     
@@ -69,8 +80,17 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
 
   // Navigate to take quiz page
   const handleOpenQuiz = () => {
-    // Instead of clearing existing quiz data, we want to ensure quiz creator questions
-    // are preserved and used when opening the quiz
+    // Save current quiz to localStorage as full quiz object
+    const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+    const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
+    
+    if (existingQuizIndex === -1) {
+      // If not already in localStorage, add it
+      quizzes.push(quiz);
+      localStorage.setItem('quizzes', JSON.stringify(quizzes));
+      console.log(`Added quiz to localStorage before opening: ${quiz.title}`);
+    }
+    
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
     
     // Check if we have creator questions data and ensure it's accessible for the quiz loader

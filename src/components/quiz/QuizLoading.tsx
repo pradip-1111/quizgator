@@ -20,7 +20,7 @@ const QuizLoading = ({ cancelLoading, message, loadingStage = 'initial' }: QuizL
       case 'local':
         return "Loading your quiz from local storage...";
       case 'demo':
-        return "Preparing demo quiz content...";
+        return "Preparing quiz content...";
       case 'initial':
       default:
         return "Loading quiz data...";
