@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -53,7 +52,6 @@ export function useQuizCreator() {
   };
 
   const handleUpdateQuestion = (updatedQuestion: Question) => {
-    // Create a deep copy and sanitize all UUIDs in the question
     const safeQuestion = sanitizeUuidsInObject({
       ...updatedQuestion,
       id: ensureValidUuid(updatedQuestion.id),
@@ -112,12 +110,10 @@ export function useQuizCreator() {
     try {
       console.log("Starting quiz save process");
       
-      // Generate a fresh UUID for the quiz
       const quizId = generateUuid();
       console.log("Quiz ID generated:", quizId);
       
-      // Deep sanitize all questions before saving to ensure all UUIDs are valid
-      const sanitizedQuestions = questions.map((question, index) => {
+      const sanitizedQuestions = questions.map(question => {
         return sanitizeUuidsInObject({
           ...question,
           id: ensureValidUuid(question.id),
@@ -127,7 +123,6 @@ export function useQuizCreator() {
       
       console.log("Sanitized questions:", JSON.stringify(sanitizedQuestions, null, 2));
       
-      // Insert the quiz
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .insert({
@@ -146,14 +141,12 @@ export function useQuizCreator() {
       
       console.log("Quiz saved successfully:", quizData);
       
-      // Save questions one by one with carefully validated UUIDs
       for (let i = 0; i < sanitizedQuestions.length; i++) {
         const question = sanitizedQuestions[i];
         const questionId = question.id;
         
         console.log(`Saving question ${i+1}/${sanitizedQuestions.length} with ID ${questionId}`);
         
-        // Final validation before insert
         if (!isValidUuid(questionId)) {
           console.error(`Invalid question ID detected: ${questionId}`);
           throw new Error(`Invalid question ID format detected: ${questionId}`);
@@ -176,14 +169,11 @@ export function useQuizCreator() {
           throw new Error(`Failed to save question ${i+1}: ${questionError.message}`);
         }
         
-        // Save all options for the question if they exist
         if (question.options && question.options.length > 0) {
-          // Prepare option data with carefully validated UUIDs
           const optionsToInsert = question.options.map((opt, index) => {
             const optionId = ensureValidUuid(opt.id);
             console.log(`Option ${index} ID: ${optionId} for question ${questionId}`);
             
-            // Final check
             if (!isValidUuid(optionId)) {
               throw new Error(`Invalid option ID format: ${optionId}`);
             }
@@ -199,7 +189,6 @@ export function useQuizCreator() {
           
           console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
           
-          // Log each option before insert for debugging
           optionsToInsert.forEach((opt, idx) => {
             console.log(`Option ${idx} to insert:`, JSON.stringify(opt));
           });
@@ -215,7 +204,6 @@ export function useQuizCreator() {
         }
       }
       
-      // For backward compatibility, also save to localStorage
       const newQuiz: Quiz = {
         id: quizId,
         userId: user.id,
