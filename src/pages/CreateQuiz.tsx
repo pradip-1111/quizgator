@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -80,32 +79,7 @@ const CreateQuiz = () => {
       return;
     }
 
-    toast({
-      title: "Draft saved",
-      description: "Your quiz has been saved as a draft",
-    });
-    
-    // Create a new quiz object for the draft
-    if (user) {
-      const newQuiz: Quiz = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        title: quizTitle,
-        description: quizDescription,
-        questions: questions.length,
-        duration: parseInt(timeLimit),
-        created: new Date().toISOString(),
-        attempts: 0,
-        status: 'draft'
-      };
-      
-      // In a real app, this would save to API/database
-      // For now we'll store in localStorage to persist between page refreshes
-      const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-      localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
-    }
-    
-    navigate('/admin-dashboard');
+    saveQuizWithQuestions('draft');
   };
 
   const handlePublishQuiz = () => {
@@ -127,10 +101,15 @@ const CreateQuiz = () => {
       return;
     }
 
+    saveQuizWithQuestions('active');
+  };
+  
+  const saveQuizWithQuestions = (status: 'draft' | 'active') => {
     if (user) {
       // Create a new quiz object
+      const quizId = crypto.randomUUID();
       const newQuiz: Quiz = {
-        id: crypto.randomUUID(),
+        id: quizId,
         userId: user.id,
         title: quizTitle,
         description: quizDescription,
@@ -138,24 +117,33 @@ const CreateQuiz = () => {
         duration: parseInt(timeLimit),
         created: new Date().toISOString(),
         attempts: 0,
-        status: 'active'
+        status: status
       };
       
-      // In a real app, this would publish to API/database
-      // For now we'll store in localStorage to persist between page refreshes
+      // Save the quiz metadata
       const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
       localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
       
+      // IMPORTANT: Save the actual questions with the quiz ID
+      // This is the key fix - storing questions with a consistent key pattern
+      const questionsKey = `quiz_creator_questions_${quizId}`;
+      localStorage.setItem(questionsKey, JSON.stringify(questions));
+      
+      // Also save to the student-facing questions store for consistency
+      localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
+      
       toast({
-        title: "Quiz published",
-        description: "Your quiz is now live and ready to share",
+        title: status === 'active' ? "Quiz published" : "Draft saved",
+        description: status === 'active' 
+          ? "Your quiz is now live and ready to share" 
+          : "Your quiz has been saved as a draft",
       });
       
       navigate('/admin-dashboard');
     } else {
       toast({
         title: "Error",
-        description: "You must be logged in to publish a quiz",
+        description: "You must be logged in to save a quiz",
         variant: "destructive",
       });
     }
@@ -169,7 +157,6 @@ const CreateQuiz = () => {
       
       <main className="container mx-auto px-4 py-8 animate-fade-in">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Main quiz editor */}
           <div className="flex-grow order-2 lg:order-1">
             <div className="mb-8">
               <h1 className="text-3xl font-bold">Create New Quiz</h1>
@@ -178,7 +165,6 @@ const CreateQuiz = () => {
               </p>
             </div>
             
-            {/* Quiz details */}
             <Card className="mb-8 shadow-subtle border border-border">
               <CardHeader>
                 <CardTitle>Quiz Details</CardTitle>
@@ -250,7 +236,6 @@ const CreateQuiz = () => {
               </CardContent>
             </Card>
             
-            {/* Questions section */}
             <div className="mb-4 flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Questions</h2>
               <Button onClick={handleAddQuestion}>
@@ -294,7 +279,6 @@ const CreateQuiz = () => {
             </div>
           </div>
           
-          {/* Sidebar */}
           <div className="w-full lg:w-80 order-1 lg:order-2">
             <div className="sticky top-4">
               <Card className="shadow-subtle border border-border">

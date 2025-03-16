@@ -89,6 +89,15 @@ const EditQuiz = () => {
         
         localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
         
+        // IMPORTANT: Also update any stored questions to ensure data consistency
+        const questionsKey = `quiz_creator_questions_${quizId}`;
+        const storedQuestions = localStorage.getItem(questionsKey);
+        
+        if (storedQuestions) {
+          // Make sure we preserve the questions when updating quiz details
+          localStorage.setItem(questionsKey, storedQuestions);
+        }
+        
         toast({
           title: "Quiz Updated",
           description: "Your quiz has been successfully updated",

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -95,29 +96,68 @@ const TakeQuiz = () => {
         
         console.log("Found quiz:", foundQuiz);
         
-        // Important: Always check for questions created by the quiz author first
-        const storedQuestionsByCreator = localStorage.getItem(`quiz_creator_questions_${quizId}`);
+        // FIXED: First check if real questions created by an instructor exist
+        // Critically important to check for creator questions first
+        const creatorQuestionsKey = `quiz_creator_questions_${quizId}`;
+        const storedQuestionsByCreator = localStorage.getItem(creatorQuestionsKey);
         
         let quizQuestions: Question[] = [];
         
         if (storedQuestionsByCreator) {
           console.log("Found stored questions created by quiz author");
-          quizQuestions = JSON.parse(storedQuestionsByCreator);
-          
-          // Always refresh the question storage for the quiz taker to ensure latest questions
-          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
+          try {
+            const parsedQuestions = JSON.parse(storedQuestionsByCreator);
+            
+            // Validate that we got an array of questions
+            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+              console.log("Successfully parsed creator questions:", parsedQuestions);
+              quizQuestions = parsedQuestions;
+              
+              // Store a copy for the quiz taker
+              localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
+            } else {
+              console.error("Creator questions were found but not valid:", parsedQuestions);
+              quizQuestions = generateSampleQuestions(foundQuiz.questions || 1);
+            }
+          } catch (error) {
+            console.error("Error parsing creator questions:", error);
+            quizQuestions = generateSampleQuestions(foundQuiz.questions || 1);
+          }
         } else {
-          console.log("No author-created questions found, generating samples");
-          // Generate sample questions if none exist
-          quizQuestions = generateSampleQuestions(foundQuiz.questions);
+          console.log("No creator questions found, checking for previously stored questions");
           
-          // Store the questions for future use
-          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
-          // Also store as creator questions to maintain consistency
-          localStorage.setItem(`quiz_creator_questions_${quizId}`, JSON.stringify(quizQuestions));
+          // Try to load previously stored questions for this quiz
+          const storedQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
+          
+          if (storedQuestions) {
+            try {
+              const parsedQuestions = JSON.parse(storedQuestions);
+              if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+                console.log("Found previously stored questions");
+                quizQuestions = parsedQuestions;
+              } else {
+                console.log("Previously stored questions not valid, generating samples");
+                quizQuestions = generateSampleQuestions(foundQuiz.questions || 1);
+                
+                // Store these sample questions for future use
+                localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
+                localStorage.setItem(creatorQuestionsKey, JSON.stringify(quizQuestions));
+              }
+            } catch (error) {
+              console.error("Error parsing stored questions:", error);
+              quizQuestions = generateSampleQuestions(foundQuiz.questions || 1);
+            }
+          } else {
+            console.log("No stored questions found, generating samples");
+            quizQuestions = generateSampleQuestions(foundQuiz.questions || 1);
+            
+            // Store these sample questions for future use
+            localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
+            localStorage.setItem(creatorQuestionsKey, JSON.stringify(quizQuestions));
+          }
         }
         
-        console.log("Quiz questions:", quizQuestions);
+        console.log("Final quiz questions to display:", quizQuestions);
         
         if (!quizQuestions || quizQuestions.length === 0) {
           console.error("No questions found for quiz");
@@ -126,18 +166,30 @@ const TakeQuiz = () => {
           return;
         }
         
-        setQuestions(quizQuestions);
+        // Make sure all questions have the required structure to prevent errors
+        const validatedQuestions = quizQuestions.map(q => ({
+          id: q.id || `q-${Math.random().toString(36).substring(2, 9)}`,
+          text: q.text || "Untitled Question",
+          type: (q.type && ['multiple-choice', 'true-false', 'short-answer', 'long-answer'].includes(q.type)) 
+            ? q.type 
+            : 'multiple-choice',
+          options: Array.isArray(q.options) ? q.options : [],
+          points: typeof q.points === 'number' ? q.points : 10,
+          required: Boolean(q.required)
+        }));
+        
+        setQuestions(validatedQuestions);
         setQuiz({
           id: foundQuiz.id,
           title: foundQuiz.title, 
           description: foundQuiz.description,
           timeLimit: foundQuiz.duration,
-          questions: quizQuestions
+          questions: validatedQuestions
         });
         setTimeLeft(foundQuiz.duration * 60);
         console.log("Quiz setup complete:", { 
           title: foundQuiz.title, 
-          questions: quizQuestions.length 
+          questions: validatedQuestions.length 
         });
       } catch (error) {
         console.error('Error loading quiz:', error);
