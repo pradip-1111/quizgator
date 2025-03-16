@@ -72,14 +72,13 @@ const QuizComplete = () => {
       const date = new Date(quizResult.submittedAt).toLocaleDateString();
       
       // Create a formatted string with the quiz results
-      let resultText = `Quiz Results for: ${quizTitle}\n`;
+      let resultText = `Quiz Response Confirmation for: ${quizTitle}\n`;
       resultText += `Student: ${studentName}\n`;
-      resultText += `Date: ${date}\n`;
-      resultText += `Score: ${quizResult.score}/${quizResult.totalPoints} (${Math.round(quizResult.percentageScore)}%)\n\n`;
+      resultText += `Date: ${date}\n\n`;
       
-      // Add answers if available
+      // Add answers if available, but not scores
       if (quizResult.answers && Array.isArray(quizResult.answers)) {
-        resultText += `Answers:\n`;
+        resultText += `Your Responses:\n`;
         quizResult.answers.forEach((answer: any, index: number) => {
           resultText += `\nQuestion ${index + 1}:\n`;
           if (answer.textAnswer) {
@@ -89,7 +88,6 @@ const QuizComplete = () => {
           } else {
             resultText += `No answer provided\n`;
           }
-          resultText += `Points: ${answer.pointsAwarded}\n`;
         });
       }
       
@@ -98,14 +96,14 @@ const QuizComplete = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${quizTitle.replace(/\s+/g, '_')}_results_${date.replace(/\//g, '-')}.txt`;
+      a.download = `${quizTitle.replace(/\s+/g, '_')}_response_${date.replace(/\//g, '-')}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
       toast({
-        title: "Results Saved",
+        title: "Response Saved",
         description: "Your quiz responses have been saved successfully.",
       });
     } catch (error) {
@@ -140,15 +138,6 @@ const QuizComplete = () => {
             A confirmation has been sent to your registered email address.
           </p>
           
-          {quizResult && (
-            <div className="bg-green-50 border border-green-200 rounded-md p-3 text-left">
-              <p className="font-medium text-green-800">Quiz Result:</p>
-              <p className="text-green-700">
-                Score: {quizResult.score}/{quizResult.totalPoints} ({Math.round(quizResult.percentageScore)}%)
-              </p>
-            </div>
-          )}
-          
           {quizResult && quizResult.answers && quizResult.answers.length > 0 && (
             <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-left mt-4">
               <p className="font-medium text-gray-800 mb-2">Your Responses:</p>
@@ -163,11 +152,6 @@ const QuizComplete = () => {
                     ) : (
                       <p className="text-gray-600 italic">No answer provided</p>
                     )}
-                    <p className={`mt-1 ${answer.isCorrect ? 'text-green-600' : 'text-amber-600'}`}>
-                      Points: {answer.pointsAwarded}
-                      {answer.isCorrect === true && ' (Correct)'}
-                      {answer.isCorrect === false && ' (Incorrect)'}
-                    </p>
                   </div>
                 ))}
               </div>

@@ -1,3 +1,4 @@
+
 import { QuizData, QuizResult, QuizAnswer } from '@/types/quiz';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -202,7 +203,7 @@ export async function sendConfirmationEmail(
     console.log('Email would contain:');
     console.log(`Subject: Quiz Submission Confirmation: ${quizTitle}`);
     console.log(`Body: Thank you ${result.studentName} for completing the quiz.`);
-    console.log(`You scored ${result.score}/${result.totalPoints} (${Math.round(result.percentageScore)}%)`);
+    console.log(`Your submission has been recorded.`);
     
     return true;
   } catch (error) {
