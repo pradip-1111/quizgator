@@ -41,10 +41,7 @@ export function useQuizLoader(quizId: string | undefined) {
               required: true
             },
             // ... more sample questions would go here
-          ],
-          createdBy: 'demo-user',
-          createdAt: new Date().toISOString(),
-          requiresAuth: false
+          ]
         };
 
         // Add more sample questions
