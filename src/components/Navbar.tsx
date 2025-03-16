@@ -22,9 +22,16 @@ import {
   GraduationCap, 
   Plus,
   UserPlus,
-  Users
+  Users,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -145,70 +152,37 @@ const Navbar: React.FC = () => {
                 </NavigationMenuItem>
                 
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="bg-transparent hover:bg-white/10 text-white">
-                    <BarChart className="h-4 w-4 mr-2" />
-                    Analytics
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                      <li>
-                        <Button 
-                          variant="ghost"
-                          className="w-full justify-start" 
-                          onClick={() => handleNavigation('/analytics/overview')}
-                        >
-                          <div className="text-left">
-                            <div className="text-sm font-medium leading-none">Quiz Performance</div>
-                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                              See overall performance metrics for your quizzes
-                            </p>
-                          </div>
-                        </Button>
-                      </li>
-                      <li>
-                        <Button 
-                          variant="ghost"
-                          className="w-full justify-start" 
-                          onClick={() => handleNavigation('/user-responses')}
-                        >
-                          <div className="text-left">
-                            <div className="text-sm font-medium leading-none">Student Responses</div>
-                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                              View all student responses across quizzes
-                            </p>
-                          </div>
-                        </Button>
-                      </li>
-                      <li>
-                        <Button 
-                          variant="ghost"
-                          className="w-full justify-start" 
-                          onClick={() => handleNavigation('/analytics/export')}
-                        >
-                          <div className="text-left">
-                            <div className="text-sm font-medium leading-none">Export Results</div>
-                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                              Download quiz results in various formats
-                            </p>
-                          </div>
-                        </Button>
-                      </li>
-                      <li>
-                        <Button 
-                          variant="ghost"
-                          className="w-full justify-start" 
-                          onClick={() => handleNavigation('/analytics/insights')}
-                        >
-                          <div className="text-left">
-                            <div className="text-sm font-medium leading-none">Insights</div>
-                            <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                              AI-powered insights about quiz effectiveness
-                            </p>
-                          </div>
-                        </Button>
-                      </li>
-                    </ul>
-                  </NavigationMenuContent>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        className={cn("bg-transparent hover:bg-white/10 text-white px-4 py-2 rounded flex items-center gap-1")}
+                      >
+                        <BarChart className="h-4 w-4 mr-1" />
+                        Analytics
+                        <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56 bg-white/95 backdrop-blur-sm border border-purple-200">
+                      <DropdownMenuItem onClick={() => handleNavigation('/analytics/overview')} className="cursor-pointer">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Quiz Performance</span>
+                          <span className="text-xs text-muted-foreground">Overall metrics for your quizzes</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/user-responses')} className="cursor-pointer">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Student Responses</span>
+                          <span className="text-xs text-muted-foreground">View all student responses</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleNavigation('/analytics/insights')} className="cursor-pointer">
+                        <div className="flex flex-col">
+                          <span className="font-medium">Insights</span>
+                          <span className="text-xs text-muted-foreground">AI-powered quiz analytics</span>
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </NavigationMenuItem>
                 
                 {user.role === 'admin' && (
