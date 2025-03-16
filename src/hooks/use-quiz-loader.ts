@@ -36,7 +36,6 @@ export function useQuizLoader(quizId: string | undefined) {
                 { id: 'c', text: 'Paris', isCorrect: true },
                 { id: 'd', text: 'Madrid', isCorrect: false }
               ],
-              correctAnswer: 'Paris',
               type: 'multiple-choice',
               points: 1,
               required: true
@@ -59,7 +58,6 @@ export function useQuizLoader(quizId: string | undefined) {
               { id: 'c', text: 'Option C', isCorrect: false },
               { id: 'd', text: 'Option D', isCorrect: false }
             ],
-            correctAnswer: 'Option A',
             type: 'multiple-choice',
             points: 1,
             required: true
