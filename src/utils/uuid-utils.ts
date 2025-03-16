@@ -42,7 +42,8 @@ export const ensureValidUuid = (id: string | null | undefined): string => {
 export const sanitizeUuidsInObject = <T extends Record<string, any>>(obj: T): T => {
   if (!obj || typeof obj !== 'object') return obj;
   
-  const result = { ...obj };
+  // Create a new object to avoid mutating the original
+  const result = { ...obj } as Record<string, any>;
   
   // Process regular properties
   Object.entries(result).forEach(([key, value]) => {
@@ -65,5 +66,5 @@ export const sanitizeUuidsInObject = <T extends Record<string, any>>(obj: T): T 
     }
   });
   
-  return result;
+  return result as T;
 };
