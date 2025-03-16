@@ -60,7 +60,7 @@ const QuizNavigation = ({
             </div>
             <button 
               type="submit"
-              className="bg-primary text-white px-3 py-1.5 rounded-md text-sm hover:bg-primary/90"
+              className="bg-primary text-white px-3 py-2 rounded-md text-sm hover:bg-primary/90"
             >
               Go
             </button>

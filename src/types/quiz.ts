@@ -24,6 +24,7 @@ export type QuizResult = {
   totalPoints: number;
   submittedAt: string;
   answers: Record<string, any>;
+  correctAnswers?: Record<string, any>; // Added to store correct answers
 };
 
 export type QuizStatus = 'draft' | 'active' | 'completed';
