@@ -2,9 +2,10 @@
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Home, Database } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, Database, Trash } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { clearQuizCache } from '@/hooks/use-quiz-loader';
 
 interface QuizErrorProps {
   error: string;
@@ -31,6 +32,30 @@ const QuizError = ({
       title: "Error Copied",
       description: "Error message copied to clipboard",
     });
+  };
+  
+  const handleClearAllCache = () => {
+    // First remove all demo quizzes
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('demo') || key.includes('Demo'))) {
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Then clear all quiz cache
+    clearQuizCache();
+    
+    toast({
+      title: "Cache Cleared",
+      description: "All quiz data has been cleared from your browser. Returning to dashboard.",
+      duration: 3000
+    });
+    
+    // Redirect to dashboard after a short delay
+    setTimeout(() => {
+      window.location.href = '/admin-dashboard';
+    }, 2000);
   };
 
   return (
@@ -78,6 +103,11 @@ const QuizError = ({
             Retry Loading
           </Button>
         )}
+        
+        <Button variant="destructive" onClick={handleClearAllCache}>
+          <Trash className="mr-2 h-4 w-4" />
+          Clear All Cache
+        </Button>
         
         {onClearCache && (
           <Button variant="destructive" onClick={onClearCache}>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -97,11 +98,46 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     return [];
   };
 
+  // Create a function to remove all demo quizzes
+  const clearDemoQuizData = () => {
+    // Clear any data with "demo" in the key
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('demo') || key.includes('Demo'))) {
+        console.log(`Clearing demo quiz data: ${key}`);
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Also update the quizzes array to remove any demo quizzes
+    const storedQuizzesJson = localStorage.getItem('quizzes');
+    if (storedQuizzesJson) {
+      try {
+        const quizzes = JSON.parse(storedQuizzesJson);
+        if (Array.isArray(quizzes)) {
+          // Filter out any quizzes with "demo" in title or description
+          const filteredQuizzes = quizzes.filter((q: any) => {
+            const title = (q.title || '').toLowerCase();
+            const desc = (q.description || '').toLowerCase();
+            return !title.includes('demo') && !desc.includes('demo');
+          });
+          localStorage.setItem('quizzes', JSON.stringify(filteredQuizzes));
+          console.log(`Removed demo quizzes from quizzes array`);
+        }
+      } catch (e) {
+        console.error('Error filtering demo quizzes:', e);
+      }
+    }
+  };
+
   // Create a function to save the quiz to localStorage with improved question handling
   const saveQuizToLocalStorage = () => {
     console.log(`Saving quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // First, clear ANY existing data related to demo quizzes
+    // First, clear demo quiz data
+    clearDemoQuizData();
+    
+    // Then clear ANY existing data related to conflicting quizzes
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (key.includes('demo') || (key.startsWith('quiz_') && !key.includes(quiz.id)))) {
@@ -168,6 +204,9 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
 
   // Create a function to handle the copy link action
   const handleCopyLink = () => {
+    // First, clear demo quiz data
+    clearDemoQuizData();
+    
     // Save quiz to localStorage before copying link
     const savedQuiz = saveQuizToLocalStorage();
     
@@ -197,6 +236,9 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
 
   // Navigate to take quiz page
   const handleOpenQuiz = () => {
+    // Clear demo quiz data first
+    clearDemoQuizData();
+    
     // Save quiz to localStorage before opening
     const savedQuiz = saveQuizToLocalStorage();
     

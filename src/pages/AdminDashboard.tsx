@@ -9,7 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
 import QuizCard, { Quiz } from '../components/QuizCard';
 import Navbar from '../components/Navbar';
-import { PlusCircle, Search, Lock, FilePenLine } from 'lucide-react';
+import { PlusCircle, Search, Lock, FilePenLine, RefreshCw } from 'lucide-react';
+import { clearQuizCache } from '../hooks/use-quiz-loader';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -20,10 +21,51 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
   
+  // Function to clear demo quiz data
+  const clearDemoQuizData = () => {
+    // Clear any data with "demo" in the key
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('demo') || key.includes('Demo'))) {
+        console.log(`Clearing demo quiz data: ${key}`);
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Also update the quizzes array to remove any demo quizzes
+    const storedQuizzesJson = localStorage.getItem('quizzes');
+    if (storedQuizzesJson) {
+      try {
+        const quizzes = JSON.parse(storedQuizzesJson);
+        if (Array.isArray(quizzes)) {
+          // Filter out any quizzes with "demo" in title or description
+          const filteredQuizzes = quizzes.filter((q: any) => {
+            const title = (q.title || '').toLowerCase();
+            const desc = (q.description || '').toLowerCase();
+            return !title.includes('demo') && !desc.includes('demo');
+          });
+          localStorage.setItem('quizzes', JSON.stringify(filteredQuizzes));
+          console.log(`Removed demo quizzes from quizzes array`);
+        }
+      } catch (e) {
+        console.error('Error filtering demo quizzes:', e);
+      }
+    }
+  };
+  
   const prepareQuizzes = (loadedQuizzes: Quiz[]) => {
     console.log(`Preparing ${loadedQuizzes.length} quizzes`);
     
-    return loadedQuizzes.map(quiz => {
+    // First, filter out demo quizzes
+    const nonDemoQuizzes = loadedQuizzes.filter((quiz) => {
+      const title = (quiz.title || '').toLowerCase();
+      const desc = (quiz.description || '').toLowerCase();
+      return !title.includes('demo') && !desc.includes('demo');
+    });
+    
+    console.log(`Filtered out demo quizzes, ${nonDemoQuizzes.length} remaining`);
+    
+    return nonDemoQuizzes.map(quiz => {
       if (!quiz.id) {
         console.warn("Found quiz without ID, generating one");
         quiz.id = `quiz-${Math.random().toString(36).substr(2, 9)}`;
@@ -95,9 +137,13 @@ const AdminDashboard = () => {
       : "multiple-choice";
   };
   
-  useEffect(() => {
+  const loadQuizzes = () => {
     try {
       console.log("Loading quizzes from localStorage");
+      
+      // First, clear demo quiz data
+      clearDemoQuizData();
+      
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
         try {
@@ -134,6 +180,10 @@ const AdminDashboard = () => {
         variant: "destructive",
       });
     }
+  };
+  
+  useEffect(() => {
+    loadQuizzes();
   }, [toast]);
 
   const handleCreateQuiz = () => {
@@ -178,6 +228,15 @@ const AdminDashboard = () => {
       });
     }
   };
+  
+  const handleClearCache = () => {
+    clearQuizCache();
+    toast({
+      title: "Cache Cleared",
+      description: "All quiz cache data has been cleared",
+    });
+    loadQuizzes();
+  };
 
   const filteredQuizzes = quizzes.filter(quiz => {
     const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -215,10 +274,17 @@ const AdminDashboard = () => {
             </p>
           </div>
           
-          <Button onClick={handleCreateQuiz}>
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Create Quiz
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleCreateQuiz}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Create Quiz
+            </Button>
+            
+            <Button variant="outline" onClick={handleClearCache}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Clear Cache
+            </Button>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
