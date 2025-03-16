@@ -117,11 +117,25 @@ export async function submitQuiz(
   
   // Also try to save to Supabase
   try {
-    // Attempt to store in Supabase
+    console.log('Attempting to save quiz attempt to Supabase...');
+    
+    // Convert UUID string to UUID format if needed
+    let formattedQuizId = quizId;
+    if (!quizId.includes('-') && quizId.length >= 32) {
+      formattedQuizId = [
+        quizId.slice(0, 8),
+        quizId.slice(8, 12),
+        quizId.slice(12, 16),
+        quizId.slice(16, 20),
+        quizId.slice(20)
+      ].join('-');
+    }
+    
+    // Attempt to store in Supabase - using upsert to avoid duplicates
     const { data: attemptData, error: attemptError } = await supabase
       .from('quiz_attempts')
-      .insert({
-        quiz_id: quizId,
+      .upsert({
+        quiz_id: formattedQuizId,
         student_name: studentName,
         student_id: studentId,
         student_email: studentEmail,
@@ -136,6 +150,9 @@ export async function submitQuiz(
     
     if (attemptError) {
       console.error('Error saving quiz attempt to Supabase:', attemptError);
+      
+      // Even if Supabase fails, we'll continue since we saved to localStorage
+      console.log('Continuing with local storage data only due to Supabase error');
     } else if (attemptData) {
       console.log('Successfully saved quiz attempt to Supabase with ID:', attemptData.id);
       
@@ -151,7 +168,7 @@ export async function submitQuiz(
       
       const { error: answersError } = await supabase
         .from('quiz_answers')
-        .insert(answersForInsert);
+        .upsert(answersForInsert);
       
       if (answersError) {
         console.error('Error saving quiz answers to Supabase:', answersError);
@@ -163,16 +180,19 @@ export async function submitQuiz(
       if (studentEmail) {
         const { error: emailError } = await supabase
           .from('email_notifications')
-          .insert({
+          .upsert({
             quiz_id: quizId,
             quiz_title: quiz.title,
             student_name: studentName,
             student_id: studentId,
-            student_email: studentEmail
+            student_email: studentEmail,
+            submitted_at: submittedAt.toISOString()
           });
         
         if (emailError) {
           console.error('Error logging email notification request:', emailError);
+        } else {
+          console.log('Successfully saved email notification request');
         }
       }
     }

@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import Navbar from '../components/Navbar';
@@ -17,69 +17,162 @@ const UserResponses = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const loadResponses = async () => {
-      setLoading(true);
-      try {
-        // Fetch all quiz attempts with student details
-        const { data: attemptsData, error: attemptsError } = await supabase
-          .from('quiz_attempts')
-          .select(`
-            id, 
-            student_name, 
-            student_id, 
-            student_email, 
-            score, 
-            total_points, 
-            submitted_at, 
-            security_violations, 
-            completed,
-            quiz_id,
-            quizzes(title)
-          `)
-          .order('submitted_at', { ascending: false });
+  // Function to load responses from both Supabase and localStorage
+  const loadResponses = async () => {
+    setLoading(true);
+    try {
+      console.log('Loading student responses from Supabase and localStorage...');
+      
+      // First, try to fetch all quiz attempts with student details from Supabase
+      const { data: attemptsData, error: attemptsError } = await supabase
+        .from('quiz_attempts')
+        .select(`
+          id, 
+          student_name, 
+          student_id, 
+          student_email, 
+          score, 
+          total_points, 
+          submitted_at, 
+          security_violations, 
+          completed,
+          quiz_id,
+          quizzes(title)
+        `)
+        .order('submitted_at', { ascending: false });
 
-        if (attemptsError) {
-          throw attemptsError;
-        }
-
-        if (attemptsData) {
-          // Transform data for display
-          const transformedResponses = attemptsData.map(attempt => {
-            const percentageScore = attempt.total_points > 0 
-              ? Math.round((attempt.score / attempt.total_points) * 100) 
-              : 0;
-              
-            return {
-              id: attempt.id,
-              studentName: attempt.student_name,
-              studentId: attempt.student_id,
-              studentEmail: attempt.student_email || 'N/A',
-              quizId: attempt.quiz_id,
-              quizTitle: attempt.quizzes?.title || 'Unknown Quiz',
-              score: attempt.score,
-              totalPoints: attempt.total_points,
-              submittedAt: attempt.submitted_at,
-              percentageScore,
-              securityViolations: attempt.security_violations || 0,
-              completed: attempt.completed
-            };
-          });
-          
-          setResponses(transformedResponses);
-        }
-      } catch (error) {
-        console.error('Error loading responses:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load student responses. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+      if (attemptsError) {
+        console.error('Error loading responses from Supabase:', attemptsError);
       }
-    };
 
+      // Initialize an array to hold all responses (from both Supabase and localStorage)
+      let allResponses: any[] = [];
+      
+      // Add Supabase responses if available
+      if (attemptsData && attemptsData.length > 0) {
+        console.log(`Found ${attemptsData.length} responses in Supabase`);
+        
+        // Transform data for display
+        const supabaseResponses = attemptsData.map(attempt => {
+          const percentageScore = attempt.total_points > 0 
+            ? Math.round((attempt.score / attempt.total_points) * 100) 
+            : 0;
+            
+          return {
+            id: attempt.id,
+            studentName: attempt.student_name,
+            studentId: attempt.student_id,
+            studentEmail: attempt.student_email || 'N/A',
+            quizId: attempt.quiz_id,
+            quizTitle: attempt.quizzes?.title || 'Unknown Quiz',
+            score: attempt.score,
+            totalPoints: attempt.total_points,
+            submittedAt: attempt.submitted_at,
+            percentageScore,
+            securityViolations: attempt.security_violations || 0,
+            completed: attempt.completed,
+            source: 'supabase'
+          };
+        });
+        
+        allResponses = [...supabaseResponses];
+      }
+      
+      // Now check localStorage for any additional responses
+      try {
+        // Get all keys in localStorage
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('quiz_results_')) {
+            keys.push(key);
+          }
+        }
+        
+        // Process each quiz result key
+        for (const key of keys) {
+          const storedResults = localStorage.getItem(key);
+          if (storedResults) {
+            try {
+              const results = JSON.parse(storedResults);
+              if (Array.isArray(results) && results.length > 0) {
+                console.log(`Found ${results.length} results in localStorage for key: ${key}`);
+                
+                // Extract quizId from the key
+                const quizId = key.replace('quiz_results_', '');
+                
+                // Transform and add each result
+                const localResponses = results.map((result: any) => {
+                  const percentageScore = result.totalPoints > 0 
+                    ? Math.round((result.score / result.totalPoints) * 100) 
+                    : 0;
+                    
+                  return {
+                    id: `local-${quizId}-${result.studentId}-${Date.now()}`,
+                    studentName: result.studentName,
+                    studentId: result.studentId,
+                    studentEmail: result.studentEmail || 'N/A',
+                    quizId: result.quizId || quizId,
+                    quizTitle: result.quizTitle || 'Unknown Quiz',
+                    score: result.score,
+                    totalPoints: result.totalPoints,
+                    submittedAt: result.submittedAt,
+                    percentageScore,
+                    securityViolations: result.securityViolations || 0,
+                    completed: result.completed !== undefined ? result.completed : true,
+                    source: 'localStorage'
+                  };
+                });
+                
+                // Add to all responses
+                allResponses = [...allResponses, ...localResponses];
+              }
+            } catch (e) {
+              console.error(`Error parsing results from localStorage key ${key}:`, e);
+            }
+          }
+        }
+      } catch (localStorageError) {
+        console.error('Error accessing localStorage:', localStorageError);
+      }
+      
+      // Remove potential duplicates (same student, same quiz, same submission time)
+      const uniqueResponses = allResponses.reduce((acc: any[], current: any) => {
+        const isDuplicate = acc.some(item => 
+          item.studentId === current.studentId && 
+          item.quizId === current.quizId &&
+          item.submittedAt === current.submittedAt
+        );
+        
+        if (!isDuplicate) {
+          acc.push(current);
+        }
+        
+        return acc;
+      }, []);
+      
+      // Sort by submission date (newest first)
+      uniqueResponses.sort((a, b) => {
+        const dateA = new Date(a.submittedAt).getTime();
+        const dateB = new Date(b.submittedAt).getTime();
+        return dateB - dateA;
+      });
+      
+      console.log(`Total unique responses after merging: ${uniqueResponses.length}`);
+      setResponses(uniqueResponses);
+    } catch (error) {
+      console.error('Error loading responses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load student responses. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadResponses();
   }, [toast]);
 
@@ -90,13 +183,21 @@ const UserResponses = () => {
       response.studentId,
       response.studentEmail,
       response.quizTitle,
-    ].map(field => field.toLowerCase());
+    ].map(field => field?.toLowerCase());
     
-    return searchFields.some(field => field.includes(searchTerm.toLowerCase()));
+    return searchFields.some(field => field && field.includes(searchTerm.toLowerCase()));
   });
 
   const viewQuizResults = (quizId: string) => {
     window.location.href = `/view-results/${quizId}`;
+  };
+
+  const handleRefresh = () => {
+    loadResponses();
+    toast({
+      title: "Refreshing",
+      description: "Refreshing student responses data...",
+    });
   };
 
   return (
@@ -111,6 +212,11 @@ const UserResponses = () => {
               Back to Dashboard
             </Button>
           </Link>
+          
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Data
+          </Button>
         </div>
         
         <h1 className="text-3xl font-bold mb-2">Student Responses</h1>
@@ -129,7 +235,11 @@ const UserResponses = () => {
         </div>
         
         {loading ? (
-          <p>Loading responses...</p>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">Loading student responses...</p>
+            </CardContent>
+          </Card>
         ) : responses.length > 0 ? (
           <Card>
             <CardHeader>
@@ -150,7 +260,7 @@ const UserResponses = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredResponses.map((response, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={response.id || index}>
                       <TableCell className="font-medium">{response.studentName}</TableCell>
                       <TableCell>{response.studentId}</TableCell>
                       <TableCell>{response.quizTitle}</TableCell>
