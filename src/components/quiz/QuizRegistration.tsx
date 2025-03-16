@@ -4,110 +4,93 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Clock, User, Lock, Shield, AlertTriangle } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { QuizData } from '@/types/quiz';
 
-type QuizRegistrationProps = {
-  quiz: {
-    title: string;
-    description: string;
-    timeLimit: number;
-  };
+interface QuizRegistrationProps {
+  quiz: QuizData;
   name: string;
   setName: (name: string) => void;
   rollNumber: string;
   setRollNumber: (rollNumber: string) => void;
+  email: string; // Added email prop
+  setEmail: (email: string) => void; // Added setEmail prop
   onStartQuiz: () => void;
-  requiresAuth?: boolean;
-};
+  requiresAuth: boolean;
+}
 
-const QuizRegistration = ({
+const QuizRegistration: React.FC<QuizRegistrationProps> = ({
   quiz,
   name,
   setName,
   rollNumber,
   setRollNumber,
+  email, // Add email
+  setEmail, // Add setEmail
   onStartQuiz,
-  requiresAuth = false,
-}: QuizRegistrationProps) => {
-  const { user } = useAuth();
-
+  requiresAuth
+}) => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4 animate-fade-in">
-      <Card className="w-full max-w-md shadow-card">
-        <CardHeader>
-          <CardTitle className="text-2xl">{quiz.title}</CardTitle>
-          <CardDescription>{quiz.description}</CardDescription>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 animate-fade-in">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold">{quiz.title}</CardTitle>
+          <CardDescription>
+            {quiz.description || "Enter your details to start the quiz"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {requiresAuth && !user ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-md text-amber-700">
-                <div className="flex items-center mb-2">
-                  <User className="h-5 w-5 mr-2" />
-                  <h3 className="font-medium">Authentication Required</h3>
-                </div>
-                <p className="text-sm">
-                  You need to be logged in to take this quiz. Please log in or create an account.
-                </p>
-                <div className="mt-4 space-x-2">
-                  <Button variant="default" asChild>
-                    <Link to="/login">Login</Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link to="/signup">Sign Up</Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input 
-                  id="name" 
-                  placeholder="Enter your full name" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="roll">Roll Number / Student ID</Label>
-                <Input 
-                  id="roll" 
-                  placeholder="Enter your roll number" 
-                  value={rollNumber}
-                  onChange={(e) => setRollNumber(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1 text-sm">
-                <div className="flex items-center text-muted-foreground">
-                  <Clock className="h-4 w-4 mr-1" />
-                  <span>Time limit: {quiz.timeLimit} minutes</span>
-                </div>
-                <div className="flex items-center text-muted-foreground">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  <span>Once started, the quiz will enter fullscreen mode</span>
-                </div>
-                <div className="flex items-center text-muted-foreground">
-                  <AlertTriangle className="h-4 w-4 mr-1" />
-                  <span>Switching tabs or windows will result in warnings</span>
-                </div>
-                <div className="flex items-center text-muted-foreground">
-                  <Shield className="h-4 w-4 mr-1" />
-                  <span>After 3 warnings, your quiz will be auto-submitted</span>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name</Label>
+            <Input
+              id="name"
+              placeholder="Enter your full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="rollNumber">Student ID</Label>
+            <Input
+              id="rollNumber"
+              placeholder="Enter your student ID"
+              value={rollNumber}
+              onChange={(e) => setRollNumber(e.target.value)}
+              required
+              className="w-full"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full"
+            />
+          </div>
+          
+          <div className="pt-2">
+            <p className="text-sm text-muted-foreground">
+              This quiz contains {quiz.questions?.length || 0} questions.
+              {quiz.timeLimit > 0 && ` You will have ${quiz.timeLimit} minutes to complete it.`}
+            </p>
+          </div>
         </CardContent>
         <CardFooter>
-          {(!requiresAuth || user) && (
-            <Button className="w-full" onClick={onStartQuiz}>
-              Start Quiz
-            </Button>
-          )}
+          <Button 
+            onClick={onStartQuiz} 
+            className="w-full"
+            disabled={!name || !rollNumber || !email} // Add email validation
+          >
+            Start Quiz
+          </Button>
         </CardFooter>
       </Card>
     </div>

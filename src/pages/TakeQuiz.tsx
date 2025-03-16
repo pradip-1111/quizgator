@@ -28,6 +28,7 @@ const TakeQuiz = () => {
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [name, setName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [started, setStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -44,7 +45,6 @@ const TakeQuiz = () => {
   const quizContainerRef = useRef<HTMLDivElement>(null);
   const cleanupTabTrackingRef = useRef<(() => void) | null>(null);
 
-  // Check if user is authenticated
   useEffect(() => {
     if (requiresAuth && !user && !loading) {
       toast({
@@ -56,7 +56,6 @@ const TakeQuiz = () => {
     }
   }, [user, requiresAuth, loading, navigate, toast]);
 
-  // Reset quiz data when component mounts
   useEffect(() => {
     console.log("TakeQuiz component mounted with quizId:", quizId);
     const loadQuiz = async () => {
@@ -74,7 +73,6 @@ const TakeQuiz = () => {
         
         console.log("Loading quiz with ID:", quizId);
         
-        // Load quizzes from localStorage
         const storedQuizzes = localStorage.getItem('quizzes');
         
         if (!storedQuizzes) {
@@ -98,8 +96,6 @@ const TakeQuiz = () => {
         
         console.log("Found quiz:", foundQuiz);
         
-        // FIXED: First check if real questions created by an instructor exist
-        // Critically important to check for creator questions first
         const creatorQuestionsKey = `quiz_creator_questions_${quizId}`;
         const storedQuestionsByCreator = localStorage.getItem(creatorQuestionsKey);
         
@@ -110,12 +106,10 @@ const TakeQuiz = () => {
           try {
             const parsedQuestions = JSON.parse(storedQuestionsByCreator);
             
-            // Validate that we got an array of questions
             if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
               console.log("Successfully parsed creator questions:", parsedQuestions);
               quizQuestions = parsedQuestions;
               
-              // Store a copy for the quiz taker
               localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
             } else {
               console.error("Creator questions were found but not valid:", parsedQuestions);
@@ -128,7 +122,6 @@ const TakeQuiz = () => {
         } else {
           console.log("No creator questions found, checking for previously stored questions");
           
-          // Try to load previously stored questions for this quiz
           const storedQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
           
           if (storedQuestions) {
@@ -141,7 +134,6 @@ const TakeQuiz = () => {
                 console.log("Previously stored questions not valid, generating samples");
                 quizQuestions = generateSampleQuestions(foundQuiz.questions || 1);
                 
-                // Store these sample questions for future use
                 localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
                 localStorage.setItem(creatorQuestionsKey, JSON.stringify(quizQuestions));
               }
@@ -153,7 +145,6 @@ const TakeQuiz = () => {
             console.log("No stored questions found, generating samples");
             quizQuestions = generateSampleQuestions(foundQuiz.questions || 1);
             
-            // Store these sample questions for future use
             localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
             localStorage.setItem(creatorQuestionsKey, JSON.stringify(quizQuestions));
           }
@@ -168,7 +159,6 @@ const TakeQuiz = () => {
           return;
         }
         
-        // Make sure all questions have the required structure to prevent errors
         const validatedQuestions = quizQuestions.map(q => ({
           id: q.id || `q-${Math.random().toString(36).substring(2, 9)}`,
           text: q.text || "Untitled Question",
@@ -203,14 +193,11 @@ const TakeQuiz = () => {
 
     loadQuiz();
     
-    // Cleanup function
     return () => {
-      // Clean up tab tracking if active
       if (cleanupTabTrackingRef.current) {
         cleanupTabTrackingRef.current();
       }
       
-      // Clear any timer
       if (timerRef.current) {
         clearInterval(timerRef.current as unknown as number);
       }
@@ -236,24 +223,19 @@ const TakeQuiz = () => {
     }
   }, [started, timeLeft]);
   
-  // Tab change detection
   useEffect(() => {
     if (started) {
-      // Setup tab change tracking
       const cleanup = setupTabVisibilityTracking((isVisible) => {
         if (!isVisible) {
-          // Tab was changed or window lost focus
           setTabSwitchWarnings(prev => {
             const newCount = prev + 1;
             
-            // Alert the user
             toast({
               title: `Warning #${newCount}`,
               description: "Switching tabs or applications during the quiz is not allowed!",
               variant: "destructive",
             });
             
-            // If too many warnings, auto-submit the quiz
             if (newCount >= 3) {
               toast({
                 title: "Quiz Terminated",
@@ -318,20 +300,28 @@ const TakeQuiz = () => {
   };
   
   const handleStartQuiz = async () => {
-    if (!name || !rollNumber) {
+    if (!name || !rollNumber || !email) {
       toast({
         title: "Error",
-        description: "Please enter your name and roll number",
+        description: "Please enter your name, student ID, and email address",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
         variant: "destructive",
       });
       return;
     }
     
     try {
-      // Register student for the quiz
-      await registerStudent(name, rollNumber, quizId || '1');
+      await registerStudent(name, rollNumber, email, quizId || '1');
       
-      // Enter fullscreen
       if (quizContainerRef.current) {
         enterFullscreen(quizContainerRef.current);
       }
@@ -375,7 +365,6 @@ const TakeQuiz = () => {
     if (window.confirm("Are you sure you want to quit? Your progress will be lost.")) {
       exitFullscreen();
       
-      // Clean up tab tracking
       if (cleanupTabTrackingRef.current) {
         cleanupTabTrackingRef.current();
       }
@@ -395,14 +384,12 @@ const TakeQuiz = () => {
       
       if (!answers[question.id]) return;
       
-      // For multiple choice and true/false
       if (question.type === 'multiple-choice' || question.type === 'true-false') {
         const selectedOption = question.options.find(opt => opt.id === answers[question.id]);
         if (selectedOption && selectedOption.isCorrect) {
           score += question.points;
         }
       } 
-      // For short and long answers - award full points if answered
       else if (answers[question.id] && answers[question.id].trim().length > 0) {
         score += question.points;
       }
@@ -411,7 +398,6 @@ const TakeQuiz = () => {
     return { score, totalPoints };
   };
   
-  // New function to send confirmation email
   const sendConfirmationEmail = async (quizTitle: string, result: QuizResult) => {
     if (sendingEmail) return;
     
@@ -425,7 +411,7 @@ const TakeQuiz = () => {
           quizTitle: quizTitle || 'Quiz',
           studentName: result.studentName,
           studentId: result.studentId,
-          studentEmail: `${result.studentId}@student.example.com`
+          studentEmail: user?.email || email
         }
       });
       
@@ -436,7 +422,6 @@ const TakeQuiz = () => {
       console.log("Email confirmation sent successfully");
     } catch (error) {
       console.error("Error sending confirmation email:", error);
-      // Don't show error to user, the quiz submission is still successful
     } finally {
       setSendingEmail(false);
     }
@@ -445,7 +430,6 @@ const TakeQuiz = () => {
   const handleSubmitQuiz = () => {
     if (!quiz) return;
     
-    // Clean up tab tracking
     if (cleanupTabTrackingRef.current) {
       cleanupTabTrackingRef.current();
     }
@@ -465,7 +449,6 @@ const TakeQuiz = () => {
     }
     
     try {
-      // Update quiz attempts
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
         const quizzes = JSON.parse(storedQuizzes) as Quiz[];
@@ -481,7 +464,6 @@ const TakeQuiz = () => {
         localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
       }
       
-      // Save results
       const { score, totalPoints } = calculateScore();
       const result: QuizResult = {
         quizId: quizId || '',
@@ -493,25 +475,20 @@ const TakeQuiz = () => {
         answers
       };
       
-      // Make sure to save results to the correct quiz-specific key
       const resultsKey = `quiz_results_${quizId}`;
       console.log(`Saving result for quiz ID: ${quizId} to key: ${resultsKey}`);
       
-      // Get existing results or create new array
       const existingResults = localStorage.getItem(resultsKey) || '[]';
       const results = JSON.parse(existingResults);
       results.push(result);
       
-      // Save updated results to the quiz-specific key
       localStorage.setItem(resultsKey, JSON.stringify(results));
       console.log("Saved quiz results:", result);
       
       exitFullscreen();
       
-      // Send confirmation email
       sendConfirmationEmail(quiz.title, result);
       
-      // Hide the actual score from the student
       toast({
         title: "Quiz Submitted",
         description: "Your answers have been recorded successfully.",
@@ -519,7 +496,7 @@ const TakeQuiz = () => {
       
       toast({
         title: "Confirmation Email Sent",
-        description: `A confirmation has been sent to ${rollNumber}@student.example.com`,
+        description: `A confirmation has been sent to ${user?.email || email}`,
       });
       
       navigate('/quiz-complete');
@@ -550,6 +527,8 @@ const TakeQuiz = () => {
         setName={setName}
         rollNumber={rollNumber}
         setRollNumber={setRollNumber}
+        email={email}
+        setEmail={setEmail}
         onStartQuiz={handleStartQuiz}
         requiresAuth={requiresAuth}
       />

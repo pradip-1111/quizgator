@@ -14,7 +14,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (name: string, email: string, password: string) => Promise<void>;
-  registerStudent: (name: string, rollNumber: string, quizId: string) => Promise<void>;
+  registerStudent: (name: string, rollNumber: string, email: string, quizId: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,13 +76,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
-  const registerStudent = async (name: string, rollNumber: string, quizId: string) => {
+  const registerStudent = async (name: string, rollNumber: string, email: string, quizId: string) => {
     try {
       // In a real app, this would register the student for the quiz
       const student = {
         id: rollNumber,
         name: name,
-        email: `${rollNumber}@student.example.com`,
+        email: email, // Use the provided email instead of generating one
         role: 'student' as const
       };
       setUser(student);

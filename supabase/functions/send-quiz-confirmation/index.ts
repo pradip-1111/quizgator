@@ -15,7 +15,7 @@ interface QuizSubmissionRequest {
   quizTitle: string;
   studentName: string;
   studentId: string;
-  studentEmail?: string;
+  studentEmail: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -25,12 +25,13 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { quizId, quizTitle, studentName, studentId, studentEmail = "" }: QuizSubmissionRequest = await req.json();
+    const { quizId, quizTitle, studentName, studentId, studentEmail }: QuizSubmissionRequest = await req.json();
     
-    // Generate email from student ID if not provided
-    const email = studentEmail || `${studentId}@student.example.com`;
+    if (!studentEmail) {
+      throw new Error("Student email is required");
+    }
     
-    console.log(`Sending quiz confirmation email to ${email} for ${studentName}`);
+    console.log(`Sending quiz confirmation email to ${studentEmail} for ${studentName}`);
 
     // Store in the email_notifications table
     const { error: dbError } = await fetch(
@@ -44,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
         },
         body: JSON.stringify({
           student_id: studentId,
-          student_email: email,
+          student_email: studentEmail,
           student_name: studentName,
           quiz_id: quizId,
           quiz_title: quizTitle,
@@ -60,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send the email
     const emailResponse = await resend.emails.send({
       from: "Quiz System <onboarding@resend.dev>",
-      to: [email],
+      to: [studentEmail],
       subject: `Quiz Submission Confirmation: ${quizTitle}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
