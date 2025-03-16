@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface QuizErrorProps {
   error: string;
@@ -22,6 +23,16 @@ const QuizError = ({
   onClearCache,
   onDebug
 }: QuizErrorProps) => {
+  const { toast } = useToast();
+
+  const handleCopyError = () => {
+    navigator.clipboard.writeText(error);
+    toast({
+      title: "Error Copied",
+      description: "Error message copied to clipboard",
+    });
+  };
+
   return (
     <Card className="w-full max-w-lg mx-auto shadow-lg">
       <CardHeader className="pb-2">
@@ -32,7 +43,7 @@ const QuizError = ({
       </CardHeader>
       <CardContent className="py-6">
         <div className="flex flex-col items-center justify-center space-y-4">
-          <p className="text-center text-red-600 font-medium">{error}</p>
+          <p className="text-center text-red-600 font-medium break-words">{error}</p>
           
           {fallbackActive && (
             <div className="bg-amber-50 border border-amber-200 p-3 rounded-md w-full">
@@ -56,6 +67,10 @@ const QuizError = ({
             Go Home
           </Button>
         </Link>
+        
+        <Button variant="outline" onClick={handleCopyError}>
+          Copy Error
+        </Button>
         
         {isRetryable && onRetry && (
           <Button variant="default" onClick={onRetry}>
@@ -82,4 +97,3 @@ const QuizError = ({
 };
 
 export default QuizError;
-

@@ -268,6 +268,7 @@ const TakeQuiz = () => {
     }
   };
   
+  // Add the missing handleCancelLoading function
   const handleCancelLoading = () => {
     console.log("Canceling quiz loading");
     navigate('/');
