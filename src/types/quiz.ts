@@ -24,7 +24,9 @@ export type QuizResult = {
   totalPoints: number;
   submittedAt: string;
   answers: Record<string, any>;
-  correctAnswers?: Record<string, any>; // Added to store correct answers
+  correctAnswers: Record<string, any>; // Store correct answers for each question
+  securityViolations?: number; // Track security violations like tab switches
+  completed: boolean; // Whether the quiz was completed or forcibly submitted
 };
 
 export type QuizStatus = 'draft' | 'active' | 'completed';
@@ -36,4 +38,6 @@ export type StudentResponse = {
   totalPoints: number;
   submittedAt: string;
   percentageScore: number;
+  securityViolations?: number;
+  completed?: boolean;
 };

@@ -37,8 +37,12 @@ const QuizHeader = ({
         </div>
         <div className="flex items-center space-x-4">
           {tabSwitchWarnings > 0 && (
-            <div className={`${tabSwitchWarnings >= 2 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'} px-3 py-1 rounded-full border flex items-center animate-pulse`}>
-              <AlertTriangle className="h-4 w-4 mr-1" />
+            <div className={`
+              ${tabSwitchWarnings >= 2 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'} 
+              px-3 py-1 rounded-full border flex items-center 
+              ${tabSwitchWarnings >= 2 ? 'animate-pulse shadow-md' : 'animate-pulse'}
+            `}>
+              <AlertTriangle className={`h-4 w-4 mr-1 ${tabSwitchWarnings >= 2 ? 'animate-ping-once' : ''}`} />
               <span className="font-medium">Warnings: {tabSwitchWarnings}/3</span>
               {tabSwitchWarnings >= 2 && (
                 <span className="ml-1 text-xs font-bold">Final warning!</span>
