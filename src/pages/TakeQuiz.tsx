@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +55,7 @@ const TakeQuiz = () => {
     setCurrentQuestion(0);
     setStarted(false);
     setTimeLeft(0);
-    setError(null);
+    setQuizStateError(null);
     
     console.log(`Attempting to load quiz with ID: ${quizId} directly from localStorage`);
     
@@ -108,7 +107,7 @@ const TakeQuiz = () => {
     }
     
     console.log("No direct quiz found in localStorage, will use useQuizLoader");
-  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setError]);
+  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setQuizStateError]);
   
   // Fallback to useQuizLoader if direct loading fails
   const { 
