@@ -104,8 +104,10 @@ export function useQuizCreator() {
     try {
       console.log("Starting quiz save process");
       
-      // Generate a valid UUID for the quiz
+      // Generate a fresh UUID for the quiz
       const quizId = crypto.randomUUID();
+      
+      console.log("Quiz ID generated:", quizId);
       
       // Insert the quiz first
       const { data: quizData, error: quizError } = await supabase
@@ -130,7 +132,7 @@ export function useQuizCreator() {
       for (let i = 0; i < questions.length; i++) {
         const question = questions[i];
         
-        // Generate a valid UUID for each question
+        // Generate a fresh UUID for each question
         const questionId = crypto.randomUUID();
         
         console.log(`Saving question ${i+1}/${questions.length} with ID ${questionId}`);
@@ -154,8 +156,9 @@ export function useQuizCreator() {
         
         // Save all options for the question if they exist
         if (question.options && question.options.length > 0) {
+          // Generate fresh UUIDs for all options
           const optionsToInsert = question.options.map((opt, index) => ({
-            id: crypto.randomUUID(), // Generate valid UUID for each option
+            id: crypto.randomUUID(),
             question_id: questionId,
             text: opt.text,
             is_correct: opt.isCorrect,

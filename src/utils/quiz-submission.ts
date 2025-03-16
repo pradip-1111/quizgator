@@ -48,10 +48,14 @@ export const submitQuiz = async (
       }
     });
     
+    // Generate a new UUID for the attempt
+    const attemptId = crypto.randomUUID();
+    
     // Insert the quiz attempt into the database
     const { data: attemptData, error: attemptError } = await supabase
       .from('quiz_attempts')
       .insert({
+        id: attemptId,
         quiz_id: quizId,
         student_name: name,
         student_id: rollNumber,
@@ -68,8 +72,6 @@ export const submitQuiz = async (
       console.error('Error inserting quiz attempt:', attemptError);
       throw attemptError;
     }
-    
-    const attemptId = attemptData.id;
     
     // Insert each answer individually
     for (const questionId in answers) {
@@ -99,9 +101,13 @@ export const submitQuiz = async (
         }
       }
       
+      // Generate a new UUID for each answer
+      const answerId = crypto.randomUUID();
+      
       await supabase
         .from('quiz_answers')
         .insert({
+          id: answerId,
           attempt_id: attemptId,
           question_id: questionId,
           selected_option_id: selectedOptionId,
@@ -181,10 +187,14 @@ export const sendConfirmationEmail = async (
   try {
     console.log("Sending confirmation email for quiz submission");
     
+    // Generate a new UUID for the email notification
+    const notificationId = crypto.randomUUID();
+    
     // Insert record into email_notifications table
     const { data, error } = await supabase
       .from('email_notifications')
       .insert({
+        id: notificationId,
         quiz_id: quizId,
         quiz_title: quizTitle || 'Quiz',
         student_name: result.studentName,
