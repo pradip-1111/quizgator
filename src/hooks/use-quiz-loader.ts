@@ -30,7 +30,7 @@ export function useQuizLoader(quizId: string | undefined) {
       // First priority: Check if we have the quiz and its questions in localStorage
       const storedQuizzesString = localStorage.getItem('quizzes');
       let quizFromLocalStorage = null;
-      let questionsFromLocalStorage = null;
+      let questionsFromLocalStorage: Question[] | null = null;
       
       if (storedQuizzesString) {
         try {
@@ -49,7 +49,13 @@ export function useQuizLoader(quizId: string | undefined) {
             // If quiz.questions is an array, it contains the actual questions
             if (Array.isArray(quizFromLocalStorage.questions) && quizFromLocalStorage.questions.length > 0) {
               console.log('Quiz object contains questions array');
-              questionsFromLocalStorage = quizFromLocalStorage.questions;
+              const rawQuestions = quizFromLocalStorage.questions;
+              
+              // Ensure questions have the correct type field
+              questionsFromLocalStorage = rawQuestions.map(q => ({
+                ...q,
+                type: ensureValidQuestionType(q.type)
+              }));
             } else {
               // Check all possible storage locations for questions
               for (const key of possibleQuestionKeys) {
@@ -59,7 +65,12 @@ export function useQuizLoader(quizId: string | undefined) {
                     const parsedQuestions = JSON.parse(storedQuestions);
                     if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
                       console.log(`Found ${parsedQuestions.length} questions in ${key}`);
-                      questionsFromLocalStorage = parsedQuestions;
+                      
+                      // Ensure questions have the correct type field
+                      questionsFromLocalStorage = parsedQuestions.map(q => ({
+                        ...q,
+                        type: ensureValidQuestionType(q.type)
+                      }));
                       break;
                     }
                   } catch (e) {
@@ -119,42 +130,43 @@ export function useQuizLoader(quizId: string | undefined) {
         setLoadingStage('demo');
         
         // Create a demo quiz with the title and description from localStorage
+        const mockQuestions: Question[] = [
+          {
+            id: '1',
+            text: 'What is the capital of France?',
+            type: 'multiple-choice',
+            options: [
+              { id: 'a', text: 'London', isCorrect: false },
+              { id: 'b', text: 'Berlin', isCorrect: false },
+              { id: 'c', text: 'Paris', isCorrect: true },
+              { id: 'd', text: 'Madrid', isCorrect: false }
+            ],
+            points: 1,
+            required: true
+          },
+          {
+            id: '2',
+            text: 'Sample Question 2',
+            type: 'multiple-choice',
+            options: [
+              { id: 'a', text: 'Option A', isCorrect: true },
+              { id: 'b', text: 'Option B', isCorrect: false }
+            ],
+            points: 1,
+            required: true
+          }
+        ];
+        
         const mockQuiz: QuizData = {
           id: quizId,
           title: quizFromLocalStorage.title || 'Demo Quiz',
           description: quizFromLocalStorage.description || 'This is a demo quiz',
           timeLimit: quizFromLocalStorage.duration || 30,
-          questions: [
-            {
-              id: '1',
-              text: 'What is the capital of France?',
-              options: [
-                { id: 'a', text: 'London', isCorrect: false },
-                { id: 'b', text: 'Berlin', isCorrect: false },
-                { id: 'c', text: 'Paris', isCorrect: true },
-                { id: 'd', text: 'Madrid', isCorrect: false }
-              ],
-              type: 'multiple-choice',
-              points: 1,
-              required: true
-            },
-            // Add more sample questions
-            {
-              id: '2',
-              text: 'Sample Question 2',
-              options: [
-                { id: 'a', text: 'Option A', isCorrect: true },
-                { id: 'b', text: 'Option B', isCorrect: false }
-              ],
-              type: 'multiple-choice',
-              points: 1,
-              required: true
-            }
-          ]
+          questions: mockQuestions
         };
         
         setQuiz(mockQuiz);
-        setQuestions(mockQuiz.questions);
+        setQuestions(mockQuestions);
         setLoading(false);
         return;
       }
@@ -164,47 +176,49 @@ export function useQuizLoader(quizId: string | undefined) {
         console.log('Quiz not found in Supabase or localStorage, creating demo quiz');
         setLoadingStage('demo');
         
-        const mockQuiz: QuizData = {
-          id: quizId,
-          title: 'Demo Quiz',
-          description: 'This is a demo quiz with sample questions',
-          timeLimit: 30,
-          questions: [
-            {
-              id: '1',
-              text: 'What is the capital of France?',
-              options: [
-                { id: 'a', text: 'London', isCorrect: false },
-                { id: 'b', text: 'Berlin', isCorrect: false },
-                { id: 'c', text: 'Paris', isCorrect: true },
-                { id: 'd', text: 'Madrid', isCorrect: false }
-              ],
-              type: 'multiple-choice',
-              points: 1,
-              required: true
-            }
-          ]
-        };
+        const mockQuestions: Question[] = [
+          {
+            id: '1',
+            text: 'What is the capital of France?',
+            type: 'multiple-choice',
+            options: [
+              { id: 'a', text: 'London', isCorrect: false },
+              { id: 'b', text: 'Berlin', isCorrect: false },
+              { id: 'c', text: 'Paris', isCorrect: true },
+              { id: 'd', text: 'Madrid', isCorrect: false }
+            ],
+            points: 1,
+            required: true
+          }
+        ];
         
         // Add more sample questions
         for (let i = 2; i <= 5; i++) {
-          mockQuiz.questions.push({
+          mockQuestions.push({
             id: i.toString(),
             text: `Sample Question ${i}`,
+            type: 'multiple-choice',
             options: [
               { id: 'a', text: 'Option A', isCorrect: true },
               { id: 'b', text: 'Option B', isCorrect: false },
               { id: 'c', text: 'Option C', isCorrect: false },
               { id: 'd', text: 'Option D', isCorrect: false }
             ],
-            type: 'multiple-choice',
             points: 1,
             required: true
           });
         }
         
+        const mockQuiz: QuizData = {
+          id: quizId,
+          title: 'Demo Quiz',
+          description: 'This is a demo quiz with sample questions',
+          timeLimit: 30,
+          questions: mockQuestions
+        };
+        
         setQuiz(mockQuiz);
-        setQuestions(mockQuiz.questions);
+        setQuestions(mockQuestions);
         setLoading(false);
         return;
       }
@@ -219,7 +233,7 @@ export function useQuizLoader(quizId: string | undefined) {
           `quiz_questions_${quizId}`
         ];
         
-        let localQuestions = null;
+        let localQuestions: Question[] | null = null;
         
         for (const key of possibleQuestionKeys) {
           const storedQuestions = localStorage.getItem(key);
@@ -228,7 +242,12 @@ export function useQuizLoader(quizId: string | undefined) {
               const parsedQuestions = JSON.parse(storedQuestions);
               if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
                 console.log(`Found ${parsedQuestions.length} questions in ${key}`);
-                localQuestions = parsedQuestions;
+                
+                // Ensure questions have the correct type field
+                localQuestions = parsedQuestions.map(q => ({
+                  ...q,
+                  type: ensureValidQuestionType(q.type)
+                }));
                 break;
               }
             } catch (e) {
@@ -275,28 +294,28 @@ export function useQuizLoader(quizId: string | undefined) {
         if (!questionsData || questionsData.length === 0) {
           console.log('No questions found in database, using default questions');
           
-          const defaultQuestions = [
+          const defaultQuestions: Question[] = [
             {
               id: '1',
               text: 'What is the capital of France?',
+              type: 'multiple-choice',
               options: [
                 { id: 'a', text: 'London', isCorrect: false },
                 { id: 'b', text: 'Berlin', isCorrect: false },
                 { id: 'c', text: 'Paris', isCorrect: true },
                 { id: 'd', text: 'Madrid', isCorrect: false }
               ],
-              type: 'multiple-choice',
               points: 1,
               required: true
             },
             {
               id: '2',
               text: 'Sample Question',
+              type: 'multiple-choice',
               options: [
                 { id: 'a', text: 'Option A', isCorrect: true },
                 { id: 'b', text: 'Option B', isCorrect: false }
               ],
-              type: 'multiple-choice',
               points: 1,
               required: true
             }
@@ -334,7 +353,7 @@ export function useQuizLoader(quizId: string | undefined) {
           const questionWithOptions: Question = {
             id: q.id,
             text: q.text,
-            type: q.type as 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer',
+            type: ensureValidQuestionType(q.type),
             points: q.points,
             required: q.required,
             options: (optionsData || []).map(opt => ({
@@ -386,6 +405,12 @@ export function useQuizLoader(quizId: string | undefined) {
             if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
               console.log(`Using ${parsedQuestions.length} questions from ${key} as fallback`);
               
+              // Ensure questions have the correct type field
+              const typedQuestions: Question[] = parsedQuestions.map(q => ({
+                ...q,
+                type: ensureValidQuestionType(q.type)
+              }));
+              
               // Get quiz info from localStorage if available
               const storedQuizzesString = localStorage.getItem('quizzes');
               let fallbackTitle = 'Your Quiz';
@@ -412,11 +437,11 @@ export function useQuizLoader(quizId: string | undefined) {
                 title: fallbackTitle,
                 description: fallbackDescription,
                 timeLimit: fallbackTimeLimit,
-                questions: parsedQuestions
+                questions: typedQuestions
               };
               
               setQuiz(fallbackQuiz);
-              setQuestions(parsedQuestions);
+              setQuestions(typedQuestions);
               setFallbackActive(true);
               foundFallback = true;
               
@@ -445,6 +470,14 @@ export function useQuizLoader(quizId: string | undefined) {
       setLoading(false);
     }
   }, [quizId, toast]);
+
+  // Helper function to ensure question type is valid
+  const ensureValidQuestionType = (type: string): "multiple-choice" | "true-false" | "short-answer" | "long-answer" => {
+    const validTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+    return validTypes.includes(type) 
+      ? type as "multiple-choice" | "true-false" | "short-answer" | "long-answer"
+      : 'multiple-choice';
+  };
 
   useEffect(() => {
     fetchQuiz();

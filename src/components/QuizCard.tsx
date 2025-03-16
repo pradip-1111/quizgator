@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, FileText, Users, Link as LinkIcon, BarChart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { Question } from '@/types/quiz';
 
 export type Quiz = {
   id: string;
@@ -41,6 +42,17 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     return `${window.location.origin}/take-quiz/${quiz.id}`;
   };
 
+  // Ensure question type is valid according to our type definition
+  const validateQuestionType = (question: any): Question => {
+    const validTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+    const type = validTypes.includes(question.type) ? question.type : 'multiple-choice';
+    
+    return {
+      ...question,
+      type: type as "multiple-choice" | "true-false" | "short-answer" | "long-answer"
+    };
+  };
+
   // Create a function to save the quiz to localStorage with improved question handling
   const saveQuizToLocalStorage = () => {
     console.log(`Attempting to save quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
@@ -72,11 +84,14 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     if (Array.isArray(quiz.questions)) {
       console.log(`Quiz object contains questions array with ${quiz.questions.length} questions`);
       
-      // Save questions directly to both storage locations
-      localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(quiz.questions));
-      localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(quiz.questions));
+      // Ensure all questions have valid types before storing
+      const validatedQuestions = quiz.questions.map(validateQuestionType);
       
-      console.log(`Saved ${quiz.questions.length} questions for quiz ${quiz.id} from quiz object`);
+      // Save questions directly to both storage locations
+      localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
+      localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
+      
+      console.log(`Saved ${validatedQuestions.length} questions for quiz ${quiz.id} from quiz object`);
       questionsFound = true;
     }
     
@@ -91,9 +106,12 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
             if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
               console.log(`Found ${parsedQuestions.length} questions in ${location}`);
               
+              // Ensure all questions have valid types before storing
+              const validatedQuestions = parsedQuestions.map(validateQuestionType);
+              
               // Save to both locations to ensure they're available
-              localStorage.setItem(`quiz_questions_${quiz.id}`, questions);
-              localStorage.setItem(`quiz_creator_questions_${quiz.id}`, questions);
+              localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
+              localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
               
               questionsFound = true;
               break;
