@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +6,7 @@ import { enterFullscreen, exitFullscreen, setupTabVisibilityTracking } from '../
 import { Quiz } from '@/components/QuizCard';
 import { Question, QuizData, QuizResult, QuizStatus } from '@/types/quiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
 // Import components
 import QuizRegistration from '@/components/quiz/QuizRegistration';
@@ -19,6 +19,7 @@ import QuizError from '@/components/quiz/QuizError';
 import QuizLoading from '@/components/quiz/QuizLoading';
 
 const TakeQuiz = () => {
+  
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,6 +38,7 @@ const TakeQuiz = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [requiresAuth, setRequiresAuth] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
@@ -409,6 +411,37 @@ const TakeQuiz = () => {
     return { score, totalPoints };
   };
   
+  // New function to send confirmation email
+  const sendConfirmationEmail = async (quizTitle: string, result: QuizResult) => {
+    if (sendingEmail) return;
+    
+    try {
+      setSendingEmail(true);
+      console.log("Sending confirmation email for quiz submission");
+      
+      const response = await supabase.functions.invoke('send-quiz-confirmation', {
+        body: {
+          quizId: quizId || '',
+          quizTitle: quizTitle || 'Quiz',
+          studentName: result.studentName,
+          studentId: result.studentId,
+          studentEmail: `${result.studentId}@student.example.com`
+        }
+      });
+      
+      if (!response.data?.success) {
+        throw new Error('Failed to send confirmation email');
+      }
+      
+      console.log("Email confirmation sent successfully");
+    } catch (error) {
+      console.error("Error sending confirmation email:", error);
+      // Don't show error to user, the quiz submission is still successful
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+  
   const handleSubmitQuiz = () => {
     if (!quiz) return;
     
@@ -451,7 +484,7 @@ const TakeQuiz = () => {
       // Save results
       const { score, totalPoints } = calculateScore();
       const result: QuizResult = {
-        quizId: quizId || '',  // Ensure the quiz ID is saved with the result
+        quizId: quizId || '',
         studentName: name,
         studentId: rollNumber,
         score,
@@ -475,6 +508,9 @@ const TakeQuiz = () => {
       
       exitFullscreen();
       
+      // Send confirmation email
+      sendConfirmationEmail(quiz.title, result);
+      
       // Hide the actual score from the student
       toast({
         title: "Quiz Submitted",
@@ -497,6 +533,7 @@ const TakeQuiz = () => {
     }
   };
   
+
   if (loading) {
     return <QuizLoading />;
   }

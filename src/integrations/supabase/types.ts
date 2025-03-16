@@ -9,7 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      email_notifications: {
+        Row: {
+          email_sent: boolean | null
+          email_sent_at: string | null
+          id: string
+          quiz_id: string
+          quiz_title: string
+          student_email: string
+          student_id: string
+          student_name: string
+          submitted_at: string
+        }
+        Insert: {
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          id?: string
+          quiz_id: string
+          quiz_title: string
+          student_email: string
+          student_id: string
+          student_name: string
+          submitted_at?: string
+        }
+        Update: {
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          id?: string
+          quiz_id?: string
+          quiz_title?: string
+          student_email?: string
+          student_id?: string
+          student_name?: string
+          submitted_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
