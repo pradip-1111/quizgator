@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { StudentResponse, QuizResult } from '@/types/quiz';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '../components/Navbar';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -31,13 +33,21 @@ const ViewResults = () => {
           }
         }
 
-        // Load quiz results
-        const storedResults = localStorage.getItem(`quiz_results_${quizId}`);
+        // Load quiz results - ensure we only load results for THIS quiz
+        const resultsKey = `quiz_results_${quizId}`;
+        console.log(`Loading results for specific quiz ID: ${quizId} using key: ${resultsKey}`);
+        
+        const storedResults = localStorage.getItem(resultsKey);
         if (storedResults) {
           const parsedResults = JSON.parse(storedResults) as QuizResult[];
+          console.log(`Found ${parsedResults.length} results for quiz ID: ${quizId}`);
+          
+          // Validate that these results belong to this quiz
+          const validResults = parsedResults.filter(result => result.quizId === quizId);
+          console.log(`After validation: ${validResults.length} results belong to this quiz`);
           
           // Transform results for display
-          const studentResponses = parsedResults.map(result => {
+          const studentResponses = validResults.map(result => {
             const percentageScore = result.totalPoints > 0 
               ? Math.round((result.score / result.totalPoints) * 100) 
               : 0;
@@ -54,6 +64,7 @@ const ViewResults = () => {
           
           setResults(studentResponses);
         } else {
+          console.log(`No results found for quiz ID: ${quizId}`);
           setResults([]);
         }
       } catch (error) {

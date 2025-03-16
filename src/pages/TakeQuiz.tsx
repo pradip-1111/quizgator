@@ -451,7 +451,7 @@ const TakeQuiz = () => {
       // Save results
       const { score, totalPoints } = calculateScore();
       const result: QuizResult = {
-        quizId: quizId || '',
+        quizId: quizId || '',  // Ensure the quiz ID is saved with the result
         studentName: name,
         studentId: rollNumber,
         score,
@@ -460,13 +460,17 @@ const TakeQuiz = () => {
         answers
       };
       
+      // Make sure to save results to the correct quiz-specific key
+      const resultsKey = `quiz_results_${quizId}`;
+      console.log(`Saving result for quiz ID: ${quizId} to key: ${resultsKey}`);
+      
       // Get existing results or create new array
-      const existingResults = localStorage.getItem(`quiz_results_${quizId}`) || '[]';
+      const existingResults = localStorage.getItem(resultsKey) || '[]';
       const results = JSON.parse(existingResults);
       results.push(result);
       
-      // Save updated results
-      localStorage.setItem(`quiz_results_${quizId}`, JSON.stringify(results));
+      // Save updated results to the quiz-specific key
+      localStorage.setItem(resultsKey, JSON.stringify(results));
       console.log("Saved quiz results:", result);
       
       exitFullscreen();
