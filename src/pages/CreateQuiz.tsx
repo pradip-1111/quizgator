@@ -24,51 +24,8 @@ const CreateQuiz = () => {
       try {
         console.log("Checking auth status, current user:", user);
         
-        // For demo account, set up a session specifically
-        if (user && user.email === 'admin@example.com') {
-          console.log("Setting up session for demo user");
-          try {
-            // Make sure the demo user has a valid session in Supabase client
-            await supabase.auth.setSession({
-              access_token: 'demo_token',
-              refresh_token: 'demo_refresh_token',
-            });
-            
-            // Verify the session was set correctly
-            const { data: authData } = await supabase.auth.getSession();
-            console.log("Demo session verification:", authData);
-            
-            setAuthChecked(true);
-          } catch (err) {
-            console.error("Error setting up demo session:", err);
-            toast({
-              title: "Authentication Error",
-              description: "There was a problem setting up your session",
-              variant: "destructive",
-            });
-            navigate('/login');
-          }
-          return;
-        }
-        
-        // For other users, check the actual session
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session check error:", error);
-          toast({
-            title: "Authentication Error",
-            description: "There was a problem verifying your login status",
-            variant: "destructive",
-          });
-          navigate('/login');
-          return;
-        }
-        
-        console.log("Auth session check result:", data);
-        
-        if (!data.session) {
-          console.log("No active session found, redirecting to login");
+        if (!user) {
+          console.log("No user found, redirecting to login");
           toast({
             title: "Authentication Required",
             description: "You must be logged in to create a quiz",
@@ -78,6 +35,7 @@ const CreateQuiz = () => {
           return;
         }
         
+        // Verification of session completed successfully
         setAuthChecked(true);
       } catch (err) {
         console.error("Auth check error:", err);

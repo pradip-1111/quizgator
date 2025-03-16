@@ -20,6 +20,15 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to create a fake but properly formatted JWT token
+const createFakeJWT = (payload: any) => {
+  // Create a simple base64 encoded JWT structure (header.payload.signature)
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const encodedPayload = btoa(JSON.stringify(payload));
+  const signature = btoa('fake_signature');
+  return `${header}.${encodedPayload}.${signature}`;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,39 +61,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // For the demo user, ensure we have a token in localStorage
       if (parsedUser.email === 'admin@example.com') {
-        // For demo user, set up a proper session with Supabase
-        const setupDemoSession = async () => {
-          console.log("Setting up demo session for admin@example.com");
-          
-          // Create a demo token format that mimics the structure Supabase expects
-          const demoToken = {
-            currentSession: {
-              access_token: 'demo_token',
-              refresh_token: 'demo_refresh_token',
-              user: {
-                id: parsedUser.id,
-                email: parsedUser.email,
-                role: 'authenticated',
-                aud: 'authenticated',
-              }
-            }
-          };
-          
-          localStorage.setItem('supabase.auth.token', JSON.stringify(demoToken));
-          
-          // Also set the session in Supabase client
-          try {
-            await supabase.auth.setSession({
-              access_token: 'demo_token',
-              refresh_token: 'demo_refresh_token',
-            });
-            console.log("Demo session set successfully");
-          } catch (err) {
-            console.error("Error setting demo session:", err);
-          }
-        };
-        
-        setupDemoSession();
+        // Create a properly formatted JWT token for the demo user
+        setupDemoSession(parsedUser);
       }
     }
     setLoading(false);
@@ -93,6 +71,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data.subscription.unsubscribe();
     };
   }, []);
+
+  // Setup a demo session with properly formatted tokens
+  const setupDemoSession = async (demoUser: User) => {
+    console.log("Setting up demo session for admin@example.com");
+    
+    // Create JWT-like tokens with proper structure
+    const accessTokenPayload = {
+      aud: "authenticated",
+      exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+      sub: demoUser.id,
+      email: demoUser.email,
+      role: "authenticated"
+    };
+    
+    const refreshTokenPayload = {
+      exp: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
+      sub: demoUser.id,
+    };
+    
+    const access_token = createFakeJWT(accessTokenPayload);
+    const refresh_token = createFakeJWT(refreshTokenPayload);
+    
+    // Create a demo token format that mimics the structure Supabase expects
+    const demoToken = {
+      currentSession: {
+        access_token,
+        refresh_token,
+        user: {
+          id: demoUser.id,
+          email: demoUser.email,
+          role: 'authenticated',
+          aud: 'authenticated',
+        }
+      }
+    };
+    
+    localStorage.setItem('supabase.auth.token', JSON.stringify(demoToken));
+    
+    // Also set the session in Supabase client
+    try {
+      await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      });
+      console.log("Demo session set successfully");
+    } catch (err) {
+      console.error("Error setting demo session:", err);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
@@ -108,31 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
         
-        // Create a demo token format that mimics the structure Supabase expects
-        const demoToken = {
-          currentSession: {
-            access_token: 'demo_token',
-            refresh_token: 'demo_refresh_token',
-            user: {
-              id: user.id,
-              email: user.email,
-              role: 'authenticated',
-              aud: 'authenticated',
-            }
-          }
-        };
-        
-        localStorage.setItem('supabase.auth.token', JSON.stringify(demoToken));
-        
-        // Also set the session in Supabase client for the demo user
-        try {
-          await supabase.auth.setSession({
-            access_token: 'demo_token',
-            refresh_token: 'demo_refresh_token',
-          });
-        } catch (err) {
-          console.error("Error setting demo session:", err);
-        }
+        // Set up the demo session with properly formatted tokens
+        await setupDemoSession(user);
       } else {
         // For non-demo users, use Supabase auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -214,31 +218,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(student));
       localStorage.setItem('currentQuizId', quizId);
       
-      // Create a demo token format that mimics the structure Supabase expects for students
-      const studentToken = {
-        currentSession: {
-          access_token: 'student_token',
-          refresh_token: 'student_refresh_token',
-          user: {
-            id: student.id,
-            email: student.email,
-            role: 'authenticated',
-            aud: 'authenticated',
-          }
-        }
-      };
-      
-      localStorage.setItem('supabase.auth.token', JSON.stringify(studentToken));
-      
-      // Set the session in Supabase client
-      try {
-        await supabase.auth.setSession({
-          access_token: 'student_token',
-          refresh_token: 'student_refresh_token',
-        });
-      } catch (err) {
-        console.error("Error setting student session:", err);
-      }
+      // Set up student session with properly formatted tokens
+      await setupDemoSession(student);
     } catch (error) {
       console.error('Student registration error:', error);
       throw error;
