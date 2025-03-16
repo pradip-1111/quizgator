@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -114,17 +115,28 @@ export function useQuizCreator() {
     try {
       console.log("Starting quiz save process");
       
-      // Get current auth session
-      const { data: sessionData } = await supabase.auth.getSession();
+      // First, ensure we have an active session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session check error:", sessionError);
+        throw new Error(`Authentication error: ${sessionError.message}`);
+      }
+      
+      console.log("Current session data:", sessionData);
       
       // If we're using the demo user, we need to set the auth header manually
-      if (user.email === 'admin@example.com' && !sessionData.session) {
+      if (user.email === 'admin@example.com' && (!sessionData.session || !sessionData.session.access_token)) {
         console.log("Setting up auth headers for demo user");
         // Make sure the demo user has a valid session in Supabase client
         await supabase.auth.setSession({
           access_token: 'demo_token',
-          refresh_token: '',
+          refresh_token: 'demo_refresh_token',
         });
+        
+        // Verify the session was set
+        const { data: verifyData } = await supabase.auth.getSession();
+        console.log("Verified session after setting:", verifyData);
       }
       
       // Now proceed with saving the quiz
@@ -150,7 +162,8 @@ export function useQuizCreator() {
           title: quizTitle,
           description: quizDescription,
           time_limit: parseInt(timeLimit),
-          created_by: userId
+          created_by: userId,
+          status: status
         })
         .select();
       

@@ -52,18 +52,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // For the demo user, ensure we have a token in localStorage
       if (parsedUser.email === 'admin@example.com') {
-        const hasToken = localStorage.getItem('supabase.auth.token');
-        if (!hasToken) {
-          localStorage.setItem('supabase.auth.token', JSON.stringify({
+        // For demo user, set up a proper session with Supabase
+        const setupDemoSession = async () => {
+          console.log("Setting up demo session for admin@example.com");
+          
+          // Create a demo token format that mimics the structure Supabase expects
+          const demoToken = {
             currentSession: {
               access_token: 'demo_token',
+              refresh_token: 'demo_refresh_token',
               user: {
                 id: parsedUser.id,
                 email: parsedUser.email,
+                role: 'authenticated',
+                aud: 'authenticated',
               }
             }
-          }));
-        }
+          };
+          
+          localStorage.setItem('supabase.auth.token', JSON.stringify(demoToken));
+          
+          // Also set the session in Supabase client
+          try {
+            await supabase.auth.setSession({
+              access_token: 'demo_token',
+              refresh_token: 'demo_refresh_token',
+            });
+            console.log("Demo session set successfully");
+          } catch (err) {
+            console.error("Error setting demo session:", err);
+          }
+        };
+        
+        setupDemoSession();
       }
     }
     setLoading(false);
@@ -87,22 +108,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
         localStorage.setItem('user', JSON.stringify(user));
         
-        // Store a fake auth token for Supabase RLS
-        localStorage.setItem('supabase.auth.token', JSON.stringify({
+        // Create a demo token format that mimics the structure Supabase expects
+        const demoToken = {
           currentSession: {
             access_token: 'demo_token',
+            refresh_token: 'demo_refresh_token',
             user: {
               id: user.id,
               email: user.email,
+              role: 'authenticated',
+              aud: 'authenticated',
             }
           }
-        }));
+        };
         
-        // Also set the auth state in Supabase client for the demo user
-        await supabase.auth.setSession({
-          access_token: 'demo_token',
-          refresh_token: '',
-        });
+        localStorage.setItem('supabase.auth.token', JSON.stringify(demoToken));
+        
+        // Also set the session in Supabase client for the demo user
+        try {
+          await supabase.auth.setSession({
+            access_token: 'demo_token',
+            refresh_token: 'demo_refresh_token',
+          });
+        } catch (err) {
+          console.error("Error setting demo session:", err);
+        }
       } else {
         // For non-demo users, use Supabase auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -184,22 +214,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(student));
       localStorage.setItem('currentQuizId', quizId);
       
-      // Also store a fake auth token for Supabase RLS
-      localStorage.setItem('supabase.auth.token', JSON.stringify({
+      // Create a demo token format that mimics the structure Supabase expects for students
+      const studentToken = {
         currentSession: {
           access_token: 'student_token',
+          refresh_token: 'student_refresh_token',
           user: {
             id: student.id,
             email: student.email,
+            role: 'authenticated',
+            aud: 'authenticated',
           }
         }
-      }));
+      };
+      
+      localStorage.setItem('supabase.auth.token', JSON.stringify(studentToken));
       
       // Set the session in Supabase client
-      await supabase.auth.setSession({
-        access_token: 'student_token',
-        refresh_token: '',
-      });
+      try {
+        await supabase.auth.setSession({
+          access_token: 'student_token',
+          refresh_token: 'student_refresh_token',
+        });
+      } catch (err) {
+        console.error("Error setting student session:", err);
+      }
     } catch (error) {
       console.error('Student registration error:', error);
       throw error;
