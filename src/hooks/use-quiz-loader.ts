@@ -106,6 +106,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
       }));
 
       try {
+        // First try to load the quiz from Supabase
         const { data: quizData, error } = await supabase
           .from('quizzes')
           .select('title, description, time_limit, created_at')
@@ -116,12 +117,13 @@ export const useQuizLoader = (quizId: string | undefined) => {
         let usedLocalStorage = false;
         
         if (error || !quizData) {
-          console.log(`Supabase error or no data, trying localStorage: ${error?.message || 'No data returned'}`);
+          console.log(`Supabase error or no data: ${error?.message || 'No data returned'}`);
           setState(prev => ({ 
             ...prev, 
             loadingStage: 'local' 
           }));
           
+          // Try to load from localStorage as a backup
           try {
             const storedQuizzes = localStorage.getItem('quizzes');
             if (storedQuizzes) {
@@ -151,6 +153,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
                   usedLocalStorage = true;
                   console.log(`Found quiz in localStorage: ${quiz.title}`);
                 } else {
+                  // If quiz not found in localStorage, throw an error
                   throw new Error(`Quiz with ID ${quizId} not found in localStorage`);
                 }
               } catch (e) {
@@ -163,6 +166,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
           } catch (localError) {
             console.log(`LocalStorage error: ${localError instanceof Error ? localError.message : 'Unknown error'}`);
             
+            // If quiz not found in database or localStorage, show a clear error
             throw new Error(`Quiz with ID ${quizId} not found. Please make sure the quiz exists and try again.`);
           }
         } else {
@@ -178,7 +182,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
         }
 
         if (!quiz) {
-          throw new Error('Failed to load quiz data from any source');
+          throw new Error(`Quiz with ID ${quizId} not found. The quiz may have been deleted or does not exist.`);
         }
 
         setState(prev => ({ 
@@ -254,6 +258,7 @@ export const useQuizLoader = (quizId: string | undefined) => {
               fallbackActive: true
             }));
             
+            // Try to load questions from localStorage
             const possibleKeys = [
               `quiz_questions_${quizId}`,
               `quiz_creator_questions_${quizId}`
