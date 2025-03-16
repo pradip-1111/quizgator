@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +19,7 @@ import ViewResults from "./pages/ViewResults";
 import EditQuiz from "./pages/EditQuiz";
 import ForgotPassword from "./pages/ForgotPassword";
 import UserResponses from "./pages/UserResponses";
+import AnalyticsInsights from "./pages/AnalyticsInsights";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +52,7 @@ function App() {
               <Route path="/take-quiz/:quizId" element={<TakeQuiz />} />
               <Route path="/quiz-complete" element={<QuizComplete />} />
               <Route path="/user-responses" element={<UserResponses />} />
+              <Route path="/analytics/insights" element={<AnalyticsInsights />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
