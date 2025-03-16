@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, RefreshCcw, AlertTriangle, Database, Trash2 } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, AlertTriangle, Database, Trash2, List } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -83,6 +84,30 @@ const QuizError = ({
         });
       }
     }
+  };
+  
+  const handleDebugQuiz = () => {
+    // Display all quiz-related data in console for debugging
+    console.log("=== QUIZ DEBUG INFO ===");
+    const quizData = {};
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('quiz_') || key.includes('quiz'))) {
+        try {
+          quizData[key] = JSON.parse(localStorage.getItem(key) || "null");
+        } catch (e) {
+          quizData[key] = "Error parsing: " + e.message;
+        }
+      }
+    }
+    
+    console.log("All quiz-related localStorage data:", quizData);
+    
+    toast({
+      title: "Debug Info",
+      description: "Quiz debug information has been logged to the console",
+    });
   };
   
   return (
@@ -186,7 +211,7 @@ const QuizError = ({
           )}
         </div>
       </CardContent>
-      <CardFooter className="flex justify-center space-x-3">
+      <CardFooter className="flex flex-wrap justify-center gap-2">
         <Link to="/">
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -208,12 +233,15 @@ const QuizError = ({
           </Button>
         )}
         
-        {(isLocalStorageError || isQuizNotFoundError) && (
-          <Button onClick={handleClearCache} variant="destructive" size="sm">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Clear Cache
-          </Button>
-        )}
+        <Button onClick={handleDebugQuiz} variant="outline" size="sm">
+          <List className="mr-2 h-4 w-4" />
+          Debug Quiz
+        </Button>
+        
+        <Button onClick={handleClearCache} variant="destructive" size="sm">
+          <Trash2 className="mr-2 h-4 w-4" />
+          Clear Cache
+        </Button>
       </CardFooter>
     </Card>
   );

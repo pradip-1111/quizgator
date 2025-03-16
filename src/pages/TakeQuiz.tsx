@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -45,6 +44,45 @@ const TakeQuiz = () => {
     getRemainingQuestionCount
   } = useQuizState();
   
+  useEffect(() => {
+    if (!quizId) return;
+    
+    console.log(`Attempting to load quiz with ID: ${quizId} directly from localStorage`);
+    
+    try {
+      const directQuizData = localStorage.getItem(`quiz_${quizId}`);
+      
+      if (directQuizData) {
+        const parsedQuiz = JSON.parse(directQuizData);
+        console.log("Found quiz directly in localStorage:", parsedQuiz.title);
+        
+        setQuiz(parsedQuiz);
+        
+        if (Array.isArray(parsedQuiz.questions) && parsedQuiz.questions.length > 0) {
+          console.log(`Using ${parsedQuiz.questions.length} questions from direct quiz data`);
+          setQuestions(parsedQuiz.questions);
+        } else {
+          const questionsData = localStorage.getItem(`quiz_questions_${quizId}`);
+          if (questionsData) {
+            const parsedQuestions = JSON.parse(questionsData);
+            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+              console.log(`Loaded ${parsedQuestions.length} questions from separate storage`);
+              setQuestions(parsedQuestions);
+            }
+          }
+        }
+        
+        setTimeLeft((parsedQuiz.timeLimit || parsedQuiz.duration) * 60);
+        setQuizStateLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.error("Error loading quiz directly from localStorage:", error);
+    }
+    
+    console.log("No direct quiz found in localStorage, will use useQuizLoader");
+  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading]);
+  
   const { 
     quiz: loadedQuiz, 
     questions: loadedQuestions, 
@@ -56,15 +94,20 @@ const TakeQuiz = () => {
   } = useQuizLoader(quizId);
   
   useEffect(() => {
-    if (loadedQuiz) {
-      console.log('Quiz loaded successfully:', loadedQuiz.title);
+    if (loadedQuiz && !quiz) {
+      console.log('Quiz loaded from useQuizLoader:', loadedQuiz.title);
       setQuiz(loadedQuiz);
       setQuestions(loadedQuestions);
       setTimeLeft((loadedQuiz.timeLimit || loadedQuiz.duration) * 60);
     }
+    
     setQuizStateLoading(quizLoading);
-    setQuizStateError(quizLoadError);
-  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setQuizStateError]);
+    
+    if (quizLoadError) {
+      console.error("Quiz load error:", quizLoadError);
+      setQuizStateError(quizLoadError);
+    }
+  }, [loadedQuiz, loadedQuestions, quizLoading, quizLoadError, quiz, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setQuizStateError]);
   
   const handleSubmitQuiz = () => {
     if (!quiz) return;
@@ -181,15 +224,14 @@ const TakeQuiz = () => {
     }
   };
   
-  const handleCancelLoading = () => {
-    navigate('/');
-  };
-  
   const handleClearCache = () => {
     if (quizId) {
       console.log(`Clearing cache for quiz ID: ${quizId}`);
       
-      // Use the clearQuizCache utility function
+      localStorage.removeItem(`quiz_${quizId}`);
+      localStorage.removeItem(`quiz_questions_${quizId}`);
+      localStorage.removeItem(`quiz_creator_questions_${quizId}`);
+      
       clearQuizCache(quizId);
       
       toast({
@@ -216,7 +258,6 @@ const TakeQuiz = () => {
     />;
   }
   
-  // Display an error if the quiz wasn't found or there was an error loading it
   if (quizStateError || !quiz) {
     const isQuizNotFoundError = quizStateError?.toLowerCase().includes('not found') || 
                                quizStateError?.toLowerCase().includes('no quiz');
@@ -230,13 +271,11 @@ const TakeQuiz = () => {
     />;
   }
   
-  // Get questions from either the quiz.questions array or the separate questions state
   const quizWithQuestions = {
     ...quiz,
     questions: questions && questions.length > 0 ? questions : (quiz.questions || [])
   };
   
-  // Show an error if there are no questions
   if (quizWithQuestions.questions.length === 0) {
     return <QuizError 
       error={`The quiz "${quiz.title}" has no questions. Please add questions to this quiz or select a different quiz.`} 

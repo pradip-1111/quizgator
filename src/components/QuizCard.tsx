@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,44 +65,36 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   // Function to find quiz questions from all possible sources
   const findQuizQuestions = (quizId: string): any[] => {
     console.log(`Looking for questions for quiz: ${quizId}`);
+    
+    // If quiz.questions is an array, it contains the actual questions
+    if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
+      console.log(`Quiz object contains questions array with ${quiz.questions.length} questions`);
+      return quiz.questions;
+    }
+    
     // Try all possible storage locations
     const sources = [
       `quiz_creator_questions_${quizId}`,
       `quiz_questions_${quizId}`
     ];
     
-    let foundQuestions: any[] = [];
-    
-    // If quiz.questions is an array, it contains the actual questions
-    if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
-      console.log(`Quiz object contains questions array with ${quiz.questions.length} questions`);
-      foundQuestions = quiz.questions;
-    } else {
-      // Check each storage location for questions
-      for (const source of sources) {
-        try {
-          const storedQuestions = localStorage.getItem(source);
-          if (storedQuestions) {
-            const parsedQuestions = JSON.parse(storedQuestions);
-            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-              console.log(`Found ${parsedQuestions.length} questions in ${source}`);
-              foundQuestions = parsedQuestions;
-              break;
-            }
+    for (const source of sources) {
+      try {
+        const storedQuestions = localStorage.getItem(source);
+        if (storedQuestions) {
+          const parsedQuestions = JSON.parse(storedQuestions);
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            console.log(`Found ${parsedQuestions.length} questions in ${source}`);
+            return parsedQuestions;
           }
-        } catch (err) {
-          console.error(`Error parsing questions from ${source}:`, err);
         }
+      } catch (err) {
+        console.error(`Error parsing questions from ${source}:`, err);
       }
     }
     
-    if (foundQuestions.length === 0) {
-      console.warn(`No questions found for quiz ${quizId} in any storage location.`);
-    } else {
-      console.log(`Found ${foundQuestions.length} questions for quiz ${quizId}`);
-    }
-    
-    return foundQuestions;
+    console.warn(`No questions found for quiz ${quizId} in any storage location.`);
+    return [];
   };
 
   // Create a function to save the quiz to localStorage with improved question handling
@@ -122,7 +113,11 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
       questions: validatedQuestions.length > 0 ? validatedQuestions : quiz.questions
     };
     
-    // Save current quiz to localStorage
+    // Save individual quiz directly with its ID as the key for easier retrieval
+    localStorage.setItem(`quiz_${quiz.id}`, JSON.stringify(completeQuiz));
+    console.log(`Saved quiz directly with key quiz_${quiz.id}`);
+    
+    // Save current quiz to quizzes array for backward compatibility
     const storedQuizzesJson = localStorage.getItem('quizzes');
     let quizzes = [];
     
@@ -147,7 +142,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     
     // Save the updated quizzes array
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
-    console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
+    console.log(`Saved quiz to quizzes array: ${quiz.title} with ID: ${quiz.id}`);
     
     // Also save questions separately for better accessibility
     if (validatedQuestions.length > 0) {
@@ -219,6 +214,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
         localStorage.removeItem(`quiz_questions_${quiz.id}`);
         localStorage.removeItem(`quiz_creator_questions_${quiz.id}`);
         localStorage.removeItem(`quiz_results_${quiz.id}`);
+        localStorage.removeItem(`quiz_${quiz.id}`);
         
         // Call the delete handler
         onDelete(quiz.id);
