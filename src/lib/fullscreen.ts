@@ -45,9 +45,22 @@ export const setupTabVisibilityTracking = (
     onTabChange(!document.hidden);
   };
 
+  // Initial check
+  if (document.hidden) {
+    onTabChange(false);
+  }
+
+  // Setup event listeners with a slight delay to avoid false positives
   document.addEventListener('visibilitychange', handleVisibilityChange);
-  window.addEventListener('blur', () => onTabChange(false));
-  window.addEventListener('focus', () => onTabChange(true));
+  
+  // Track window focus/blur for better detection
+  window.addEventListener('blur', () => {
+    setTimeout(() => onTabChange(false), 100);
+  });
+  
+  window.addEventListener('focus', () => {
+    setTimeout(() => onTabChange(true), 100);
+  });
 
   // Return cleanup function
   return () => {
@@ -55,4 +68,14 @@ export const setupTabVisibilityTracking = (
     window.removeEventListener('blur', () => onTabChange(false));
     window.removeEventListener('focus', () => onTabChange(true));
   };
+};
+
+// New function to check if the browser supports fullscreen mode
+export const isFullscreenSupported = (): boolean => {
+  return !!(
+    document.documentElement.requestFullscreen ||
+    (document.documentElement as any).mozRequestFullScreen ||
+    (document.documentElement as any).webkitRequestFullscreen ||
+    (document.documentElement as any).msRequestFullscreen
+  );
 };
