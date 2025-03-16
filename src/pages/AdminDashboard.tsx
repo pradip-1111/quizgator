@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,14 +19,59 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
   
-  // Load quizzes from localStorage
+  const prepareQuizzes = (loadedQuizzes: Quiz[]) => {
+    return loadedQuizzes.map(quiz => {
+      if (Array.isArray(quiz.questions)) {
+        return quiz;
+      }
+      
+      try {
+        const questionsKey = `quiz_questions_${quiz.id}`;
+        const storedQuestions = localStorage.getItem(questionsKey);
+        
+        if (storedQuestions) {
+          const questions = JSON.parse(storedQuestions);
+          if (Array.isArray(questions) && questions.length > 0) {
+            console.log(`Found ${questions.length} questions for quiz: ${quiz.id}`);
+            return {
+              ...quiz,
+              questions: questions
+            };
+          }
+        }
+        
+        const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
+        const creatorStoredQuestions = localStorage.getItem(creatorQuestionsKey);
+        
+        if (creatorStoredQuestions) {
+          const questions = JSON.parse(creatorStoredQuestions);
+          if (Array.isArray(questions) && questions.length > 0) {
+            console.log(`Found ${questions.length} creator questions for quiz: ${quiz.id}`);
+            return {
+              ...quiz,
+              questions: questions
+            };
+          }
+        }
+      } catch (error) {
+        console.error(`Error loading questions for quiz: ${quiz.id}`, error);
+      }
+      
+      return quiz;
+    });
+  };
+  
   useEffect(() => {
     try {
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
-        setQuizzes(JSON.parse(storedQuizzes));
+        const parsedQuizzes = JSON.parse(storedQuizzes);
+        const preparedQuizzes = prepareQuizzes(parsedQuizzes);
+        setQuizzes(preparedQuizzes);
+        
+        localStorage.setItem('quizzes', JSON.stringify(preparedQuizzes));
+        console.log(`Loaded and prepared ${preparedQuizzes.length} quizzes`);
       } else {
-        // Initialize with empty array if no quizzes found
         localStorage.setItem('quizzes', JSON.stringify([]));
       }
     } catch (error) {
@@ -40,7 +84,6 @@ const AdminDashboard = () => {
     }
   }, [toast]);
 
-  // Function to handle "Create Quiz" button click
   const handleCreateQuiz = () => {
     if (user) {
       navigate('/create-quiz');
@@ -54,7 +97,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Function to handle "Copy Link" action
   const handleCopyLink = (quizId: string) => {
     toast({
       title: "Link Copied",
@@ -62,16 +104,12 @@ const AdminDashboard = () => {
     });
   };
   
-  // Function to handle "Delete Quiz" action
   const handleDeleteQuiz = (quizId: string) => {
     try {
-      // Filter out the deleted quiz
       const updatedQuizzes = quizzes.filter(quiz => quiz.id !== quizId);
       
-      // Save updated quizzes to localStorage
       localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
       
-      // Update state
       setQuizzes(updatedQuizzes);
       
       toast({
@@ -88,7 +126,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Filter quizzes based on search term and active tab
   const filteredQuizzes = quizzes.filter(quiz => {
     const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quiz.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -106,10 +143,8 @@ const AdminDashboard = () => {
     return matchesSearch;
   });
   
-  // Check if any quizzes exist
   const hasQuizzes = quizzes.length > 0;
   
-  // Filter drafts, active and completed quizzes
   const draftQuizzes = quizzes.filter(quiz => quiz.status === 'draft').length;
   const activeQuizzes = quizzes.filter(quiz => quiz.status === 'active').length;
   const completedQuizzes = quizzes.filter(quiz => quiz.status === 'completed').length;

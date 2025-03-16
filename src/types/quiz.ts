@@ -1,43 +1,72 @@
 
-export type Question = {
+import { z } from "zod";
+
+export const QuestionTypeEnum = z.enum([
+  "multiple-choice",
+  "true-false", 
+  "short-answer",
+  "long-answer"
+]);
+
+export type QuestionType = z.infer<typeof QuestionTypeEnum>;
+
+export interface QuestionOption {
   id: string;
   text: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer' | 'long-answer';
-  options: Array<{ id: string; text: string; isCorrect: boolean }>;
-  points: number;
-  required: boolean;
-};
+  isCorrect: boolean;
+}
 
-export type QuizData = {
+export interface Question {
+  id: string;
+  text: string;
+  type: QuestionType;
+  options?: QuestionOption[];
+  required: boolean;
+  points: number;
+}
+
+export interface QuizDetails {
   id: string;
   title: string;
-  description: string;
-  timeLimit: number;
-  questions: Question[];
-};
+  description?: string;
+  duration: number;
+  status: 'draft' | 'active' | 'completed';
+}
 
-export type QuizResult = {
+export interface StudentInfo {
+  name: string;
+  id: string;
+  email?: string;
+}
+
+export interface QuizAnswer {
+  questionId: string;
+  selectedOptionId?: string;
+  textAnswer?: string;
+  isCorrect?: boolean;
+  pointsAwarded?: number;
+}
+
+export interface QuizState {
+  currentQuestionIndex: number;
+  answers: Record<string, QuizAnswer>;
+  timeRemaining: number;
+  startTime: Date | null;
+  endTime: Date | null;
+  securityViolations: number;
+  isCompleted: boolean;
+}
+
+export interface QuizResult {
   quizId: string;
   studentName: string;
   studentId: string;
+  studentEmail?: string;
   score: number;
   totalPoints: number;
-  submittedAt: string;
-  answers: Record<string, any>;
-  correctAnswers: Record<string, any>; // Store correct answers for each question
-  securityViolations?: number; // Track security violations like tab switches
-  completed: boolean; // Whether the quiz was completed or forcibly submitted
-};
-
-export type QuizStatus = 'draft' | 'active' | 'completed';
-
-export type StudentResponse = {
-  studentName: string;
-  studentId: string;
-  score: number;
-  totalPoints: number;
-  submittedAt: string;
   percentageScore: number;
-  securityViolations?: number;
-  completed?: boolean;
-};
+  answers: QuizAnswer[];
+  submittedAt: Date;
+  securityViolations: number;
+  completed: boolean;
+}

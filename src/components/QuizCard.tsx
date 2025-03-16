@@ -53,9 +53,52 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     };
   };
 
+  // Function to find quiz questions from all possible sources
+  const findQuizQuestions = (quizId: string): any[] => {
+    console.log(`Looking for questions for quiz: ${quizId}`);
+    // Try all possible storage locations
+    const sources = [
+      `quiz_creator_questions_${quizId}`,
+      `quiz_questions_${quizId}`
+    ];
+    
+    let foundQuestions: any[] = [];
+    
+    // If quiz.questions is an array, it contains the actual questions
+    if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
+      console.log(`Quiz object contains questions array with ${quiz.questions.length} questions`);
+      foundQuestions = quiz.questions;
+    } else {
+      // Check each storage location for questions
+      for (const source of sources) {
+        try {
+          const storedQuestions = localStorage.getItem(source);
+          if (storedQuestions) {
+            const parsedQuestions = JSON.parse(storedQuestions);
+            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+              console.log(`Found ${parsedQuestions.length} questions in ${source}`);
+              foundQuestions = parsedQuestions;
+              break;
+            }
+          }
+        } catch (err) {
+          console.error(`Error parsing questions from ${source}:`, err);
+        }
+      }
+    }
+    
+    if (foundQuestions.length === 0) {
+      console.warn(`No questions found for quiz ${quizId} in any storage location.`);
+    } else {
+      console.log(`Found ${foundQuestions.length} questions for quiz ${quizId}`);
+    }
+    
+    return foundQuestions;
+  };
+
   // Create a function to save the quiz to localStorage with improved question handling
   const saveQuizToLocalStorage = () => {
-    console.log(`Attempting to save quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
+    console.log(`Saving quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
     // Save current quiz to localStorage
     const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
@@ -72,59 +115,34 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
     console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // Handle questions - check all possible locations
-    const questionLocations = [
-      `quiz_creator_questions_${quiz.id}`,
-      `quiz_questions_${quiz.id}`
-    ];
+    // Find and save questions
+    const questions = findQuizQuestions(quiz.id);
     
-    let questionsFound = false;
-    
-    // If quiz.questions is an array, it contains the actual questions
-    if (Array.isArray(quiz.questions)) {
-      console.log(`Quiz object contains questions array with ${quiz.questions.length} questions`);
-      
+    if (questions.length > 0) {
       // Ensure all questions have valid types before storing
-      const validatedQuestions = quiz.questions.map(validateQuestionType);
+      const validatedQuestions = questions.map(validateQuestionType);
       
-      // Save questions directly to both storage locations
+      // Save questions to both storage locations to ensure they're available
       localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
       localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
       
-      console.log(`Saved ${validatedQuestions.length} questions for quiz ${quiz.id} from quiz object`);
-      questionsFound = true;
-    }
-    
-    if (!questionsFound) {
-      // Check each possible storage location for questions
-      for (const location of questionLocations) {
-        const questions = localStorage.getItem(location);
+      console.log(`Saved ${validatedQuestions.length} questions for quiz ${quiz.id}`);
+      
+      // If we have the actual questions and quiz.questions is a number, update it to include the full questions
+      if (typeof quiz.questions === 'number') {
+        // Create a new quiz object with the actual questions
+        const updatedQuiz = {
+          ...quiz,
+          questions: validatedQuestions
+        };
         
-        if (questions) {
-          try {
-            const parsedQuestions = JSON.parse(questions);
-            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-              console.log(`Found ${parsedQuestions.length} questions in ${location}`);
-              
-              // Ensure all questions have valid types before storing
-              const validatedQuestions = parsedQuestions.map(validateQuestionType);
-              
-              // Save to both locations to ensure they're available
-              localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
-              localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
-              
-              questionsFound = true;
-              break;
-            }
-          } catch (err) {
-            console.error(`Error parsing questions from ${location}:`, err);
-          }
-        }
+        // Update it in the quizzes array
+        const updatedQuizzes = quizzes.map((q: any) => q.id === quiz.id ? updatedQuiz : q);
+        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+        console.log(`Updated quiz object to include full questions`);
       }
-    }
-    
-    if (!questionsFound && typeof quiz.questions === 'number') {
-      console.warn(`No questions found for quiz ${quiz.id} in any storage location. Quiz only has question count: ${quiz.questions}`);
+    } else {
+      console.warn(`No questions found to save for quiz ${quiz.id}`);
     }
   };
 
@@ -210,7 +228,9 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mt-2">
           <div className="flex items-center">
             <FileText className="h-4 w-4 mr-1 text-primary/70" />
-            {quiz.questions} questions
+            {typeof quiz.questions === 'number' 
+              ? `${quiz.questions} questions` 
+              : `${quiz.questions.length} questions`}
           </div>
           <div className="flex items-center">
             <Clock className="h-4 w-4 mr-1 text-primary/70" />

@@ -1,495 +1,245 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { useToast } from './use-toast';
-import { QuizData, Question } from '@/types/quiz';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Question } from '@/types/quiz';
 
-export function useQuizLoader(quizId: string | undefined) {
-  const [quiz, setQuiz] = useState<QuizData | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingStage, setLoadingStage] = useState<'initial' | 'database' | 'local' | 'demo'>('initial');
-  const [fallbackActive, setFallbackActive] = useState(false);
-  const { toast } = useToast();
+interface QuizLoaderState {
+  quiz: any;
+  questions: Question[];
+  loading: boolean;
+  error: string | null;
+  stage: 'idle' | 'loading-quiz' | 'loading-questions' | 'ready' | 'error';
+}
 
-  const fetchQuiz = useCallback(async () => {
+export const useQuizLoader = (quizId: string | undefined) => {
+  const [state, setState] = useState<QuizLoaderState>({
+    quiz: null,
+    questions: [],
+    loading: true,
+    error: null,
+    stage: 'idle'
+  });
+
+  useEffect(() => {
     if (!quizId) {
-      setError('Quiz ID is missing');
-      setLoading(false);
+      setState({
+        ...state,
+        error: 'No quiz ID provided',
+        loading: false,
+        stage: 'error'
+      });
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setLoadingStage('initial');
-    
-    try {
-      console.log(`Fetching quiz with ID: ${quizId}`);
-      
-      // First priority: Check if we have the quiz and its questions in localStorage
-      const storedQuizzesString = localStorage.getItem('quizzes');
-      let quizFromLocalStorage = null;
-      let questionsFromLocalStorage: Question[] | null = null;
-      
-      if (storedQuizzesString) {
-        try {
-          const storedQuizzes = JSON.parse(storedQuizzesString);
-          quizFromLocalStorage = storedQuizzes.find((q: any) => q.id === quizId);
-          
-          if (quizFromLocalStorage) {
-            console.log('Found matching quiz in localStorage:', quizFromLocalStorage.title);
+    const loadQuiz = async () => {
+      console.log(`Loading quiz with ID: ${quizId}`);
+      setState(prev => ({ ...prev, loading: true, stage: 'loading-quiz' }));
+
+      try {
+        // Try to load from Supabase first
+        const { data: quizData, error } = await supabase
+          .from('quizzes')
+          .select('title, description, time_limit, created_at')
+          .eq('id', quizId)
+          .single();
+
+        let quiz;
+        
+        if (error) {
+          console.log(`Supabase error, trying localStorage: ${error.message}`);
+          // Try to get quiz from localStorage
+          const storedQuizzes = localStorage.getItem('quizzes');
+          if (storedQuizzes) {
+            const quizzes = JSON.parse(storedQuizzes);
+            quiz = quizzes.find((q: any) => q.id === quizId);
             
-            // Check for questions in all possible locations
-            const possibleQuestionKeys = [
-              `quiz_creator_questions_${quizId}`,
-              `quiz_questions_${quizId}`
+            if (!quiz) {
+              console.error(`Quiz not found in localStorage: ${quizId}`);
+              throw new Error('Quiz not found');
+            }
+            
+            console.log(`Found quiz in localStorage: ${quiz.title}`);
+          } else {
+            console.error(`No quizzes found in localStorage`);
+            throw new Error('Quiz not found');
+          }
+        } else {
+          // Format the Supabase quiz data to match our app's format
+          quiz = {
+            id: quizId,
+            title: quizData.title,
+            description: quizData.description || '',
+            duration: quizData.time_limit,
+            created: quizData.created_at
+          };
+          console.log(`Found quiz in Supabase: ${quiz.title}`);
+        }
+
+        setState(prev => ({ 
+          ...prev, 
+          quiz, 
+          stage: 'loading-questions'
+        }));
+        
+        // Now load questions
+        await loadQuestions(quizId, quiz);
+      } catch (error) {
+        console.error(`Error loading quiz: ${error.message}`);
+        setState(prev => ({ 
+          ...prev, 
+          error: `Failed to load quiz: ${error.message}`, 
+          loading: false,
+          stage: 'error'
+        }));
+      }
+    };
+
+    const loadQuestions = async (quizId: string, quiz: any) => {
+      console.log(`Loading questions for quiz: ${quizId}`);
+      
+      let questions: Question[] = [];
+      
+      // First, check if the quiz object already contains questions
+      if (quiz && Array.isArray(quiz.questions) && quiz.questions.length > 0) {
+        console.log(`Quiz object already contains ${quiz.questions.length} questions`);
+        questions = ensureValidQuestionTypes(quiz.questions);
+      } else {
+        try {
+          // First, try to load from Supabase
+          const { data: questionsData, error: questionsError } = await supabase
+            .from('questions')
+            .select(`
+              id, text, type, points, required,
+              options(id, text, is_correct)
+            `)
+            .eq('quiz_id', quizId)
+            .order('order_number', { ascending: true });
+
+          if (questionsError) {
+            console.log(`Supabase error on questions, trying localStorage: ${questionsError.message}`);
+          } else if (questionsData && questionsData.length > 0) {
+            // Format Supabase question data to match our app's format
+            questions = questionsData.map(q => ({
+              id: q.id,
+              text: q.text,
+              type: ensureValidQuestionType(q.type),
+              options: q.options.map((o: any) => ({
+                id: o.id,
+                text: o.text,
+                isCorrect: o.is_correct
+              })),
+              points: q.points,
+              required: q.required
+            }));
+            console.log(`Found ${questions.length} questions in Supabase`);
+          }
+          
+          // If no questions found in Supabase, try localStorage
+          if (questions.length === 0) {
+            // Try all possible storage keys
+            const possibleKeys = [
+              `quiz_questions_${quizId}`,
+              `quiz_creator_questions_${quizId}`
             ];
             
-            // If quiz.questions is an array, it contains the actual questions
-            if (Array.isArray(quizFromLocalStorage.questions) && quizFromLocalStorage.questions.length > 0) {
-              console.log('Quiz object contains questions array');
-              const rawQuestions = quizFromLocalStorage.questions;
-              
-              // Ensure questions have the correct type field
-              questionsFromLocalStorage = rawQuestions.map(q => ({
-                ...q,
-                type: ensureValidQuestionType(q.type)
-              }));
-            } else {
-              // Check all possible storage locations for questions
-              for (const key of possibleQuestionKeys) {
-                const storedQuestions = localStorage.getItem(key);
-                if (storedQuestions) {
-                  try {
-                    const parsedQuestions = JSON.parse(storedQuestions);
-                    if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-                      console.log(`Found ${parsedQuestions.length} questions in ${key}`);
-                      
-                      // Ensure questions have the correct type field
-                      questionsFromLocalStorage = parsedQuestions.map(q => ({
-                        ...q,
-                        type: ensureValidQuestionType(q.type)
-                      }));
-                      break;
-                    }
-                  } catch (e) {
-                    console.error(`Error parsing questions from ${key}:`, e);
-                  }
-                }
-              }
-            }
-            
-            // If we have both quiz and questions, use them
-            if (questionsFromLocalStorage) {
-              console.log(`Using locally stored quiz with ${questionsFromLocalStorage.length} questions`);
-              setLoadingStage('local');
-              
-              const fullQuiz: QuizData = {
-                id: quizFromLocalStorage.id,
-                title: quizFromLocalStorage.title,
-                description: quizFromLocalStorage.description,
-                timeLimit: quizFromLocalStorage.duration || 30,
-                questions: questionsFromLocalStorage
-              };
-              
-              // Save this data to both storage locations to ensure it's available next time
-              localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questionsFromLocalStorage));
-              localStorage.setItem(`quiz_creator_questions_${quizId}`, JSON.stringify(questionsFromLocalStorage));
-              
-              setQuiz(fullQuiz);
-              setQuestions(questionsFromLocalStorage);
-              setFallbackActive(true);
-              setLoading(false);
-              return;
-            }
-          }
-        } catch (e) {
-          console.error('Error parsing stored quizzes:', e);
-        }
-      }
-      
-      // Second priority: Try to fetch from Supabase
-      console.log('Attempting to fetch quiz from Supabase');
-      setLoadingStage('database');
-      
-      const { data: quizData, error: quizError } = await supabase
-        .from('quizzes')
-        .select('*')
-        .eq('id', quizId)
-        .maybeSingle();
-      
-      if (quizError) {
-        console.error('Error fetching quiz from Supabase:', quizError);
-        throw new Error(`Failed to load quiz: ${quizError.message}`);
-      }
-      
-      // If no quiz found in Supabase but we have a quiz in localStorage without questions
-      if (!quizData && quizFromLocalStorage) {
-        console.log('Quiz not found in Supabase, but found in localStorage without questions');
-        setLoadingStage('demo');
-        
-        // Create a demo quiz with the title and description from localStorage
-        const mockQuestions: Question[] = [
-          {
-            id: '1',
-            text: 'What is the capital of France?',
-            type: 'multiple-choice',
-            options: [
-              { id: 'a', text: 'London', isCorrect: false },
-              { id: 'b', text: 'Berlin', isCorrect: false },
-              { id: 'c', text: 'Paris', isCorrect: true },
-              { id: 'd', text: 'Madrid', isCorrect: false }
-            ],
-            points: 1,
-            required: true
-          },
-          {
-            id: '2',
-            text: 'Sample Question 2',
-            type: 'multiple-choice',
-            options: [
-              { id: 'a', text: 'Option A', isCorrect: true },
-              { id: 'b', text: 'Option B', isCorrect: false }
-            ],
-            points: 1,
-            required: true
-          }
-        ];
-        
-        const mockQuiz: QuizData = {
-          id: quizId,
-          title: quizFromLocalStorage.title || 'Demo Quiz',
-          description: quizFromLocalStorage.description || 'This is a demo quiz',
-          timeLimit: quizFromLocalStorage.duration || 30,
-          questions: mockQuestions
-        };
-        
-        setQuiz(mockQuiz);
-        setQuestions(mockQuestions);
-        setLoading(false);
-        return;
-      }
-      
-      // If quiz not found in Supabase or localStorage, create a demo quiz
-      if (!quizData && !quizFromLocalStorage) {
-        console.log('Quiz not found in Supabase or localStorage, creating demo quiz');
-        setLoadingStage('demo');
-        
-        const mockQuestions: Question[] = [
-          {
-            id: '1',
-            text: 'What is the capital of France?',
-            type: 'multiple-choice',
-            options: [
-              { id: 'a', text: 'London', isCorrect: false },
-              { id: 'b', text: 'Berlin', isCorrect: false },
-              { id: 'c', text: 'Paris', isCorrect: true },
-              { id: 'd', text: 'Madrid', isCorrect: false }
-            ],
-            points: 1,
-            required: true
-          }
-        ];
-        
-        // Add more sample questions
-        for (let i = 2; i <= 5; i++) {
-          mockQuestions.push({
-            id: i.toString(),
-            text: `Sample Question ${i}`,
-            type: 'multiple-choice',
-            options: [
-              { id: 'a', text: 'Option A', isCorrect: true },
-              { id: 'b', text: 'Option B', isCorrect: false },
-              { id: 'c', text: 'Option C', isCorrect: false },
-              { id: 'd', text: 'Option D', isCorrect: false }
-            ],
-            points: 1,
-            required: true
-          });
-        }
-        
-        const mockQuiz: QuizData = {
-          id: quizId,
-          title: 'Demo Quiz',
-          description: 'This is a demo quiz with sample questions',
-          timeLimit: 30,
-          questions: mockQuestions
-        };
-        
-        setQuiz(mockQuiz);
-        setQuestions(mockQuestions);
-        setLoading(false);
-        return;
-      }
-      
-      // If we have quiz data from Supabase, try to load questions
-      if (quizData) {
-        console.log('Quiz found in Supabase:', quizData);
-        
-        // First check if we have questions in localStorage
-        const possibleQuestionKeys = [
-          `quiz_creator_questions_${quizId}`,
-          `quiz_questions_${quizId}`
-        ];
-        
-        let localQuestions: Question[] | null = null;
-        
-        for (const key of possibleQuestionKeys) {
-          const storedQuestions = localStorage.getItem(key);
-          if (storedQuestions) {
-            try {
-              const parsedQuestions = JSON.parse(storedQuestions);
-              if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-                console.log(`Found ${parsedQuestions.length} questions in ${key}`);
-                
-                // Ensure questions have the correct type field
-                localQuestions = parsedQuestions.map(q => ({
-                  ...q,
-                  type: ensureValidQuestionType(q.type)
-                }));
-                break;
-              }
-            } catch (e) {
-              console.error(`Error parsing questions from ${key}:`, e);
-            }
-          }
-        }
-        
-        // If we have questions in localStorage, use them
-        if (localQuestions) {
-          console.log('Using questions from localStorage with database quiz');
-          
-          const fullQuiz: QuizData = {
-            id: quizData.id,
-            title: quizData.title,
-            description: quizData.description,
-            timeLimit: quizData.time_limit,
-            questions: localQuestions
-          };
-          
-          setQuiz(fullQuiz);
-          setQuestions(localQuestions);
-          setLoading(false);
-          return;
-        }
-        
-        // If no questions in localStorage, fetch from Supabase
-        console.log('Fetching questions from Supabase');
-        
-        const { data: questionsData, error: questionsError } = await supabase
-          .from('questions')
-          .select('id, text, type, points, required, order_number')
-          .eq('quiz_id', quizId)
-          .order('order_number');
-        
-        if (questionsError) {
-          console.error('Error fetching questions from Supabase:', questionsError);
-          throw new Error(`Failed to load questions: ${questionsError.message}`);
-        }
-        
-        console.log(`Found ${questionsData?.length || 0} questions from database`);
-        
-        // If no questions in database, use default questions
-        if (!questionsData || questionsData.length === 0) {
-          console.log('No questions found in database, using default questions');
-          
-          const defaultQuestions: Question[] = [
-            {
-              id: '1',
-              text: 'What is the capital of France?',
-              type: 'multiple-choice',
-              options: [
-                { id: 'a', text: 'London', isCorrect: false },
-                { id: 'b', text: 'Berlin', isCorrect: false },
-                { id: 'c', text: 'Paris', isCorrect: true },
-                { id: 'd', text: 'Madrid', isCorrect: false }
-              ],
-              points: 1,
-              required: true
-            },
-            {
-              id: '2',
-              text: 'Sample Question',
-              type: 'multiple-choice',
-              options: [
-                { id: 'a', text: 'Option A', isCorrect: true },
-                { id: 'b', text: 'Option B', isCorrect: false }
-              ],
-              points: 1,
-              required: true
-            }
-          ];
-          
-          const fullQuiz: QuizData = {
-            id: quizData.id,
-            title: quizData.title,
-            description: quizData.description,
-            timeLimit: quizData.time_limit,
-            questions: defaultQuestions
-          };
-          
-          setQuiz(fullQuiz);
-          setQuestions(defaultQuestions);
-          setLoading(false);
-          return;
-        }
-        
-        // For each question, fetch its options
-        const questionsWithOptions: Question[] = [];
-        
-        for (const q of questionsData) {
-          const { data: optionsData, error: optionsError } = await supabase
-            .from('options')
-            .select('id, text, is_correct')
-            .eq('question_id', q.id)
-            .order('order_number');
-          
-          if (optionsError) {
-            console.error(`Error fetching options for question ${q.id}:`, optionsError);
-            throw new Error(`Failed to load options: ${optionsError.message}`);
-          }
-          
-          const questionWithOptions: Question = {
-            id: q.id,
-            text: q.text,
-            type: ensureValidQuestionType(q.type),
-            points: q.points,
-            required: q.required,
-            options: (optionsData || []).map(opt => ({
-              id: opt.id,
-              text: opt.text,
-              isCorrect: opt.is_correct
-            }))
-          };
-          
-          questionsWithOptions.push(questionWithOptions);
-        }
-        
-        // Save questions to localStorage for future use
-        localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questionsWithOptions));
-        localStorage.setItem(`quiz_creator_questions_${quizId}`, JSON.stringify(questionsWithOptions));
-        
-        // Construct the full quiz object
-        const fullQuiz: QuizData = {
-          id: quizData.id,
-          title: quizData.title,
-          description: quizData.description,
-          timeLimit: quizData.time_limit,
-          questions: questionsWithOptions
-        };
-        
-        setQuiz(fullQuiz);
-        setQuestions(questionsWithOptions);
-        setLoading(false);
-      }
-      
-    } catch (err) {
-      console.error('Error loading quiz:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load quiz. Please try again.';
-      setError(errorMessage);
-      
-      // Try to use localStorage as fallback
-      const possibleQuestionKeys = [
-        `quiz_creator_questions_${quizId}`,
-        `quiz_questions_${quizId}`
-      ];
-      
-      let foundFallback = false;
-      
-      for (const key of possibleQuestionKeys) {
-        const storedQuestions = localStorage.getItem(key);
-        if (storedQuestions) {
-          try {
-            const parsedQuestions = JSON.parse(storedQuestions);
-            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-              console.log(`Using ${parsedQuestions.length} questions from ${key} as fallback`);
-              
-              // Ensure questions have the correct type field
-              const typedQuestions: Question[] = parsedQuestions.map(q => ({
-                ...q,
-                type: ensureValidQuestionType(q.type)
-              }));
-              
-              // Get quiz info from localStorage if available
-              const storedQuizzesString = localStorage.getItem('quizzes');
-              let fallbackTitle = 'Your Quiz';
-              let fallbackDescription = 'Quiz loaded from local storage due to connection issues';
-              let fallbackTimeLimit = 30;
-              
-              if (storedQuizzesString) {
+            for (const key of possibleKeys) {
+              const storedQuestions = localStorage.getItem(key);
+              if (storedQuestions) {
                 try {
-                  const storedQuizzes = JSON.parse(storedQuizzesString);
-                  const matchedQuiz = storedQuizzes.find((q: any) => q.id === quizId);
-                  
-                  if (matchedQuiz) {
-                    fallbackTitle = matchedQuiz.title;
-                    fallbackDescription = matchedQuiz.description;
-                    fallbackTimeLimit = matchedQuiz.duration || 30;
+                  const parsedQuestions = JSON.parse(storedQuestions);
+                  if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+                    questions = ensureValidQuestionTypes(parsedQuestions);
+                    console.log(`Found ${questions.length} questions in localStorage (${key})`);
+                    break;
                   }
                 } catch (e) {
-                  console.error('Error parsing stored quizzes:', e);
+                  console.error(`Error parsing questions from ${key}:`, e);
                 }
               }
-              
-              const fallbackQuiz: QuizData = {
-                id: quizId,
-                title: fallbackTitle,
-                description: fallbackDescription,
-                timeLimit: fallbackTimeLimit,
-                questions: typedQuestions
-              };
-              
-              setQuiz(fallbackQuiz);
-              setQuestions(typedQuestions);
-              setFallbackActive(true);
-              foundFallback = true;
-              
-              toast({
-                title: "Using local data",
-                description: "Could not connect to the server. Using locally stored quiz.",
-                variant: "default"
-              });
-              
-              break;
             }
-          } catch (e) {
-            console.error(`Error parsing questions from ${key}:`, e);
           }
+          
+          // If still no questions, try to look in quiz object
+          if (questions.length === 0) {
+            // Try to find quizzes in localStorage to check if any contain the full questions
+            const storedQuizzes = localStorage.getItem('quizzes');
+            if (storedQuizzes) {
+              try {
+                const quizzes = JSON.parse(storedQuizzes);
+                const fullQuiz = quizzes.find((q: any) => q.id === quizId);
+                
+                if (fullQuiz && Array.isArray(fullQuiz.questions) && fullQuiz.questions.length > 0) {
+                  questions = ensureValidQuestionTypes(fullQuiz.questions);
+                  console.log(`Found ${questions.length} questions in full quiz object`);
+                  
+                  // Save these questions to localStorage for future use
+                  localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
+                }
+              } catch (e) {
+                console.error('Error parsing quizzes from localStorage:', e);
+              }
+            }
+          }
+          
+          if (questions.length === 0) {
+            throw new Error('No questions found for this quiz');
+          }
+        } catch (error) {
+          console.error(`Error loading questions: ${error.message}`);
+          setState(prev => ({ 
+            ...prev, 
+            error: `Failed to load questions: ${error.message}`, 
+            loading: false,
+            stage: 'error'
+          }));
+          return;
         }
       }
       
-      if (!foundFallback) {
-        toast({
-          title: "Error",
-          description: "Failed to load quiz data",
-          variant: "destructive"
-        });
+      // Save loaded questions to localStorage for future access
+      try {
+        localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
+        console.log(`Saved ${questions.length} questions to localStorage for future access`);
+      } catch (e) {
+        console.error('Error saving questions to localStorage:', e);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [quizId, toast]);
 
-  // Helper function to ensure question type is valid
-  const ensureValidQuestionType = (type: string): "multiple-choice" | "true-false" | "short-answer" | "long-answer" => {
-    const validTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
-    return validTypes.includes(type) 
-      ? type as "multiple-choice" | "true-false" | "short-answer" | "long-answer"
-      : 'multiple-choice';
-  };
+      // Successfully loaded everything
+      setState({ 
+        quiz, 
+        questions, 
+        loading: false, 
+        error: null,
+        stage: 'ready'
+      });
+    };
+    
+    loadQuiz();
+  }, [quizId]);
 
-  useEffect(() => {
-    fetchQuiz();
-  }, [fetchQuiz]);
+  return state;
+};
 
-  return { 
-    quiz, 
-    questions, 
-    loading, 
-    error, 
-    retryLoading: fetchQuiz,
-    loadingStage,
-    fallbackActive
-  };
+// Helper function to ensure question type is valid
+function ensureValidQuestionType(type: string): "multiple-choice" | "true-false" | "short-answer" | "long-answer" {
+  const validTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+  return validTypes.includes(type) 
+    ? type as "multiple-choice" | "true-false" | "short-answer" | "long-answer"
+    : "multiple-choice";
+}
+
+// Helper function to validate a full question array
+function ensureValidQuestionTypes(questions: any[]): Question[] {
+  return questions.map(q => ({
+    ...q,
+    id: q.id || `question-${Math.random().toString(36).substr(2, 9)}`,
+    type: ensureValidQuestionType(q.type),
+    options: Array.isArray(q.options) ? q.options.map((o: any) => ({
+      ...o,
+      id: o.id || `option-${Math.random().toString(36).substr(2, 9)}`,
+      isCorrect: Boolean(o.isCorrect)
+    })) : [],
+    points: Number(q.points) || 1,
+    required: q.required !== undefined ? Boolean(q.required) : true
+  }));
 }
