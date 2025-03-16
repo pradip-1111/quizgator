@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -121,6 +120,8 @@ const CreateQuiz = () => {
     
     try {
       console.log("Starting quiz save process");
+      
+      // Generate a valid UUID for the quiz
       const quizId = crypto.randomUUID();
       
       // Insert the quiz first
@@ -133,24 +134,25 @@ const CreateQuiz = () => {
           time_limit: parseInt(timeLimit),
           created_by: user.id
         })
-        .select()
-        .single();
+        .select();
       
       if (quizError) {
         console.error("Error inserting quiz:", quizError);
-        throw quizError;
+        throw new Error(`Failed to save quiz: ${quizError.message}`);
       }
       
       console.log("Quiz saved successfully:", quizData);
       
-      // Save all questions
+      // Save all questions with separate inserts to ensure proper ID handling
       for (let i = 0; i < questions.length; i++) {
         const question = questions[i];
         
-        // Generate a UUID for the question
+        // Generate a valid UUID for each question
         const questionId = crypto.randomUUID();
         
-        const { data: questionData, error: questionError } = await supabase
+        console.log(`Saving question ${i+1}/${questions.length} with ID ${questionId}`);
+        
+        const { error: questionError } = await supabase
           .from('questions')
           .insert({
             id: questionId,
@@ -160,38 +162,33 @@ const CreateQuiz = () => {
             points: question.points,
             required: question.required,
             order_number: i
-          })
-          .select()
-          .single();
+          });
         
         if (questionError) {
-          console.error("Error inserting question:", questionError);
-          throw questionError;
+          console.error(`Error inserting question ${i+1}:`, questionError);
+          throw new Error(`Failed to save question ${i+1}: ${questionError.message}`);
         }
-        
-        console.log("Question saved successfully:", questionData);
         
         // Save all options for the question if they exist
         if (question.options && question.options.length > 0) {
           const optionsToInsert = question.options.map((opt, index) => ({
-            id: crypto.randomUUID(),
+            id: crypto.randomUUID(), // Generate valid UUID for each option
             question_id: questionId,
             text: opt.text,
             is_correct: opt.isCorrect,
             order_number: index
           }));
           
-          const { data: optionsData, error: optionsError } = await supabase
+          console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
+          
+          const { error: optionsError } = await supabase
             .from('options')
-            .insert(optionsToInsert)
-            .select();
+            .insert(optionsToInsert);
           
           if (optionsError) {
-            console.error("Error inserting options:", optionsError);
-            throw optionsError;
+            console.error(`Error inserting options for question ${i+1}:`, optionsError);
+            throw new Error(`Failed to save options for question ${i+1}: ${optionsError.message}`);
           }
-          
-          console.log("Options saved successfully:", optionsData);
         }
       }
       
@@ -227,7 +224,7 @@ const CreateQuiz = () => {
       console.error('Error saving quiz:', error);
       toast({
         title: "Error",
-        description: "Failed to save quiz. Please try again.",
+        description: error.message || "Failed to save quiz. Please try again.",
         variant: "destructive",
       });
     } finally {
