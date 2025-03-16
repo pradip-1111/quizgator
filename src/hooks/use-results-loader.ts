@@ -41,7 +41,7 @@ export function useResultsLoader(quizId: string | undefined) {
             setQuizTitle(parsedResults[0].quizTitle || 'Quiz Results');
             
             // Transform results for display
-            const studentResponses = parsedResults.map(result => ({
+            const studentResponses: StudentResponse[] = parsedResults.map((result: any) => ({
               studentName: result.studentName,
               studentId: result.studentId,
               score: result.score,
@@ -51,7 +51,8 @@ export function useResultsLoader(quizId: string | undefined) {
                 ? Math.round((result.score / result.totalPoints) * 100) 
                 : 0,
               securityViolations: result.securityViolations,
-              completed: result.completed
+              completed: result.completed,
+              quizTitle: result.quizTitle
             }));
             
             setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
@@ -103,7 +104,7 @@ export function useResultsLoader(quizId: string | undefined) {
           console.log(`Found ${attemptsData.length} attempts in database`);
           
           // Transform data
-          const studentResponses = attemptsData.map(attempt => ({
+          const studentResponses: StudentResponse[] = attemptsData.map(attempt => ({
             studentName: attempt.student_name,
             studentId: attempt.student_id,
             score: attempt.score,
@@ -113,7 +114,8 @@ export function useResultsLoader(quizId: string | undefined) {
               ? Math.round((attempt.score / attempt.total_points) * 100) 
               : 0,
             securityViolations: attempt.security_violations,
-            completed: attempt.completed
+            completed: attempt.completed,
+            quizTitle: quizTitle
           }));
           
           setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));

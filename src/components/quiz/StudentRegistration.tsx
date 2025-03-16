@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { QuizData } from '@/types/quiz';
 
 interface StudentRegistrationProps {
@@ -15,10 +15,10 @@ interface StudentRegistrationProps {
   email: string;
   setEmail: (email: string) => void;
   onStartQuiz: () => void;
-  requiresAuth: boolean;
+  requiresAuth?: boolean;
 }
 
-const StudentRegistration: React.FC<StudentRegistrationProps> = ({
+const StudentRegistration = ({
   quiz,
   name,
   setName,
@@ -27,70 +27,75 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
   email,
   setEmail,
   onStartQuiz,
-  requiresAuth
-}) => {
+  requiresAuth = false
+}: StudentRegistrationProps) => {
+  const totalQuestions = Array.isArray(quiz.questions) ? quiz.questions.length : 0;
+  
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 animate-fade-in">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">{quiz.title}</CardTitle>
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <Card className="shadow-lg">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-2xl">{quiz.title}</CardTitle>
           <CardDescription>
-            {quiz.description || "Enter your details to start the quiz"}
+            {quiz.description || "No description provided for this quiz."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input
-              id="name"
-              placeholder="Enter your full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full"
-            />
+        <CardContent>
+          <div className="space-y-2 mb-6">
+            <div className="flex items-center justify-between text-sm">
+              <span>Time allowed:</span>
+              <span className="font-medium">{quiz.duration || quiz.timeLimit || 30} minutes</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span>Number of questions:</span>
+              <span className="font-medium">{totalQuestions}</span>
+            </div>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="rollNumber">Student ID</Label>
-            <Input
-              id="rollNumber"
-              placeholder="Enter your student ID"
-              value={rollNumber}
-              onChange={(e) => setRollNumber(e.target.value)}
-              required
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Enter your email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full"
-            />
-          </div>
-          
-          <div className="pt-2">
-            <p className="text-sm text-muted-foreground">
-              This quiz contains {quiz.questions?.length || 0} questions.
-              {quiz.timeLimit > 0 && ` You will have ${quiz.timeLimit} minutes to complete it.`}
-            </p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="student-name">Full Name</Label>
+              <Input
+                id="student-name"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="student-id">Student ID</Label>
+              <Input
+                id="student-id"
+                placeholder="Enter your student ID"
+                value={rollNumber}
+                onChange={(e) => setRollNumber(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="student-email">Email</Label>
+              <Input
+                id="student-email"
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Your quiz results will be sent to this email
+              </p>
+            </div>
           </div>
         </CardContent>
-        <CardFooter>
-          <Button 
-            onClick={onStartQuiz} 
-            className="w-full"
-            disabled={!name || !rollNumber || !email}
-          >
-            Start Quiz
-          </Button>
+        <CardFooter className="flex justify-between">
+          <div className="text-sm text-muted-foreground">
+            <p>Please fill in all fields to start the quiz.</p>
+          </div>
+          <Button onClick={onStartQuiz}>Start Quiz</Button>
         </CardFooter>
       </Card>
     </div>

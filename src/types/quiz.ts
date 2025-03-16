@@ -70,3 +70,26 @@ export interface QuizResult {
   securityViolations: number;
   completed: boolean;
 }
+
+// Added missing types
+export interface QuizData {
+  id: string;
+  title: string;
+  description?: string;
+  duration: number;
+  created?: string;
+  questions?: Question[];
+  timeLimit?: number;
+}
+
+export interface StudentResponse {
+  studentName: string;
+  studentId: string;
+  score: number;
+  totalPoints: number;
+  submittedAt: string;
+  percentageScore: number;
+  securityViolations: number;
+  completed: boolean;
+  quizTitle?: string;
+}

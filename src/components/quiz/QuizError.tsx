@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, AlertTriangle, Database, HardDrive } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface QuizErrorProps {
@@ -20,6 +20,13 @@ const QuizError = ({
   fallbackAvailable = false
 }: QuizErrorProps) => {
   const errorMessage = error instanceof Error ? error.message : error;
+  
+  const handleRetry = () => {
+    if (onRetry) {
+      console.log("Retrying quiz load...");
+      onRetry();
+    }
+  };
   
   return (
     <Card className="w-full max-w-lg mx-auto shadow-lg">
@@ -53,6 +60,26 @@ const QuizError = ({
               The quiz will continue with locally stored questions.
             </p>
           )}
+          
+          {!fallbackAvailable && errorMessage?.includes("not found") && (
+            <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+              <h3 className="text-sm font-medium mb-2">Troubleshooting Tips:</h3>
+              <ul className="text-sm space-y-2">
+                <li className="flex items-start">
+                  <span className="mr-2 text-primary">•</span>
+                  <span>Check that you're using the correct quiz link</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2 text-primary">•</span>
+                  <span>The quiz may have been deleted or is no longer available</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2 text-primary">•</span>
+                  <span>If you received this link from someone, ask them to share it again</span>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-center space-x-3">
@@ -64,7 +91,7 @@ const QuizError = ({
         </Link>
         
         {isRetryable && onRetry && (
-          <Button onClick={onRetry} size="sm">
+          <Button onClick={handleRetry} size="sm">
             <RefreshCcw className="mr-2 h-4 w-4" />
             Retry
           </Button>

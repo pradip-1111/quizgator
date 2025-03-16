@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, FileText, Users, Link as LinkIcon, BarChart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
-import { Question } from '@/types/quiz';
+import { Question, QuestionType } from '@/types/quiz';
 
 export type Quiz = {
   id: string;
@@ -48,8 +47,18 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     const type = validTypes.includes(question.type) ? question.type : 'multiple-choice';
     
     return {
-      ...question,
-      type: type as "multiple-choice" | "true-false" | "short-answer" | "long-answer"
+      id: question.id || `question-${Math.random().toString(36).substr(2, 9)}`,
+      text: question.text || 'Unknown question',
+      type: type as QuestionType,
+      options: Array.isArray(question.options) 
+        ? question.options.map((o: any) => ({
+            id: o.id || `option-${Math.random().toString(36).substr(2, 9)}`,
+            text: o.text || '',
+            isCorrect: Boolean(o.isCorrect)
+          })) 
+        : [],
+      points: Number(question.points) || 1,
+      required: question.required !== undefined ? Boolean(question.required) : true
     };
   };
 
@@ -100,49 +109,47 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   const saveQuizToLocalStorage = () => {
     console.log(`Saving quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
+    // Find questions before saving quiz
+    const questions = findQuizQuestions(quiz.id);
+    const validatedQuestions = questions.length > 0 
+      ? questions.map(validateQuestionType) 
+      : [];
+    
+    // Create a complete quiz object with questions included
+    const completeQuiz = {
+      ...quiz,
+      questions: validatedQuestions.length > 0 ? validatedQuestions : quiz.questions
+    };
+    
     // Save current quiz to localStorage
-    const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+    const storedQuizzesJson = localStorage.getItem('quizzes');
+    let quizzes = [];
+    
+    try {
+      quizzes = storedQuizzesJson ? JSON.parse(storedQuizzesJson) : [];
+    } catch (e) {
+      console.error('Error parsing stored quizzes, creating new array', e);
+      quizzes = [];
+    }
+    
     const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
     
     if (existingQuizIndex === -1) {
       // If not already in localStorage, add it
-      quizzes.push(quiz);
+      quizzes.push(completeQuiz);
     } else {
       // If already in localStorage, update it
-      quizzes[existingQuizIndex] = quiz;
+      quizzes[existingQuizIndex] = completeQuiz;
     }
     
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
     console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // Find and save questions
-    const questions = findQuizQuestions(quiz.id);
-    
-    if (questions.length > 0) {
-      // Ensure all questions have valid types before storing
-      const validatedQuestions = questions.map(validateQuestionType);
-      
-      // Save questions to both storage locations to ensure they're available
+    // Also save questions separately to both storage locations
+    if (validatedQuestions.length > 0) {
       localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
       localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
-      
-      console.log(`Saved ${validatedQuestions.length} questions for quiz ${quiz.id}`);
-      
-      // If we have the actual questions and quiz.questions is a number, update it to include the full questions
-      if (typeof quiz.questions === 'number') {
-        // Create a new quiz object with the actual questions
-        const updatedQuiz = {
-          ...quiz,
-          questions: validatedQuestions
-        };
-        
-        // Update it in the quizzes array
-        const updatedQuizzes = quizzes.map((q: any) => q.id === quiz.id ? updatedQuiz : q);
-        localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
-        console.log(`Updated quiz object to include full questions`);
-      }
-    } else {
-      console.warn(`No questions found to save for quiz ${quiz.id}`);
+      console.log(`Saved ${validatedQuestions.length} questions in separate storage for quiz ${quiz.id}`);
     }
   };
 

@@ -21,37 +21,56 @@ const AdminDashboard = () => {
   
   const prepareQuizzes = (loadedQuizzes: Quiz[]) => {
     return loadedQuizzes.map(quiz => {
-      if (Array.isArray(quiz.questions)) {
+      if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
+        console.log(`Quiz ${quiz.id} already has ${quiz.questions.length} questions array`);
         return quiz;
       }
       
       try {
         const questionsKey = `quiz_questions_${quiz.id}`;
-        const storedQuestions = localStorage.getItem(questionsKey);
+        const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
         
-        if (storedQuestions) {
-          const questions = JSON.parse(storedQuestions);
-          if (Array.isArray(questions) && questions.length > 0) {
-            console.log(`Found ${questions.length} questions for quiz: ${quiz.id}`);
-            return {
-              ...quiz,
-              questions: questions
-            };
+        let foundQuestions: any[] = [];
+        
+        for (const key of [questionsKey, creatorQuestionsKey]) {
+          const storedQuestions = localStorage.getItem(key);
+          if (storedQuestions) {
+            try {
+              const parsedQuestions = JSON.parse(storedQuestions);
+              if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+                console.log(`Found ${parsedQuestions.length} questions for quiz ${quiz.id} in ${key}`);
+                foundQuestions = parsedQuestions;
+                break;
+              }
+            } catch (parseError) {
+              console.error(`Error parsing questions from ${key}:`, parseError);
+            }
           }
         }
         
-        const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
-        const creatorStoredQuestions = localStorage.getItem(creatorQuestionsKey);
-        
-        if (creatorStoredQuestions) {
-          const questions = JSON.parse(creatorStoredQuestions);
-          if (Array.isArray(questions) && questions.length > 0) {
-            console.log(`Found ${questions.length} creator questions for quiz: ${quiz.id}`);
-            return {
-              ...quiz,
-              questions: questions
-            };
-          }
+        if (foundQuestions.length > 0) {
+          const validatedQuestions = foundQuestions.map(q => ({
+            ...q,
+            id: q.id || `question-${Math.random().toString(36).substr(2, 9)}`,
+            text: q.text || 'Unknown question',
+            type: validateQuestionType(q.type),
+            options: Array.isArray(q.options) ? q.options.map((o: any) => ({
+              ...o,
+              id: o.id || `option-${Math.random().toString(36).substr(2, 9)}`,
+              text: o.text || '',
+              isCorrect: Boolean(o.isCorrect)
+            })) : [],
+            points: Number(q.points) || 1,
+            required: q.required !== undefined ? Boolean(q.required) : true
+          }));
+          
+          localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
+          localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
+          
+          return {
+            ...quiz,
+            questions: validatedQuestions
+          };
         }
       } catch (error) {
         console.error(`Error loading questions for quiz: ${quiz.id}`, error);
@@ -59,6 +78,13 @@ const AdminDashboard = () => {
       
       return quiz;
     });
+  };
+  
+  const validateQuestionType = (type: string): "multiple-choice" | "true-false" | "short-answer" | "long-answer" => {
+    const validTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
+    return validTypes.includes(type) 
+      ? type as "multiple-choice" | "true-false" | "short-answer" | "long-answer"
+      : "multiple-choice";
   };
   
   useEffect(() => {

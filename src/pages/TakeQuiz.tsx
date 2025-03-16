@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -65,7 +66,8 @@ const TakeQuiz = () => {
       console.log('Quiz loaded successfully:', loadedQuiz.title);
       setQuiz(loadedQuiz);
       setQuestions(loadedQuestions);
-      setTimeLeft(loadedQuiz.timeLimit * 60);
+      // Use timeLimit or duration property
+      setTimeLeft((loadedQuiz.timeLimit || loadedQuiz.duration) * 60);
     }
     setQuizStateLoading(quizLoading);
     setQuizStateError(quizLoadError);
@@ -217,11 +219,17 @@ const TakeQuiz = () => {
     />;
   }
   
+  // Ensure quiz.questions is available
+  const quizWithQuestions = {
+    ...quiz,
+    questions: questions && questions.length > 0 ? questions : (quiz.questions || [])
+  };
+  
   // Render the registration form before starting
   if (!started) {
     return (
       <StudentRegistration
-        quiz={quiz}
+        quiz={quizWithQuestions}
         name={name}
         setName={setName}
         rollNumber={rollNumber}
@@ -237,13 +245,14 @@ const TakeQuiz = () => {
   // Render the quiz container once started
   return (
     <QuizContainer
+      ref={quizContainerRef}
       quizTitle={quiz.title}
       studentName={name}
       studentRollNumber={rollNumber}
       timeLeft={timeLeft}
       currentQuestion={currentQuestion}
-      totalQuestions={quiz.questions.length}
-      questions={quiz.questions}
+      totalQuestions={quizWithQuestions.questions.length}
+      questions={quizWithQuestions.questions}
       answers={answers}
       onQuit={handleQuitQuiz}
       onPrevious={handlePreviousQuestion}

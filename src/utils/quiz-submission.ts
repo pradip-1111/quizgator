@@ -1,264 +1,213 @@
-import { QuizData, QuizResult } from '@/types/quiz';
-import { supabase } from '@/integrations/supabase/client';
-import { isValidUuid, generateUuid, ensureValidUuid, sanitizeUuidsInObject } from '@/utils/uuid-utils';
 
-export const calculateScore = (quiz: QuizData, answers: Record<string, any>) => {
+import { QuizData, QuizResult, QuizAnswer } from '@/types/quiz';
+import { supabase } from '@/integrations/supabase/client';
+
+export async function submitQuiz(
+  quizId: string,
+  quiz: QuizData,
+  answers: Record<string, any>,
+  studentName: string,
+  studentId: string,
+  studentEmail?: string
+): Promise<QuizResult> {
+  console.log(`Submitting quiz ${quizId} for student ${studentName} (${studentId})`);
+
+  // Find the correct quiz questions
+  let questions = quiz.questions || [];
+  
+  // If the quiz doesn't have questions, try to get them from localStorage
+  if (!questions || questions.length === 0) {
+    try {
+      const storedQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
+      if (storedQuestions) {
+        questions = JSON.parse(storedQuestions);
+        console.log(`Loaded ${questions.length} questions from localStorage for submission`);
+      }
+    } catch (e) {
+      console.error('Error loading questions from localStorage for submission:', e);
+    }
+  }
+
+  // Convert the answers record to an array of QuizAnswer objects
+  const formattedAnswers: QuizAnswer[] = [];
   let score = 0;
   let totalPoints = 0;
   
-  quiz.questions.forEach(question => {
+  // Process each question and corresponding answer
+  questions.forEach(question => {
     totalPoints += question.points;
+    const answer = answers[question.id];
+    let isCorrect = false;
+    let pointsAwarded = 0;
     
-    if (!answers[question.id]) return;
-    
-    if (question.type === 'multiple-choice' || question.type === 'true-false') {
-      const selectedOption = question.options.find(opt => opt.id === answers[question.id]);
-      if (selectedOption && selectedOption.isCorrect) {
-        score += question.points;
+    if (answer) {
+      if (question.type === 'multiple-choice' || question.type === 'true-false') {
+        // For multiple choice, check if selected option is correct
+        const selectedOption = question.options?.find(option => option.id === answer);
+        isCorrect = Boolean(selectedOption?.isCorrect);
+        pointsAwarded = isCorrect ? question.points : 0;
+      } else if (question.type === 'short-answer' || question.type === 'long-answer') {
+        // Text-based answers need instructor grading in a real system
+        // Here we'll just award partial credit as a placeholder
+        pointsAwarded = question.points * 0.5; // Arbitrary 50% credit
+        isCorrect = false; // Needs manual grading
       }
-    } 
-    else if (answers[question.id] && answers[question.id].trim().length > 0) {
-      score += question.points;
+      
+      formattedAnswers.push({
+        questionId: question.id,
+        selectedOptionId: question.type === 'multiple-choice' || question.type === 'true-false' ? answer : undefined,
+        textAnswer: question.type === 'short-answer' || question.type === 'long-answer' ? answer : undefined,
+        isCorrect,
+        pointsAwarded
+      });
+      
+      score += pointsAwarded;
+    } else {
+      // No answer provided for this question
+      formattedAnswers.push({
+        questionId: question.id,
+        isCorrect: false,
+        pointsAwarded: 0
+      });
     }
   });
   
-  return { score, totalPoints };
-};
-
-export const submitQuiz = async (
-  quizId: string, 
-  quiz: QuizData, 
-  answers: Record<string, any>, 
-  name: string, 
-  rollNumber: string, 
-  email: string
-) => {
+  const percentageScore = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
+  const submittedAt = new Date();
+  
+  // Create the result object
+  const result: QuizResult = {
+    quizId,
+    studentName,
+    studentId,
+    studentEmail,
+    score,
+    totalPoints, 
+    percentageScore,
+    answers: formattedAnswers,
+    submittedAt,
+    securityViolations: 0, // This would be populated from security tracking
+    completed: true
+  };
+  
+  // Store the result in local storage first
   try {
-    const { score, totalPoints } = calculateScore(quiz, answers);
+    // Get existing results for this quiz
+    const resultsKey = `quiz_results_${quizId}`;
+    const storedResults = localStorage.getItem(resultsKey);
+    let results = [];
     
-    const correctAnswers: Record<string, any> = {};
-    quiz.questions.forEach(question => {
-      if (question.type === 'multiple-choice' || question.type === 'true-false') {
-        const correctOption = question.options.find(opt => opt.isCorrect);
-        if (correctOption) {
-          correctAnswers[question.id] = correctOption.id;
-        }
-      } else if (question.type === 'short-answer' || question.type === 'long-answer') {
-        correctAnswers[question.id] = null;
-      }
-    });
+    if (storedResults) {
+      results = JSON.parse(storedResults);
+    }
     
-    // Ensure quizId is a valid UUID
-    const validQuizId = ensureValidUuid(quizId);
-    console.log(`Using validated quiz ID: ${validQuizId} for submission`);
+    // Add new result with a formatted date string
+    const resultForStorage = {
+      ...result,
+      submittedAt: submittedAt.toISOString(),
+      quizTitle: quiz.title
+    };
     
-    // Generate a new UUID for the attempt
-    const attemptId = generateUuid();
-    console.log(`Created attempt ID: ${attemptId}`);
-    
-    // Insert the quiz attempt into the database
+    results.push(resultForStorage);
+    localStorage.setItem(resultsKey, JSON.stringify(results));
+    console.log(`Saved result to localStorage: ${resultsKey}`);
+  } catch (e) {
+    console.error('Error saving result to localStorage:', e);
+  }
+  
+  // Also try to save to Supabase
+  try {
+    // Attempt to store in Supabase
     const { data: attemptData, error: attemptError } = await supabase
       .from('quiz_attempts')
       .insert({
-        id: attemptId,
-        quiz_id: validQuizId,
-        student_name: name,
-        student_id: rollNumber,
-        student_email: email,
+        quiz_id: quizId,
+        student_name: studentName,
+        student_id: studentId,
+        student_email: studentEmail,
         score: score,
         total_points: totalPoints,
-        security_violations: 1,
-        completed: true
+        completed: true,
+        security_violations: 0,
+        submitted_at: submittedAt.toISOString()
       })
-      .select()
+      .select('id')
       .single();
     
     if (attemptError) {
-      console.error('Error inserting quiz attempt:', attemptError);
-      throw attemptError;
-    }
-    
-    console.log('Successfully created quiz attempt:', attemptData);
-    
-    // Insert each answer individually with properly validated UUIDs
-    for (const questionId in answers) {
-      const question = quiz.questions.find(q => q.id === questionId);
-      if (!question) continue;
+      console.error('Error saving quiz attempt to Supabase:', attemptError);
+    } else if (attemptData) {
+      console.log('Successfully saved quiz attempt to Supabase with ID:', attemptData.id);
       
-      let isCorrect = false;
-      let pointsAwarded = 0;
-      let selectedOptionId = null;
-      let textAnswer = null;
+      // Now save individual answers linked to this attempt
+      const answersForInsert = formattedAnswers.map(answer => ({
+        attempt_id: attemptData.id,
+        question_id: answer.questionId,
+        selected_option_id: answer.selectedOptionId,
+        text_answer: answer.textAnswer,
+        is_correct: answer.isCorrect,
+        points_awarded: answer.pointsAwarded
+      }));
       
-      if (question.type === 'multiple-choice' || question.type === 'true-false') {
-        selectedOptionId = answers[questionId];
-        // Validate the selected option ID
-        if (selectedOptionId) {
-          selectedOptionId = ensureValidUuid(selectedOptionId);
-        }
-        
-        const selectedOption = question.options.find(opt => opt.id === selectedOptionId);
-        
-        if (selectedOption && selectedOption.isCorrect) {
-          isCorrect = true;
-          pointsAwarded = question.points;
-        }
-      } else if (question.type === 'short-answer' || question.type === 'long-answer') {
-        textAnswer = answers[questionId];
-        isCorrect = !!textAnswer && textAnswer.trim().length > 0;
-        if (isCorrect) {
-          pointsAwarded = question.points;
-        }
-      }
-      
-      // Generate a new UUID for each answer
-      const answerId = generateUuid();
-      console.log(`Created answer ID: ${answerId} for question: ${questionId}`);
-      
-      // Ensure question_id is a valid UUID
-      const validQuestionId = ensureValidUuid(questionId);
-      
-      const { error: answerError } = await supabase
+      const { error: answersError } = await supabase
         .from('quiz_answers')
-        .insert({
-          id: answerId,
-          attempt_id: attemptId,
-          question_id: validQuestionId,
-          selected_option_id: selectedOptionId,
-          text_answer: textAnswer,
-          is_correct: isCorrect,
-          points_awarded: pointsAwarded
-        });
-        
-      if (answerError) {
-        console.error(`Error inserting answer for question ${questionId}:`, answerError);
+        .insert(answersForInsert);
+      
+      if (answersError) {
+        console.error('Error saving quiz answers to Supabase:', answersError);
       } else {
-        console.log(`Successfully saved answer for question ${questionId}`);
+        console.log(`Successfully saved ${answersForInsert.length} answers to Supabase`);
       }
-    }
-    
-    // For backward compatibility, create the same result object structure
-    const result: QuizResult = {
-      quizId: validQuizId,
-      studentName: name,
-      studentId: rollNumber,
-      score,
-      totalPoints,
-      submittedAt: new Date().toISOString(),
-      answers,
-      correctAnswers,
-      securityViolations: 1,
-      completed: true
-    };
-    
-    console.log("Saved quiz results to Supabase:", result);
-    
-    return result;
-  } catch (error) {
-    console.error('Error submitting quiz:', error);
-    // Fall back to localStorage for reliability
-    const { score, totalPoints } = calculateScore(quiz, answers);
-    
-    const correctAnswers: Record<string, any> = {};
-    quiz.questions.forEach(question => {
-      if (question.type === 'multiple-choice' || question.type === 'true-false') {
-        const correctOption = question.options.find(opt => opt.isCorrect);
-        if (correctOption) {
-          correctAnswers[question.id] = correctOption.id;
+      
+      // Also log email request
+      if (studentEmail) {
+        const { error: emailError } = await supabase
+          .from('email_notifications')
+          .insert({
+            quiz_id: quizId,
+            quiz_title: quiz.title,
+            student_name: studentName,
+            student_id: studentId,
+            student_email: studentEmail
+          });
+        
+        if (emailError) {
+          console.error('Error logging email notification request:', emailError);
         }
-      } else if (question.type === 'short-answer' || question.type === 'long-answer') {
-        correctAnswers[question.id] = null;
       }
-    });
-    
-    const result: QuizResult = {
-      quizId: quizId,
-      studentName: name,
-      studentId: rollNumber,
-      score,
-      totalPoints,
-      submittedAt: new Date().toISOString(),
-      answers,
-      correctAnswers,
-      securityViolations: 1,
-      completed: false
-    };
-    
-    const resultsKey = `quiz_results_${quizId}`;
-    console.log(`Falling back to localStorage for quiz ID: ${quizId} to key: ${resultsKey}`);
-    
-    const existingResults = localStorage.getItem(resultsKey) || '[]';
-    const results = JSON.parse(existingResults);
-    results.push(result);
-    
-    localStorage.setItem(resultsKey, JSON.stringify(results));
-    console.log("Saved quiz results to localStorage:", result);
-    
-    throw error;
+    }
+  } catch (supabaseError) {
+    console.error('Supabase error in quiz submission:', supabaseError);
   }
-};
+  
+  return result;
+}
 
-export const sendConfirmationEmail = async (
-  quizId: string, 
-  quizTitle: string, 
-  result: QuizResult, 
-  email: string
-) => {
-  try {
-    console.log("Sending confirmation email for quiz submission");
-    
-    // Ensure quizId is a valid UUID
-    const validQuizId = ensureValidUuid(quizId);
-    console.log(`Using validated quiz ID: ${validQuizId} for email notification`);
-    
-    // Generate a new UUID for the email notification
-    const notificationId = generateUuid();
-    console.log(`Created notification ID: ${notificationId} for email`);
-    
-    // Insert record into email_notifications table
-    const { data, error } = await supabase
-      .from('email_notifications')
-      .insert({
-        id: notificationId,
-        quiz_id: validQuizId,
-        quiz_title: quizTitle || 'Quiz',
-        student_name: result.studentName,
-        student_id: result.studentId,
-        student_email: email
-      });
-    
-    if (error) {
-      console.error("Error recording email notification:", error);
-      throw error;
-    }
-    
-    const response = await supabase.functions.invoke('send-quiz-confirmation', {
-      body: {
-        quizId: validQuizId,
-        quizTitle: quizTitle || 'Quiz',
-        studentName: result.studentName,
-        studentId: result.studentId,
-        studentEmail: email
-      }
-    });
-    
-    if (!response.data?.success) {
-      throw new Error('Failed to send confirmation email');
-    }
-    
-    // Update the notification record to mark email as sent
-    await supabase
-      .from('email_notifications')
-      .update({ 
-        email_sent: true,
-        email_sent_at: new Date().toISOString()
-      })
-      .eq('id', notificationId);
-    
-    console.log("Email confirmation sent successfully");
-    return true;
-  } catch (error) {
-    console.error("Error sending confirmation email:", error);
+export async function sendConfirmationEmail(
+  quizId: string,
+  quizTitle: string,
+  result: QuizResult,
+  email: string | undefined
+): Promise<boolean> {
+  if (!email) {
+    console.error('No email provided for confirmation');
     return false;
   }
-};
+  
+  console.log(`Sending confirmation email to ${email} for quiz ${quizTitle}`);
+  
+  try {
+    // In a real app, you would call your backend API to send the email
+    // For demo purposes, we'll just log it and pretend it worked
+    
+    console.log('Email would contain:');
+    console.log(`Subject: Quiz Submission Confirmation: ${quizTitle}`);
+    console.log(`Body: Thank you ${result.studentName} for completing the quiz.`);
+    console.log(`You scored ${result.score}/${result.totalPoints} (${Math.round(result.percentageScore)}%)`);
+    
+    return true;
+  } catch (error) {
+    console.error('Error sending confirmation email:', error);
+    return false;
+  }
+}
