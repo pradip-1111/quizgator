@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -102,19 +101,17 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   const saveQuizToLocalStorage = () => {
     console.log(`Saving quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // First, clear ANY existing data for ALL quizzes to prevent contamination
+    // First, clear ANY existing data related to demo quizzes
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith('quiz_') && !key.includes(quiz.id)) {
+      if (key && (key.includes('demo') || (key.startsWith('quiz_') && !key.includes(quiz.id)))) {
         console.log(`Clearing potentially conflicting quiz data: ${key}`);
         localStorage.removeItem(key);
       }
     }
     
-    // Now clear specific data for this quiz
+    // Clear conflicting data for this quiz
     localStorage.removeItem(`quiz_${quiz.id}`);
-    localStorage.removeItem(`quiz_questions_${quiz.id}`);
-    localStorage.removeItem(`quiz_creator_questions_${quiz.id}`);
     
     // Find questions before saving quiz
     const questions = findQuizQuestions(quiz.id);
@@ -132,7 +129,14 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     localStorage.setItem(`quiz_${quiz.id}`, JSON.stringify(completeQuiz));
     console.log(`Saved quiz directly with key quiz_${quiz.id}`);
     
-    // Save current quiz to quizzes array for backward compatibility
+    // Also save questions separately for better accessibility
+    if (validatedQuestions.length > 0) {
+      localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
+      localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
+      console.log(`Saved ${validatedQuestions.length} questions in separate storage for quiz ${quiz.id}`);
+    }
+    
+    // Get the existing quizzes array
     const storedQuizzesJson = localStorage.getItem('quizzes');
     let quizzes = [];
     
@@ -158,13 +162,6 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     // Save the updated quizzes array
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
     console.log(`Saved quiz to quizzes array: ${quiz.title} with ID: ${quiz.id}`);
-    
-    // Also save questions separately for better accessibility
-    if (validatedQuestions.length > 0) {
-      localStorage.setItem(`quiz_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
-      localStorage.setItem(`quiz_creator_questions_${quiz.id}`, JSON.stringify(validatedQuestions));
-      console.log(`Saved ${validatedQuestions.length} questions in separate storage for quiz ${quiz.id}`);
-    }
     
     return completeQuiz;
   };

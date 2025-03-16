@@ -49,6 +49,8 @@ const TakeQuiz = () => {
   useEffect(() => {
     if (!quizId) return;
     
+    console.log(`Initial load for quiz ID: ${quizId}, clearing state and checking localStorage`);
+    
     // Reset all state when quizId changes
     setQuiz(null);
     setQuestions([]);
@@ -283,16 +285,16 @@ const TakeQuiz = () => {
     if (quizId) {
       console.log(`Clearing cache for quiz ID: ${quizId}`);
       
-      // Clear all quiz-related data
+      // Thorough cache clearing - remove ALL quiz data from localStorage
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.includes('quiz')) {
+        if (key && (key.includes('quiz') || key.includes('Quiz'))) {
           console.log(`Clearing: ${key}`);
           localStorage.removeItem(key);
         }
       }
       
-      clearQuizCache(quizId);
+      clearQuizCache();
       
       toast({
         title: "Cache Cleared",
@@ -315,7 +317,7 @@ const TakeQuiz = () => {
     
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.includes('quiz')) {
+      if (key) {
         console.log(`Key: ${key}`);
         try {
           const value = localStorage.getItem(key);
