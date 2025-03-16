@@ -202,6 +202,7 @@ const TakeQuiz = () => {
       // Mark the quiz as expired to prevent future access
       localStorage.setItem(`quiz_expired_${currentQuizId}`, 'true');
       
+      // Submit the quiz and store the result
       submitQuiz(
         currentQuizId, 
         quiz, 
@@ -210,6 +211,12 @@ const TakeQuiz = () => {
         rollNumber, 
         email
       ).then(result => {
+        // Store the quiz result
+        const quizResult = {
+          ...result,
+          quizTitle: currentQuizTitle
+        };
+        
         sendConfirmationEmail(currentQuizId, currentQuizTitle, result, user?.email || email)
           .then(() => {
             toast({
@@ -220,15 +227,15 @@ const TakeQuiz = () => {
           .catch((error) => {
             console.error("Failed to send confirmation email:", error);
           });
+          
+        // Navigate to the completion page with the result
+        navigate('/quiz-complete', { state: { quizResult } });
       });
       
       toast({
         title: "Quiz Submitted",
         description: "Your answers have been recorded successfully.",
       });
-      
-      // Don't clear the quiz data immediately
-      navigate('/quiz-complete');
     } catch (error) {
       console.error('Error submitting quiz:', error);
       toast({
