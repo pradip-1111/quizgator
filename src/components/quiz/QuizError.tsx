@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, RefreshCcw, AlertTriangle, Database, HardDrive } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, AlertTriangle, Database, HardDrive, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface QuizErrorProps {
@@ -11,20 +11,51 @@ interface QuizErrorProps {
   onRetry?: () => void;
   isRetryable?: boolean;
   fallbackAvailable?: boolean;
+  onClearCache?: () => void;
 }
 
 const QuizError = ({ 
   error, 
   onRetry, 
   isRetryable = false,
-  fallbackAvailable = false
+  fallbackAvailable = false,
+  onClearCache
 }: QuizErrorProps) => {
   const errorMessage = error instanceof Error ? error.message : String(error);
+  const isLocalStorageError = errorMessage.toLowerCase().includes('localstorage') || 
+                             errorMessage.toLowerCase().includes('local storage');
   
   const handleRetry = () => {
     if (onRetry) {
       console.log("Retrying quiz load...");
       onRetry();
+    }
+  };
+  
+  const handleClearCache = () => {
+    if (onClearCache) {
+      console.log("Clearing quiz cache...");
+      onClearCache();
+    } else {
+      // Default clear cache behavior if no handler provided
+      try {
+        // Clear quiz-related localStorage items
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('quiz_') || key.includes('quiz'))) {
+            keysToRemove.push(key);
+          }
+        }
+        
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log(`Cleared ${keysToRemove.length} quiz-related items from cache`);
+        
+        // Reload the page after clearing
+        window.location.reload();
+      } catch (e) {
+        console.error("Failed to clear cache:", e);
+      }
     }
   };
   
@@ -61,29 +92,33 @@ const QuizError = ({
             </p>
           )}
           
-          {!fallbackAvailable && (
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-              <h3 className="text-sm font-medium mb-2">Troubleshooting Tips:</h3>
-              <ul className="text-sm space-y-2">
-                <li className="flex items-start">
-                  <span className="mr-2 text-primary">•</span>
-                  <span>Check that you're using the correct quiz link</span>
+          <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+            <h3 className="text-sm font-medium mb-2">Troubleshooting Tips:</h3>
+            <ul className="text-sm space-y-2">
+              <li className="flex items-start">
+                <span className="mr-2 text-primary">•</span>
+                <span>Check that you're using the correct quiz link</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 text-primary">•</span>
+                <span>The quiz may have been deleted or is not available</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 text-primary">•</span>
+                <span>If the quiz was recently created, the creator may need to save it again</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-2 text-primary">•</span>
+                <span>Try clearing your browser cache and reloading the page</span>
+              </li>
+              {isLocalStorageError && (
+                <li className="flex items-start text-destructive">
+                  <span className="mr-2 text-destructive">•</span>
+                  <span>Your locally stored data appears to be corrupted. Try clearing the quiz cache with the button below.</span>
                 </li>
-                <li className="flex items-start">
-                  <span className="mr-2 text-primary">•</span>
-                  <span>The quiz may have been deleted or is not available</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2 text-primary">•</span>
-                  <span>If the quiz was recently created, the creator may need to save it again</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2 text-primary">•</span>
-                  <span>Try clearing your browser cache and reloading the page</span>
-                </li>
-              </ul>
-            </div>
-          )}
+              )}
+            </ul>
+          </div>
         </div>
       </CardContent>
       <CardFooter className="flex justify-center space-x-3">
@@ -98,6 +133,13 @@ const QuizError = ({
           <Button onClick={handleRetry} size="sm">
             <RefreshCcw className="mr-2 h-4 w-4" />
             Retry
+          </Button>
+        )}
+        
+        {isLocalStorageError && (
+          <Button onClick={handleClearCache} variant="destructive" size="sm">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear Cache
           </Button>
         )}
       </CardFooter>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -195,6 +194,58 @@ const TakeQuiz = () => {
     navigate('/');
   };
   
+  const handleClearCache = () => {
+    if (quizId) {
+      console.log(`Clearing cache for quiz ID: ${quizId}`);
+      
+      // Clear all quiz-related items for this quiz
+      const keysToRemove = [
+        `quiz_questions_${quizId}`,
+        `quiz_creator_questions_${quizId}`,
+        `quiz_progress_${quizId}`
+      ];
+      
+      // Also check for other keys that might contain this quizId
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes(quizId)) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      // Clear each key
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          console.log(`Removed ${key} from localStorage`);
+        } catch (e) {
+          console.error(`Failed to remove ${key}:`, e);
+        }
+      });
+      
+      // Check if quizzes array contains this quiz and remove it
+      try {
+        const storedQuizzes = localStorage.getItem('quizzes');
+        if (storedQuizzes) {
+          const quizzes = JSON.parse(storedQuizzes);
+          const filteredQuizzes = quizzes.filter((q: any) => q.id !== quizId);
+          localStorage.setItem('quizzes', JSON.stringify(filteredQuizzes));
+          console.log(`Removed quiz ${quizId} from quizzes array`);
+        }
+      } catch (e) {
+        console.error('Error updating quizzes array:', e);
+      }
+      
+      toast({
+        title: "Cache Cleared",
+        description: "Quiz cache has been cleared. Retrying quiz load.",
+      });
+      
+      // Retry loading the quiz
+      retryLoading();
+    }
+  };
+  
   // Render loading state
   if (quizStateLoading) {
     return <QuizLoading 
@@ -209,13 +260,14 @@ const TakeQuiz = () => {
     />;
   }
   
-  // Render error state
+  // Render error state with cache clearing
   if (quizStateError || !quiz) {
     return <QuizError 
       error={quizStateError} 
       onRetry={retryLoading} 
       isRetryable={true} 
       fallbackAvailable={fallbackActive}
+      onClearCache={handleClearCache}
     />;
   }
   

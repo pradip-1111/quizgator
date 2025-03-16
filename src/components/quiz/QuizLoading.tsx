@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Database, HardDrive, Server, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Database, HardDrive, Server, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface QuizLoadingProps {
@@ -10,13 +10,15 @@ interface QuizLoadingProps {
   message?: string;
   loadingStage?: 'initial' | 'database' | 'local' | 'demo';
   fallbackActive?: boolean;
+  onRetry?: () => void;
 }
 
 const QuizLoading = ({ 
   cancelLoading, 
   message, 
   loadingStage = 'initial',
-  fallbackActive = false
+  fallbackActive = false,
+  onRetry
 }: QuizLoadingProps) => {
   // Different messages based on the loading stage
   const getLoadingMessage = () => {
@@ -66,17 +68,30 @@ const QuizLoading = ({
               <p className="text-sm">Using locally stored quiz due to connection issues.</p>
             </div>
           )}
+          
+          {loadingStage === 'local' && (
+            <p className="text-xs text-muted-foreground mt-2">
+              If loading takes too long, try clearing your browser cache and reloading.
+            </p>
+          )}
         </div>
       </CardContent>
       
-      {cancelLoading && (
-        <CardFooter className="flex justify-center">
+      <CardFooter className="flex justify-center space-x-3">
+        {cancelLoading && (
           <Button variant="ghost" size="sm" onClick={cancelLoading}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Cancel and go back
           </Button>
-        </CardFooter>
-      )}
+        )}
+        
+        {onRetry && (
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry loading
+          </Button>
+        )}
+      </CardFooter>
     </Card>
   );
 };
