@@ -3,8 +3,9 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, RefreshCcw, AlertTriangle, Database, HardDrive, Trash2 } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, AlertTriangle, Database, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface QuizErrorProps {
   error: Error | string | null;
@@ -21,14 +22,20 @@ const QuizError = ({
   fallbackAvailable = false,
   onClearCache
 }: QuizErrorProps) => {
+  const { toast } = useToast();
   const errorMessage = error instanceof Error ? error.message : String(error);
   const isLocalStorageError = errorMessage.toLowerCase().includes('localstorage') || 
-                             errorMessage.toLowerCase().includes('local storage');
+                             errorMessage.toLowerCase().includes('local storage') ||
+                             errorMessage.toLowerCase().includes('no quizzes found');
   
   const handleRetry = () => {
     if (onRetry) {
       console.log("Retrying quiz load...");
       onRetry();
+      toast({
+        title: "Retrying",
+        description: "Attempting to load the quiz again",
+      });
     }
   };
   
@@ -36,6 +43,10 @@ const QuizError = ({
     if (onClearCache) {
       console.log("Clearing quiz cache...");
       onClearCache();
+      toast({
+        title: "Cache Cleared",
+        description: "Quiz cache has been cleared and page will reload",
+      });
     } else {
       // Default clear cache behavior if no handler provided
       try {
@@ -48,13 +59,26 @@ const QuizError = ({
           }
         }
         
+        // Also clear the 'quizzes' entry specifically
+        keysToRemove.push('quizzes');
+        
         keysToRemove.forEach(key => localStorage.removeItem(key));
         console.log(`Cleared ${keysToRemove.length} quiz-related items from cache`);
         
+        toast({
+          title: "Cache Cleared",
+          description: `Cleared ${keysToRemove.length} quiz-related items from cache`
+        });
+        
         // Reload the page after clearing
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 1000);
       } catch (e) {
         console.error("Failed to clear cache:", e);
+        toast({
+          title: "Error",
+          description: "Failed to clear cache",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -114,11 +138,19 @@ const QuizError = ({
               {isLocalStorageError && (
                 <li className="flex items-start text-destructive">
                   <span className="mr-2 text-destructive">•</span>
-                  <span>Your locally stored data appears to be corrupted. Try clearing the quiz cache with the button below.</span>
+                  <span>Your locally stored data appears to be corrupted or missing. Try clearing the quiz cache with the button below.</span>
                 </li>
               )}
             </ul>
           </div>
+          
+          {isLocalStorageError && (
+            <div className="bg-red-50 p-4 rounded-md border border-red-200 animate-pulse">
+              <p className="text-sm text-red-700 font-medium">
+                We recommend clearing your quiz cache to resolve this issue. This will remove any corrupted quiz data.
+              </p>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-center space-x-3">

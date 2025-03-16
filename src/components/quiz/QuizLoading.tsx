@@ -8,9 +8,10 @@ import { Link } from 'react-router-dom';
 interface QuizLoadingProps {
   cancelLoading?: () => void;
   message?: string;
-  loadingStage?: 'initial' | 'database' | 'local' | 'demo';
+  loadingStage?: 'initial' | 'database' | 'local' | 'demo' | 'fallback';
   fallbackActive?: boolean;
   onRetry?: () => void;
+  onClearCache?: () => void;
 }
 
 const QuizLoading = ({ 
@@ -18,7 +19,8 @@ const QuizLoading = ({
   message, 
   loadingStage = 'initial',
   fallbackActive = false,
-  onRetry
+  onRetry,
+  onClearCache
 }: QuizLoadingProps) => {
   // Different messages based on the loading stage
   const getLoadingMessage = () => {
@@ -29,6 +31,8 @@ const QuizLoading = ({
         return "Loading your quiz from local storage...";
       case 'demo':
         return "Preparing demo quiz content...";
+      case 'fallback':
+        return "Preparing a fallback quiz option...";
       case 'initial':
       default:
         return "Loading quiz data...";
@@ -43,6 +47,7 @@ const QuizLoading = ({
       case 'local':
         return <HardDrive className="h-6 w-6 text-green-500 mb-2" />;
       case 'demo':
+      case 'fallback':
         return <Server className="h-6 w-6 text-amber-500 mb-2" />;
       default:
         return null;
@@ -65,7 +70,7 @@ const QuizLoading = ({
           {fallbackActive && (
             <div className="flex items-center mt-2 text-amber-600">
               <AlertTriangle className="h-4 w-4 mr-2" />
-              <p className="text-sm">Using locally stored quiz due to connection issues.</p>
+              <p className="text-sm">Using locally stored quiz or fallback due to connection issues.</p>
             </div>
           )}
           
@@ -89,6 +94,12 @@ const QuizLoading = ({
           <Button variant="outline" size="sm" onClick={onRetry}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Retry loading
+          </Button>
+        )}
+        
+        {onClearCache && (
+          <Button variant="destructive" size="sm" onClick={onClearCache}>
+            Clear Cache
           </Button>
         )}
       </CardFooter>
