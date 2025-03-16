@@ -62,7 +62,21 @@ const ViewResults = () => {
             };
           });
           
-          setResults(studentResponses);
+          // Sort results by student ID (roll number) in ascending order
+          const sortedResults = studentResponses.sort((a, b) => {
+            // First try to sort numerically if both IDs are numbers
+            const aNum = parseInt(a.studentId);
+            const bNum = parseInt(b.studentId);
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+              return aNum - bNum;
+            }
+            
+            // Fall back to string comparison if not numbers
+            return a.studentId.localeCompare(b.studentId);
+          });
+          
+          setResults(sortedResults);
         } else {
           console.log(`No results found for quiz ID: ${quizId}`);
           setResults([]);
@@ -237,7 +251,7 @@ const ViewResults = () => {
         
         <h1 className="text-3xl font-bold mb-2">{quizTitle} - Results</h1>
         <p className="text-muted-foreground mb-6">
-          {results.length} submissions
+          {results.length} submissions (sorted by roll number)
         </p>
         
         {loading ? (
