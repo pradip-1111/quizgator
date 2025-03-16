@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -115,7 +114,46 @@ export function useQuizCreator() {
     try {
       console.log("Starting quiz save process");
       
-      // First, ensure we have an active session
+      if (user.email === 'admin@example.com') {
+        const quizId = generateUuid();
+        console.log("Demo user detected, saving to localStorage only with ID:", quizId);
+        
+        const sanitizedQuestions = questions.map(question => {
+          return sanitizeUuidsInObject({
+            ...question,
+            id: ensureValidUuid(question.id),
+            options: question.options ? [...question.options] : []
+          });
+        });
+        
+        const newQuiz: Quiz = {
+          id: quizId,
+          userId: userId,
+          title: quizTitle,
+          description: quizDescription,
+          questions: questions.length,
+          duration: parseInt(timeLimit),
+          created: new Date().toISOString(),
+          attempts: 0,
+          status: status
+        };
+        
+        const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
+        localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
+        
+        localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(sanitizedQuestions));
+        
+        toast({
+          title: status === 'active' ? "Quiz published" : "Draft saved",
+          description: status === 'active' 
+            ? "Your quiz is now live and ready to share" 
+            : "Your quiz has been saved as a draft",
+        });
+        
+        navigate('/admin-dashboard');
+        return;
+      }
+      
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -123,23 +161,12 @@ export function useQuizCreator() {
         throw new Error(`Authentication error: ${sessionError.message}`);
       }
       
-      console.log("Current session data:", sessionData);
-      
-      // If we're using the demo user, we need to set the auth header manually
-      if (user.email === 'admin@example.com' && (!sessionData.session || !sessionData.session.access_token)) {
-        console.log("Setting up auth headers for demo user");
-        // Make sure the demo user has a valid session in Supabase client
-        await supabase.auth.setSession({
-          access_token: 'demo_token',
-          refresh_token: 'demo_refresh_token',
-        });
-        
-        // Verify the session was set
-        const { data: verifyData } = await supabase.auth.getSession();
-        console.log("Verified session after setting:", verifyData);
+      if (!sessionData.session) {
+        throw new Error("No active session found. Please log in again.");
       }
       
-      // Now proceed with saving the quiz
+      console.log("Current session data:", sessionData);
+      
       const quizId = generateUuid();
       console.log("Quiz ID generated:", quizId);
       
@@ -153,8 +180,6 @@ export function useQuizCreator() {
       
       console.log("Sanitized questions:", JSON.stringify(sanitizedQuestions, null, 2));
       
-      // Insert the quiz with RLS enabled
-      console.log("Inserting quiz with user ID:", userId);
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .insert({
@@ -174,7 +199,6 @@ export function useQuizCreator() {
       
       console.log("Quiz saved successfully:", quizData);
       
-      // Save questions and options
       for (let i = 0; i < sanitizedQuestions.length; i++) {
         const question = sanitizedQuestions[i];
         const questionId = question.id;
@@ -224,7 +248,6 @@ export function useQuizCreator() {
         }
       }
       
-      // Save to local storage for fallback
       const newQuiz: Quiz = {
         id: quizId,
         userId: userId,

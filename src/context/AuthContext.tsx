@@ -20,15 +20,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper function to create a fake but properly formatted JWT token
-const createFakeJWT = (payload: any) => {
-  // Create a simple base64 encoded JWT structure (header.payload.signature)
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const encodedPayload = btoa(JSON.stringify(payload));
-  const signature = btoa('fake_signature');
-  return `${header}.${encodedPayload}.${signature}`;
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,12 +49,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      
-      // For the demo user, ensure we have a token in localStorage
-      if (parsedUser.email === 'admin@example.com') {
-        // Create a properly formatted JWT token for the demo user
-        setupDemoSession(parsedUser);
-      }
     }
     setLoading(false);
 
@@ -72,71 +57,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Setup a demo session with properly formatted tokens
-  const setupDemoSession = async (demoUser: User) => {
-    console.log("Setting up demo session for admin@example.com");
-    
-    // Create JWT-like tokens with proper structure
-    const accessTokenPayload = {
-      aud: "authenticated",
-      exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-      sub: demoUser.id,
-      email: demoUser.email,
-      role: "authenticated"
-    };
-    
-    const refreshTokenPayload = {
-      exp: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
-      sub: demoUser.id,
-    };
-    
-    const access_token = createFakeJWT(accessTokenPayload);
-    const refresh_token = createFakeJWT(refreshTokenPayload);
-    
-    // Create a demo token format that mimics the structure Supabase expects
-    const demoToken = {
-      currentSession: {
-        access_token,
-        refresh_token,
-        user: {
-          id: demoUser.id,
-          email: demoUser.email,
-          role: 'authenticated',
-          aud: 'authenticated',
-        }
-      }
-    };
-    
-    localStorage.setItem('supabase.auth.token', JSON.stringify(demoToken));
-    
-    // Also set the session in Supabase client
-    try {
-      await supabase.auth.setSession({
-        access_token,
-        refresh_token,
-      });
-      console.log("Demo session set successfully");
-    } catch (err) {
-      console.error("Error setting demo session:", err);
-    }
-  };
-
   const login = async (email: string, password: string) => {
     try {
       // For demo purposes, we're just checking for admin@example.com / password
-      // We'll skip the actual Supabase auth for this demo user to avoid validation errors
       if (email === 'admin@example.com' && password === 'password') {
-        const user = {
-          id: crypto.randomUUID(), // Generate a random UUID
+        const demoUser = {
+          id: 'demo-user-id',
           name: 'Admin User',
           email: 'admin@example.com',
           role: 'admin' as const
         };
-        setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
+        setUser(demoUser);
+        localStorage.setItem('user', JSON.stringify(demoUser));
         
-        // Set up the demo session with properly formatted tokens
-        await setupDemoSession(user);
+        // Skip token creation for demo user
+        return;
       } else {
         // For non-demo users, use Supabase auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -217,9 +152,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(student);
       localStorage.setItem('user', JSON.stringify(student));
       localStorage.setItem('currentQuizId', quizId);
-      
-      // Set up student session with properly formatted tokens
-      await setupDemoSession(student);
     } catch (error) {
       console.error('Student registration error:', error);
       throw error;
