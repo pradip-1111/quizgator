@@ -95,26 +95,26 @@ const TakeQuiz = () => {
         
         console.log("Found quiz:", foundQuiz);
         
-        // Clear any existing questions for this quiz
-        localStorage.removeItem(`quiz_questions_${quizId}`);
+        // Important: Always check for questions created by the quiz author first
+        const storedQuestionsByCreator = localStorage.getItem(`quiz_creator_questions_${quizId}`);
         
-        // Get or generate questions for the quiz
         let quizQuestions: Question[] = [];
         
-        // Check if there are stored questions for this quiz in the quiz creator
-        const storedQuestionsByCreator = localStorage.getItem(`quiz_creator_questions_${quizId}`);
         if (storedQuestionsByCreator) {
           console.log("Found stored questions created by quiz author");
           quizQuestions = JSON.parse(storedQuestionsByCreator);
-          // Store these questions for the quiz taker
+          
+          // Always refresh the question storage for the quiz taker to ensure latest questions
           localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
         } else {
-          console.log("Generating questions for quiz");
+          console.log("No author-created questions found, generating samples");
           // Generate sample questions if none exist
           quizQuestions = generateSampleQuestions(foundQuiz.questions);
           
           // Store the questions for future use
           localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
+          // Also store as creator questions to maintain consistency
+          localStorage.setItem(`quiz_creator_questions_${quizId}`, JSON.stringify(quizQuestions));
         }
         
         console.log("Quiz questions:", quizQuestions);
@@ -463,6 +463,11 @@ const TakeQuiz = () => {
     );
   }
   
+  const currentQuestionExists = quiz.questions && 
+    Array.isArray(quiz.questions) && 
+    quiz.questions.length > 0 && 
+    currentQuestion < quiz.questions.length;
+  
   return (
     <div ref={quizContainerRef} className="min-h-screen bg-background flex flex-col animate-fade-in fullscreen-mode">
       <QuizHeader
@@ -480,7 +485,7 @@ const TakeQuiz = () => {
           totalQuestions={quiz.questions.length} 
         />
         
-        {quiz.questions[currentQuestion] ? (
+        {currentQuestionExists ? (
           <QuestionItem
             question={quiz.questions[currentQuestion]}
             questionNumber={currentQuestion + 1}
@@ -494,7 +499,7 @@ const TakeQuiz = () => {
               <CardTitle>Question not available</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>There was a problem loading this question.</p>
+              <p>There was a problem loading this question. Please contact your instructor.</p>
             </CardContent>
           </Card>
         )}

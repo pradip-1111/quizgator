@@ -23,12 +23,9 @@ const QuestionItem = ({
   answer,
   onAnswerChange,
 }: QuestionItemProps) => {
-  // Debug log the received question
-  console.log("Rendering question:", question);
-  
-  // Early return if question is not properly loaded
-  if (!question || !question.id) {
-    console.error("Question not properly loaded", question);
+  // Validate question object
+  if (!question || !question.id || !question.text) {
+    console.error("Invalid question object:", question);
     return (
       <Card className="mb-8 shadow-subtle border border-border">
         <CardHeader className="pb-2">
@@ -43,6 +40,9 @@ const QuestionItem = ({
     );
   }
 
+  // Determine question type with fallback
+  const questionType = question.type || 'multiple-choice';
+  
   return (
     <>
       <div className="mb-4 flex justify-between items-center">
@@ -62,7 +62,7 @@ const QuestionItem = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {question.type === 'multiple-choice' && (
+          {questionType === 'multiple-choice' && (
             <RadioGroup
               value={answer || ""}
               onValueChange={(value) => onAnswerChange(question.id, value)}
@@ -83,7 +83,7 @@ const QuestionItem = ({
             </RadioGroup>
           )}
           
-          {question.type === 'true-false' && (
+          {questionType === 'true-false' && (
             <RadioGroup
               value={answer || ""}
               onValueChange={(value) => onAnswerChange(question.id, value)}
@@ -113,7 +113,7 @@ const QuestionItem = ({
             </RadioGroup>
           )}
           
-          {question.type === 'short-answer' && (
+          {questionType === 'short-answer' && (
             <Input
               placeholder="Type your answer here"
               value={answer || ""}
@@ -121,7 +121,7 @@ const QuestionItem = ({
             />
           )}
           
-          {question.type === 'long-answer' && (
+          {questionType === 'long-answer' && (
             <Textarea
               placeholder="Type your answer here"
               rows={8}

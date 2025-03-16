@@ -69,6 +69,8 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
 
   // Navigate to take quiz page
   const handleOpenQuiz = () => {
+    // Clear existing quiz data before opening
+    localStorage.removeItem(`quiz_questions_${quiz.id}`);
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
     
     // Navigate directly
