@@ -7,9 +7,10 @@ import { Link } from 'react-router-dom';
 
 interface QuizLoadingProps {
   cancelLoading?: () => void;
+  message?: string;
 }
 
-const QuizLoading = ({ cancelLoading }: QuizLoadingProps) => {
+const QuizLoading = ({ cancelLoading, message }: QuizLoadingProps) => {
   return (
     <Card className="w-full max-w-lg mx-auto">
       <CardContent className="py-8">
@@ -17,19 +18,17 @@ const QuizLoading = ({ cancelLoading }: QuizLoadingProps) => {
           <div className="h-8 w-8 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-blue-500 border-l-transparent animate-spin"></div>
           <p className="text-lg font-medium">Loading quiz data...</p>
           <p className="text-sm text-muted-foreground text-center">
-            This may take a moment as we retrieve the latest information.
+            {message || "This may take a moment as we retrieve the latest information."}
           </p>
         </div>
       </CardContent>
       
       {cancelLoading && (
         <CardFooter className="flex justify-center">
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Cancel and go back
-            </Button>
-          </Link>
+          <Button variant="ghost" size="sm" onClick={cancelLoading}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Cancel and go back
+          </Button>
         </CardFooter>
       )}
     </Card>

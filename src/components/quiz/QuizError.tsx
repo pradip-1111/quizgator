@@ -10,9 +10,15 @@ type QuizErrorProps = {
   error: string | null;
   onRetry?: () => void;
   isRetryable?: boolean;
+  showBackButton?: boolean;
 };
 
-const QuizError = ({ error, onRetry, isRetryable = false }: QuizErrorProps) => {
+const QuizError = ({ 
+  error, 
+  onRetry, 
+  isRetryable = false, 
+  showBackButton = true 
+}: QuizErrorProps) => {
   return (
     <Card className="w-full max-w-lg mx-auto">
       <CardHeader>
@@ -37,12 +43,14 @@ const QuizError = ({ error, onRetry, isRetryable = false }: QuizErrorProps) => {
       )}
       
       <CardFooter className="flex justify-between">
-        <Link to="/">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Button>
-        </Link>
+        {showBackButton && (
+          <Link to="/">
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
+          </Link>
+        )}
         
         {isRetryable && onRetry && (
           <Button onClick={onRetry}>

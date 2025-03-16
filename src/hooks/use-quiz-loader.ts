@@ -24,6 +24,23 @@ export function useQuizLoader(quizId: string | undefined) {
     try {
       console.log(`Fetching quiz with ID: ${quizId}`);
       
+      // Try to get quiz from local storage first (for quick loading)
+      const localStorageKey = `quiz_questions_${quizId}`;
+      const storedQuestions = localStorage.getItem(localStorageKey);
+      
+      if (storedQuestions) {
+        console.log('Found locally stored questions, using these while we fetch from database');
+        try {
+          const parsedQuestions = JSON.parse(storedQuestions);
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            console.log('Successfully parsed local questions:', parsedQuestions.length);
+            setQuestions(parsedQuestions);
+          }
+        } catch (e) {
+          console.error('Error parsing stored questions:', e);
+        }
+      }
+      
       // Fetch the quiz from Supabase
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
@@ -36,9 +53,33 @@ export function useQuizLoader(quizId: string | undefined) {
         throw new Error(`Failed to load quiz: ${quizError.message}`);
       }
 
-      // If quiz not found in database, fall back to demo content
+      // If quiz not found in database, check if we have any stored questions to create a demo quiz
       if (!quizData) {
-        console.log('Quiz not found in database, creating demo quiz');
+        console.log('Quiz not found in database, checking local storage');
+        
+        if (storedQuestions) {
+          const parsedQuestions = JSON.parse(storedQuestions);
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            console.log('Creating quiz from stored questions');
+            
+            const mockQuiz: QuizData = {
+              id: quizId,
+              title: 'Your Quiz',
+              description: 'Quiz loaded from local storage',
+              timeLimit: 30,
+              questions: parsedQuestions
+            };
+            
+            setQuiz(mockQuiz);
+            setQuestions(parsedQuestions);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // If no stored questions are available, create a demo quiz
+        console.log('No stored questions found, creating demo quiz');
+        
         const mockQuiz: QuizData = {
           id: quizId,
           title: 'Demo Quiz',
@@ -98,10 +139,40 @@ export function useQuizLoader(quizId: string | undefined) {
         throw new Error(`Failed to load questions: ${questionsError.message}`);
       }
 
-      console.log(`Found ${questionsData?.length || 0} questions`);
+      console.log(`Found ${questionsData?.length || 0} questions from database`);
 
       // For each question, fetch its options
       const questionsWithOptions: Question[] = [];
+      
+      // Check if we have any stored questions to use as a fallback
+      let shouldUseStoredQuestions = false;
+      
+      if ((!questionsData || questionsData.length === 0) && storedQuestions) {
+        console.log('No questions found in database, using stored questions');
+        shouldUseStoredQuestions = true;
+      }
+      
+      if (shouldUseStoredQuestions && storedQuestions) {
+        try {
+          const parsedQuestions = JSON.parse(storedQuestions);
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            const fullQuiz: QuizData = {
+              id: quizData.id,
+              title: quizData.title,
+              description: quizData.description,
+              timeLimit: quizData.time_limit,
+              questions: parsedQuestions
+            };
+            
+            setQuiz(fullQuiz);
+            setQuestions(parsedQuestions);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing stored questions:', e);
+        }
+      }
       
       for (const q of questionsData || []) {
         const { data: optionsData, error: optionsError } = await supabase
@@ -133,7 +204,37 @@ export function useQuizLoader(quizId: string | undefined) {
 
       // Check if we have any questions
       if (questionsWithOptions.length === 0) {
-        console.warn('No questions found for this quiz, creating a demo question');
+        console.warn('No questions found for this quiz, checking local storage');
+        
+        // Try to get questions from local storage
+        if (storedQuestions) {
+          try {
+            const parsedQuestions = JSON.parse(storedQuestions);
+            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+              console.log('Using stored questions:', parsedQuestions.length);
+              
+              // Update the local storage key to ensure we use these questions
+              localStorage.setItem(localStorageKey, JSON.stringify(parsedQuestions));
+              
+              const fullQuiz: QuizData = {
+                id: quizData.id,
+                title: quizData.title,
+                description: quizData.description,
+                timeLimit: quizData.time_limit,
+                questions: parsedQuestions
+              };
+              
+              setQuiz(fullQuiz);
+              setQuestions(parsedQuestions);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error('Error parsing stored questions:', e);
+          }
+        }
+        
+        console.warn('Creating a sample question as fallback');
         // Add a sample question if none exist
         questionsWithOptions.push({
           id: '1',
@@ -157,6 +258,9 @@ export function useQuizLoader(quizId: string | undefined) {
         questions: questionsWithOptions
       };
 
+      // Update the local storage with the retrieved questions for faster loading next time
+      localStorage.setItem(localStorageKey, JSON.stringify(questionsWithOptions));
+      
       setQuiz(fullQuiz);
       setQuestions(questionsWithOptions);
       
@@ -169,6 +273,30 @@ export function useQuizLoader(quizId: string | undefined) {
         description: "Failed to load quiz data",
         variant: "destructive"
       });
+      
+      // If we have questions from localStorage, use those as a fallback
+      const storedQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
+      if (storedQuestions) {
+        try {
+          const parsedQuestions = JSON.parse(storedQuestions);
+          if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+            console.log('Error occurred, but using stored questions as fallback');
+            
+            const fallbackQuiz: QuizData = {
+              id: quizId,
+              title: 'Your Quiz',
+              description: 'Quiz loaded from local storage due to connection issues',
+              timeLimit: 30,
+              questions: parsedQuestions
+            };
+            
+            setQuiz(fallbackQuiz);
+            setQuestions(parsedQuestions);
+          }
+        } catch (e) {
+          console.error('Error parsing stored questions:', e);
+        }
+      }
     } finally {
       setLoading(false);
     }
