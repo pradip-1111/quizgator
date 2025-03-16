@@ -41,23 +41,15 @@ export const setupTabVisibilityTracking = (
   onTabChange: (isVisible: boolean) => void
 ): (() => void) => {
   const handleVisibilityChange = () => {
-    // Block tab switching by immediately raising a warning
+    // Immediately auto-submit if tab is hidden (user switched tabs)
     if (document.hidden) {
-      onTabChange(false);
-      // Show a warning to the user
-      alert("Warning: You are not allowed to switch tabs during the exam! Your activity is being monitored.");
-    } else {
-      // When coming back, consider this a successful return but warning was already triggered
-      setTimeout(() => {
-        onTabChange(true);
-      }, 100);
+      alert("Switching tabs is not allowed! Your quiz is being submitted automatically.");
+      onTabChange(false); // This will trigger quiz submission
     }
   };
 
   // Initial check - no need to trigger warning on initial setup
   let isFullscreenChange = false;
-  let lastFocusTime = Date.now();
-  let lastBlurTime = 0;
   
   // Track fullscreen changes to avoid false positives
   const handleFullscreenChange = () => {
@@ -74,32 +66,18 @@ export const setupTabVisibilityTracking = (
   // Handle blur events (user switching away from the tab)
   const handleBlur = () => {
     if (!isFullscreenChange) {
-      lastBlurTime = Date.now();
-      // Immediately trigger warning when focus is lost
+      // Immediately trigger auto-submit when focus is lost
+      alert("Leaving the exam window is not allowed! Your quiz is being submitted automatically.");
       setTimeout(() => onTabChange(false), 50);
     }
   };
   
-  // Handle focus events (user returning to the tab)
-  const handleFocus = () => {
-    lastFocusTime = Date.now();
-    // We don't call onTabChange(true) here to avoid resetting the warning
-  };
-  
   window.addEventListener('blur', handleBlur);
-  window.addEventListener('focus', handleFocus);
   
   // Add mouse leave detection as an additional signal
   const handleMouseLeave = () => {
-    // Mouse leaving the document can be a sign of tab switching
-    const now = Date.now();
-    if (now - lastBlurTime > 500 && now - lastFocusTime > 500) {
-      // Only count if we haven't already detected blur recently
-      setTimeout(() => onTabChange(false), 100);
-    }
+    // We no longer need this since we auto-submit on blur and visibility change
   };
-  
-  document.addEventListener('mouseleave', handleMouseLeave);
 
   // Block common keyboard shortcuts that might be used to switch tabs
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -113,7 +91,8 @@ export const setupTabVisibilityTracking = (
       e.key === 'F5'
     ) {
       e.preventDefault();
-      alert("Warning: Keyboard shortcuts are disabled during the exam!");
+      alert("Keyboard shortcuts for tab switching are disabled! Attempting to use them will result in automatic submission.");
+      onTabChange(false); // Trigger auto-submit
       return false;
     }
   };
@@ -132,7 +111,7 @@ export const setupTabVisibilityTracking = (
   // Prevent navigation history manipulation
   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
     e.preventDefault();
-    const message = "Warning! Leaving or refreshing this page will terminate your exam.";
+    const message = "Warning! Leaving or refreshing this page will terminate your exam and submit it automatically.";
     e.returnValue = message;
     return message;
   };
@@ -144,8 +123,6 @@ export const setupTabVisibilityTracking = (
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     document.removeEventListener('fullscreenchange', handleFullscreenChange);
     window.removeEventListener('blur', handleBlur);
-    window.removeEventListener('focus', handleFocus);
-    document.removeEventListener('mouseleave', handleMouseLeave);
     document.removeEventListener('keydown', handleKeyDown);
     document.removeEventListener('contextmenu', handleContextMenu);
     window.removeEventListener('beforeunload', handleBeforeUnload);

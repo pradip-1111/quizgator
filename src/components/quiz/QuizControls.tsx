@@ -9,7 +9,6 @@ type QuizControlsProps = {
   onPrevious: () => void;
   onNext: () => void;
   onSubmit: () => void;
-  tabSwitchWarnings?: number;
   remainingQuestions?: number;
 };
 
@@ -19,7 +18,6 @@ const QuizControls = ({
   onPrevious,
   onNext,
   onSubmit,
-  tabSwitchWarnings = 0,
   remainingQuestions = 0,
 }: QuizControlsProps) => {
   
@@ -44,7 +42,7 @@ const QuizControls = ({
         ) : (
           <Button 
             onClick={onSubmit} 
-            className={`${tabSwitchWarnings >= 2 ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} flex items-center`}
+            className="bg-green-600 hover:bg-green-700 flex items-center"
           >
             <Send className="h-4 w-4 mr-2" />
             Submit Quiz
@@ -61,27 +59,10 @@ const QuizControls = ({
         </div>
       )}
       
-      {tabSwitchWarnings > 0 && (
-        <div className={`
-          flex items-center justify-center p-2 
-          ${tabSwitchWarnings === 1 ? 'bg-amber-50 text-amber-700 border-amber-200' : 
-           tabSwitchWarnings === 2 ? 'bg-orange-50 text-orange-700 border-orange-200' : 
-           'bg-red-50 text-red-700 border-red-200'}
-          border rounded-md ${tabSwitchWarnings >= 2 ? 'animate-pulse' : ''}
-        `}>
-          <AlertTriangle className={`h-4 w-4 mr-2 ${tabSwitchWarnings >= 2 ? 'animate-bounce' : ''}`} />
-          <span className="text-sm font-medium">
-            {tabSwitchWarnings === 1 && "Warning: Tab switching detected! This is not allowed during the exam."}
-            {tabSwitchWarnings === 2 && "Final Warning: One more tab switch will auto-submit your quiz!"}
-            {tabSwitchWarnings >= 3 && "Quiz is being auto-submitted due to multiple tab switches!"}
-          </span>
-        </div>
-      )}
-      
-      <div className="flex items-center justify-center p-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+      <div className="flex items-center justify-center p-2 bg-red-50 text-red-700 border border-red-200 rounded-md">
         <Shield className="h-4 w-4 mr-2" />
         <span className="text-sm font-medium">
-          Tab switching is blocked. Please stay on this page until you complete the exam.
+          The quiz will be automatically submitted if you try to switch tabs or leave the page.
         </span>
       </div>
     </div>

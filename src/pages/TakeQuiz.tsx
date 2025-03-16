@@ -18,7 +18,6 @@ import QuizError from '@/components/quiz/QuizError';
 import QuizRegistration from '@/components/quiz/QuizRegistration';
 
 const TakeQuiz = () => {
-  
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -32,7 +31,6 @@ const TakeQuiz = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [timeLeft, setTimeLeft] = useState(0);
-  const [tabSwitchWarnings, setTabSwitchWarnings] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -226,29 +224,13 @@ const TakeQuiz = () => {
     if (started) {
       const cleanup = setupTabVisibilityTracking((isVisible) => {
         if (!isVisible) {
-          setTabSwitchWarnings(prev => {
-            const newCount = prev + 1;
-            
-            toast({
-              title: `Warning #${newCount}`,
-              description: "Switching tabs or applications during the quiz is not allowed!",
-              variant: "destructive",
-            });
-            
-            if (newCount >= 3) {
-              toast({
-                title: "Quiz Terminated",
-                description: "You've switched tabs multiple times. Your quiz has been automatically submitted.",
-                variant: "destructive",
-              });
-              
-              setTimeout(() => {
-                handleSubmitQuiz();
-              }, 1500);
-            }
-            
-            return newCount;
+          toast({
+            title: "Auto-Submission",
+            description: "You attempted to switch tabs. Quiz has been auto-submitted.",
+            variant: "destructive",
           });
+          
+          handleSubmitQuiz();
         }
       });
       
@@ -436,20 +418,6 @@ const TakeQuiz = () => {
       cleanupTabTrackingRef.current();
     }
     
-    const unansweredRequired = quiz.questions
-      .filter(q => q.required)
-      .filter(q => !answers[q.id]);
-    
-    if (unansweredRequired.length > 0 && !confirmed && tabSwitchWarnings < 3) {
-      toast({
-        title: "Warning",
-        description: `You have ${unansweredRequired.length} unanswered required questions. Are you sure you want to submit?`,
-        variant: "destructive",
-      });
-      setConfirmed(true);
-      return;
-    }
-    
     try {
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
@@ -489,8 +457,8 @@ const TakeQuiz = () => {
         submittedAt: new Date().toISOString(),
         answers,
         correctAnswers,
-        securityViolations: tabSwitchWarnings,
-        completed: tabSwitchWarnings < 3
+        securityViolations: 1,
+        completed: false
       };
       
       const resultsKey = `quiz_results_${quizId}`;
@@ -508,8 +476,9 @@ const TakeQuiz = () => {
       sendConfirmationEmail(quiz.title, result);
       
       toast({
-        title: "Quiz Submitted",
-        description: "Your answers have been recorded successfully.",
+        title: "Quiz Auto-Submitted",
+        description: "Your answers have been recorded. The quiz was submitted automatically due to tab switching.",
+        variant: "destructive",
       });
       
       toast({
@@ -527,7 +496,6 @@ const TakeQuiz = () => {
       });
     }
   };
-  
 
   if (loading) {
     return <QuizLoading />;
@@ -566,7 +534,6 @@ const TakeQuiz = () => {
         studentRollNumber={rollNumber}
         timeLeft={timeLeft}
         onQuit={handleQuitQuiz}
-        tabSwitchWarnings={tabSwitchWarnings}
       />
       
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
@@ -600,7 +567,6 @@ const TakeQuiz = () => {
           onPrevious={handlePreviousQuestion}
           onNext={handleNextQuestion}
           onSubmit={handleSubmitQuiz}
-          tabSwitchWarnings={tabSwitchWarnings}
           remainingQuestions={quiz?.questions?.length ? quiz.questions.filter(q => !answers[q.id]).length : 0}
         />
       </main>
