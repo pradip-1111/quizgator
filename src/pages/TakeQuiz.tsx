@@ -55,7 +55,9 @@ const TakeQuiz = () => {
     questions: loadedQuestions, 
     loading: quizLoading, 
     error: quizLoadError,
-    retryLoading
+    retryLoading,
+    loadingStage,
+    fallbackActive
   } = useQuizLoader(quizId);
   
   // Update quiz state when quiz is loaded
@@ -194,7 +196,15 @@ const TakeQuiz = () => {
   
   // Render loading state
   if (quizStateLoading) {
-    return <QuizLoading cancelLoading={handleCancelLoading} />;
+    return <QuizLoading 
+      cancelLoading={handleCancelLoading} 
+      loadingStage={loadingStage}
+      message={
+        fallbackActive 
+          ? "Using locally stored quiz due to connection issues." 
+          : undefined
+      }
+    />;
   }
   
   // Render error state
@@ -203,6 +213,7 @@ const TakeQuiz = () => {
       error={quizStateError} 
       onRetry={retryLoading} 
       isRetryable={true} 
+      fallbackAvailable={fallbackActive}
     />;
   }
   

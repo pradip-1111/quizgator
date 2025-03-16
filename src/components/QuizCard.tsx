@@ -41,8 +41,8 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     return `${window.location.origin}/take-quiz/${quiz.id}`;
   };
 
-  // Create a function to handle the copy link action
-  const handleCopyLink = () => {
+  // Create a function to save the quiz to localStorage
+  const saveQuizToLocalStorage = () => {
     // Save current quiz to localStorage as full quiz object
     const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
     const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
@@ -50,9 +50,31 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     if (existingQuizIndex === -1) {
       // If not already in localStorage, add it
       quizzes.push(quiz);
-      localStorage.setItem('quizzes', JSON.stringify(quizzes));
-      console.log(`Added quiz to localStorage: ${quiz.title}`);
+    } else {
+      // If already in localStorage, update it
+      quizzes[existingQuizIndex] = quiz;
     }
+    
+    localStorage.setItem('quizzes', JSON.stringify(quizzes));
+    console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
+    
+    // Get the creator questions key
+    const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
+    const creatorQuestions = localStorage.getItem(creatorQuestionsKey);
+    
+    if (creatorQuestions) {
+      // If we have creator questions, make sure they're associated with this quiz 
+      // by also storing them in the regular questions key for immediate access
+      const questionsKey = `quiz_questions_${quiz.id}`;
+      localStorage.setItem(questionsKey, creatorQuestions);
+      console.log(`Associated creator questions with quiz ${quiz.id}`);
+    }
+  };
+
+  // Create a function to handle the copy link action
+  const handleCopyLink = () => {
+    // Save quiz to localStorage before copying link
+    saveQuizToLocalStorage();
     
     // Get the full URL for the quiz
     const quizLink = getQuizUrl();
@@ -80,30 +102,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
 
   // Navigate to take quiz page
   const handleOpenQuiz = () => {
-    // Save current quiz to localStorage as full quiz object
-    const quizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-    const existingQuizIndex = quizzes.findIndex((q: any) => q.id === quiz.id);
-    
-    if (existingQuizIndex === -1) {
-      // If not already in localStorage, add it
-      quizzes.push(quiz);
-      localStorage.setItem('quizzes', JSON.stringify(quizzes));
-      console.log(`Added quiz to localStorage before opening: ${quiz.title}`);
-    }
+    // Save quiz to localStorage before opening
+    saveQuizToLocalStorage();
     
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
-    
-    // Check if we have creator questions data and ensure it's accessible for the quiz loader
-    const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
-    const questionsKey = `quiz_questions_${quiz.id}`;
-    
-    const creatorQuestions = localStorage.getItem(creatorQuestionsKey);
-    if (creatorQuestions) {
-      // If we have creator questions, copy them to the quiz_questions key
-      // so the loader will use them first
-      localStorage.setItem(questionsKey, creatorQuestions);
-      console.log("Using creator questions for quiz");
-    }
     
     // Navigate directly
     navigate(`/take-quiz/${quiz.id}`);
