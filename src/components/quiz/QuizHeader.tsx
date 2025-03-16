@@ -44,7 +44,7 @@ const QuizHeader = ({
           </div>
           <div className="flex items-center bg-red-50 text-red-700 px-3 py-1 rounded-full border border-red-200">
             <Eye className="h-4 w-4 mr-1" />
-            <span className="font-medium text-xs">Auto-Submission On Tab Switch</span>
+            <span className="font-medium text-xs">Auto-Submission With Answer Recording</span>
           </div>
           <Button variant="outline" size="sm" onClick={onQuit} className="text-destructive hover:text-destructive">
             <LogOut className="h-4 w-4 mr-1" />

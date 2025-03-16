@@ -1,3 +1,4 @@
+
 // Functions for handling fullscreen mode and tab visibility detection
 
 export const enterFullscreen = (element: HTMLElement = document.documentElement) => {
@@ -44,7 +45,7 @@ export const setupTabVisibilityTracking = (
     // Immediately auto-submit if tab is hidden (user switched tabs)
     if (document.hidden) {
       alert("Switching tabs is not allowed! Your quiz is being submitted automatically.");
-      onTabChange(false); // This will trigger quiz submission
+      onTabChange(false); // This will trigger quiz submission with current answers
     }
   };
 
@@ -92,7 +93,7 @@ export const setupTabVisibilityTracking = (
     ) {
       e.preventDefault();
       alert("Keyboard shortcuts for tab switching are disabled! Attempting to use them will result in automatic submission.");
-      onTabChange(false); // Trigger auto-submit
+      onTabChange(false); // Trigger auto-submit with current answers
       return false;
     }
   };

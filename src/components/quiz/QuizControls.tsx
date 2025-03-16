@@ -62,7 +62,7 @@ const QuizControls = ({
       <div className="flex items-center justify-center p-2 bg-red-50 text-red-700 border border-red-200 rounded-md">
         <Shield className="h-4 w-4 mr-2" />
         <span className="text-sm font-medium">
-          The quiz will be automatically submitted if you try to switch tabs or leave the page.
+          The quiz will be automatically submitted if you try to switch tabs or leave the page. All your current answers will be recorded.
         </span>
       </div>
     </div>
