@@ -15,6 +15,7 @@ import Navbar from '../components/Navbar';
 import { Clock, FileText, Plus, Save, Send, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Quiz } from '../components/QuizCard';
+import { supabase } from '@/integrations/supabase/client';
 
 const CreateQuiz = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const CreateQuiz = () => {
   const [passingScore, setPassingScore] = useState('70');
   const [randomizeQuestions, setRandomizeQuestions] = useState(false);
   const [showResults, setShowResults] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([
     {
       id: '1',
@@ -69,7 +71,7 @@ const CreateQuiz = () => {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!quizTitle) {
       toast({
         title: "Error",
@@ -79,10 +81,10 @@ const CreateQuiz = () => {
       return;
     }
 
-    saveQuizWithQuestions('draft');
+    await saveQuizWithQuestions('draft');
   };
 
-  const handlePublishQuiz = () => {
+  const handlePublishQuiz = async () => {
     if (!quizTitle) {
       toast({
         title: "Error",
@@ -101,13 +103,71 @@ const CreateQuiz = () => {
       return;
     }
 
-    saveQuizWithQuestions('active');
+    await saveQuizWithQuestions('active');
   };
   
-  const saveQuizWithQuestions = (status: 'draft' | 'active') => {
-    if (user) {
-      // Create a new quiz object
+  const saveQuizWithQuestions = async (status: 'draft' | 'active') => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to save a quiz",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
       const quizId = crypto.randomUUID();
+      const { data: quizData, error: quizError } = await supabase
+        .from('quizzes')
+        .insert({
+          id: quizId,
+          title: quizTitle,
+          description: quizDescription,
+          time_limit: parseInt(timeLimit),
+          created_by: user.id
+        })
+        .select()
+        .single();
+      
+      if (quizError) throw quizError;
+      
+      for (let i = 0; i < questions.length; i++) {
+        const question = questions[i];
+        
+        const { data: questionData, error: questionError } = await supabase
+          .from('questions')
+          .insert({
+            quiz_id: quizId,
+            text: question.text,
+            type: question.type,
+            points: question.points,
+            required: question.required,
+            order_number: i
+          })
+          .select()
+          .single();
+        
+        if (questionError) throw questionError;
+        
+        if (question.options && question.options.length > 0) {
+          const optionsToInsert = question.options.map((opt, index) => ({
+            question_id: questionData.id,
+            text: opt.text,
+            is_correct: opt.isCorrect,
+            order_number: index
+          }));
+          
+          const { error: optionsError } = await supabase
+            .from('options')
+            .insert(optionsToInsert);
+          
+          if (optionsError) throw optionsError;
+        }
+      }
+      
       const newQuiz: Quiz = {
         id: quizId,
         userId: user.id,
@@ -120,16 +180,11 @@ const CreateQuiz = () => {
         status: status
       };
       
-      // Save the quiz metadata
       const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
       localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
       
-      // IMPORTANT: Save the actual questions with the quiz ID
-      // This is the key fix - storing questions with a consistent key pattern
       const questionsKey = `quiz_creator_questions_${quizId}`;
       localStorage.setItem(questionsKey, JSON.stringify(questions));
-      
-      // Also save to the student-facing questions store for consistency
       localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
       
       toast({
@@ -140,12 +195,15 @@ const CreateQuiz = () => {
       });
       
       navigate('/admin-dashboard');
-    } else {
+    } catch (error) {
+      console.error('Error saving quiz:', error);
       toast({
         title: "Error",
-        description: "You must be logged in to save a quiz",
+        description: "Failed to save quiz. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -268,11 +326,11 @@ const CreateQuiz = () => {
             )}
             
             <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3">
-              <Button variant="outline" onClick={handleSaveDraft}>
+              <Button variant="outline" onClick={handleSaveDraft} disabled={loading}>
                 <Save className="h-4 w-4 mr-2" />
                 Save as Draft
               </Button>
-              <Button onClick={handlePublishQuiz}>
+              <Button onClick={handlePublishQuiz} disabled={loading}>
                 <Send className="h-4 w-4 mr-2" />
                 Publish Quiz
               </Button>

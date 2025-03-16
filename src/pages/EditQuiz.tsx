@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import Navbar from '../components/Navbar';
 import { Quiz } from '@/components/QuizCard';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const EditQuiz = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -22,30 +23,62 @@ const EditQuiz = () => {
   const [duration, setDuration] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Load quiz data from localStorage
+  // Load quiz data from Supabase
   useEffect(() => {
-    const loadQuiz = () => {
+    const loadQuiz = async () => {
       setLoading(true);
       try {
-        const storedQuizzes = localStorage.getItem('quizzes');
-        if (storedQuizzes) {
-          const quizzes = JSON.parse(storedQuizzes) as Quiz[];
-          const foundQuiz = quizzes.find(q => q.id === quizId);
+        // First try to get quiz from Supabase
+        const { data: supabaseQuiz, error } = await supabase
+          .from('quizzes')
+          .select('*')
+          .eq('id', quizId)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching quiz from Supabase:', error);
           
-          if (foundQuiz) {
-            setQuiz(foundQuiz);
-            setTitle(foundQuiz.title);
-            setDescription(foundQuiz.description);
-            setDuration(foundQuiz.duration);
-          } else {
-            toast({
-              title: "Quiz Not Found",
-              description: "The requested quiz couldn't be found",
-              variant: "destructive",
-            });
-            navigate('/admin-dashboard');
+          // Fall back to localStorage if needed
+          const storedQuizzes = localStorage.getItem('quizzes');
+          if (storedQuizzes) {
+            const quizzes = JSON.parse(storedQuizzes) as Quiz[];
+            const foundQuiz = quizzes.find(q => q.id === quizId);
+            
+            if (foundQuiz) {
+              setQuiz(foundQuiz);
+              setTitle(foundQuiz.title);
+              setDescription(foundQuiz.description);
+              setDuration(foundQuiz.duration);
+              return;
+            }
           }
+          
+          toast({
+            title: "Quiz Not Found",
+            description: "The requested quiz couldn't be found",
+            variant: "destructive",
+          });
+          navigate('/admin-dashboard');
+          return;
         }
+        
+        // If we found the quiz in Supabase
+        const mappedQuiz: Quiz = {
+          id: supabaseQuiz.id,
+          title: supabaseQuiz.title,
+          description: supabaseQuiz.description || '',
+          duration: supabaseQuiz.time_limit,
+          created: supabaseQuiz.created_at,
+          questions: 0, // We'll update this later if needed
+          attempts: 0,
+          status: 'active',
+          userId: supabaseQuiz.created_by || ''
+        };
+        
+        setQuiz(mappedQuiz);
+        setTitle(mappedQuiz.title);
+        setDescription(mappedQuiz.description);
+        setDuration(mappedQuiz.duration);
       } catch (error) {
         console.error('Error loading quiz:', error);
         toast({
@@ -53,15 +86,18 @@ const EditQuiz = () => {
           description: "Failed to load quiz data",
           variant: "destructive",
         });
+        navigate('/admin-dashboard');
       } finally {
         setLoading(false);
       }
     };
 
-    loadQuiz();
+    if (quizId) {
+      loadQuiz();
+    }
   }, [quizId, toast, navigate]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       toast({
         title: "Error",
@@ -71,7 +107,24 @@ const EditQuiz = () => {
       return;
     }
 
+    setLoading(true);
     try {
+      // Update quiz in Supabase
+      const { error } = await supabase
+        .from('quizzes')
+        .update({
+          title,
+          description,
+          time_limit: duration,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', quizId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // For backward compatibility, also update localStorage
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
         const quizzes = JSON.parse(storedQuizzes) as Quiz[];
@@ -88,23 +141,14 @@ const EditQuiz = () => {
         });
         
         localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
-        
-        // IMPORTANT: Also update any stored questions to ensure data consistency
-        const questionsKey = `quiz_creator_questions_${quizId}`;
-        const storedQuestions = localStorage.getItem(questionsKey);
-        
-        if (storedQuestions) {
-          // Make sure we preserve the questions when updating quiz details
-          localStorage.setItem(questionsKey, storedQuestions);
-        }
-        
-        toast({
-          title: "Quiz Updated",
-          description: "Your quiz has been successfully updated",
-        });
-        
-        navigate('/admin-dashboard');
       }
+      
+      toast({
+        title: "Quiz Updated",
+        description: "Your quiz has been successfully updated",
+      });
+      
+      navigate('/admin-dashboard');
     } catch (error) {
       console.error('Error updating quiz:', error);
       toast({
@@ -112,6 +156,8 @@ const EditQuiz = () => {
         description: "Failed to update quiz",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,7 +231,7 @@ const EditQuiz = () => {
             <Button variant="outline" onClick={() => navigate('/admin-dashboard')}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={loading}>
               Save Changes
             </Button>
           </CardFooter>
