@@ -1,4 +1,3 @@
-
 import { QuizData, QuizResult, QuizAnswer } from '@/types/quiz';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -87,7 +86,8 @@ export async function submitQuiz(
     answers: formattedAnswers,
     submittedAt,
     securityViolations: 0, // This would be populated from security tracking
-    completed: true
+    completed: true,
+    quizTitle: quiz.title
   };
   
   // Store the result in local storage first
@@ -104,8 +104,7 @@ export async function submitQuiz(
     // Add new result with a formatted date string
     const resultForStorage = {
       ...result,
-      submittedAt: submittedAt.toISOString(),
-      quizTitle: quiz.title
+      submittedAt: submittedAt.toISOString()
     };
     
     results.push(resultForStorage);

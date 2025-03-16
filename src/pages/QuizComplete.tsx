@@ -149,6 +149,31 @@ const QuizComplete = () => {
             </div>
           )}
           
+          {quizResult && quizResult.answers && quizResult.answers.length > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-left mt-4">
+              <p className="font-medium text-gray-800 mb-2">Your Responses:</p>
+              <div className="max-h-60 overflow-y-auto text-sm">
+                {quizResult.answers.map((answer: any, index: number) => (
+                  <div key={index} className="mb-3 pb-3 border-b border-gray-100 last:border-0">
+                    <p className="font-medium text-gray-700">Question {index + 1}:</p>
+                    {answer.textAnswer ? (
+                      <p className="text-gray-600">Answer: {answer.textAnswer}</p>
+                    ) : answer.selectedOptionId ? (
+                      <p className="text-gray-600">Selected Option: #{answer.selectedOptionId}</p>
+                    ) : (
+                      <p className="text-gray-600 italic">No answer provided</p>
+                    )}
+                    <p className={`mt-1 ${answer.isCorrect ? 'text-green-600' : 'text-amber-600'}`}>
+                      Points: {answer.pointsAwarded}
+                      {answer.isCorrect === true && ' (Correct)'}
+                      {answer.isCorrect === false && ' (Incorrect)'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="h-1 w-full bg-border/50 rounded-full my-4" />
           <p className="text-sm">
             The quiz administrator will be notified of your submission.
