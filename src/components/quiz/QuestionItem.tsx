@@ -23,7 +23,7 @@ const QuestionItem = ({
   answer,
   onAnswerChange,
 }: QuestionItemProps) => {
-  console.log("Rendering question:", question); // Debug log to see question data
+  console.log("Rendering question:", question, "Question number:", questionNumber); // Debug log
   
   // Check if question is null, undefined, or not an object
   if (!question || typeof question !== 'object') {
