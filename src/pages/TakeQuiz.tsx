@@ -4,9 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../context/AuthContext';
 import { enterFullscreen, exitFullscreen } from '../lib/fullscreen';
-import { Question } from '@/types/quiz';
 
-// Import the new hooks and components
+// Import the hooks and components
 import { useQuizState } from '@/hooks/use-quiz-state';
 import { useQuizLoader } from '@/hooks/use-quiz-loader';
 import { useQuizTimer } from '@/hooks/use-quiz-timer';

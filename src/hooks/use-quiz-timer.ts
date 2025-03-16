@@ -12,7 +12,7 @@ export function useQuizTimer(
   useEffect(() => {
     if (started && timeLeft > 0) {
       const timer = setInterval(() => {
-        setTimeLeft((prev) => {
+        setTimeLeft((prev: number) => {
           if (prev <= 1) {
             clearInterval(timer);
             handleSubmitQuiz();
