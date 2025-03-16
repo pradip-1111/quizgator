@@ -45,9 +45,18 @@ const TakeQuiz = () => {
     getRemainingQuestionCount
   } = useQuizState();
   
-  // First try to load quiz directly from localStorage
+  // Clear any previous quiz data first to avoid cross-contamination
   useEffect(() => {
     if (!quizId) return;
+    
+    // Reset all state when quizId changes
+    setQuiz(null);
+    setQuestions([]);
+    setAnswers({});
+    setCurrentQuestion(0);
+    setStarted(false);
+    setTimeLeft(0);
+    setError(null);
     
     console.log(`Attempting to load quiz with ID: ${quizId} directly from localStorage`);
     
@@ -59,28 +68,33 @@ const TakeQuiz = () => {
         const parsedQuiz = JSON.parse(directQuizData);
         console.log("Found quiz directly in localStorage:", parsedQuiz.title);
         
-        setQuiz(parsedQuiz);
-        
-        // Check if questions are included in the quiz data
-        if (Array.isArray(parsedQuiz.questions) && parsedQuiz.questions.length > 0) {
-          console.log(`Using ${parsedQuiz.questions.length} questions from direct quiz data`);
-          setQuestions(parsedQuiz.questions);
-        } else {
-          // Try to load questions separately from localStorage
-          const questionsData = localStorage.getItem(`quiz_questions_${quizId}`);
-          if (questionsData) {
-            const parsedQuestions = JSON.parse(questionsData);
-            if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-              console.log(`Loaded ${parsedQuestions.length} questions from separate storage`);
-              setQuestions(parsedQuestions);
+        // Verify this is the correct quiz
+        if (parsedQuiz.id === quizId) {
+          setQuiz(parsedQuiz);
+          
+          // Check if questions are included in the quiz data
+          if (Array.isArray(parsedQuiz.questions) && parsedQuiz.questions.length > 0) {
+            console.log(`Using ${parsedQuiz.questions.length} questions from direct quiz data`);
+            setQuestions(parsedQuiz.questions);
+          } else {
+            // Try to load questions separately from localStorage
+            const questionsData = localStorage.getItem(`quiz_questions_${quizId}`);
+            if (questionsData) {
+              const parsedQuestions = JSON.parse(questionsData);
+              if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
+                console.log(`Loaded ${parsedQuestions.length} questions from separate storage`);
+                setQuestions(parsedQuestions);
+              }
             }
           }
+          
+          // Set time limit
+          setTimeLeft((parsedQuiz.timeLimit || parsedQuiz.duration) * 60);
+          setQuizStateLoading(false);
+          return;
+        } else {
+          console.warn(`Found quiz in localStorage but ID mismatch. Expected: ${quizId}, Found: ${parsedQuiz.id}`);
         }
-        
-        // Set time limit
-        setTimeLeft((parsedQuiz.timeLimit || parsedQuiz.duration) * 60);
-        setQuizStateLoading(false);
-        return;
       }
       
       // Debug: List all localStorage keys to check what's available
@@ -94,7 +108,7 @@ const TakeQuiz = () => {
     }
     
     console.log("No direct quiz found in localStorage, will use useQuizLoader");
-  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading]);
+  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setError]);
   
   // Fallback to useQuizLoader if direct loading fails
   const { 
@@ -111,18 +125,25 @@ const TakeQuiz = () => {
   useEffect(() => {
     if (loadedQuiz && !quiz) {
       console.log('Quiz loaded from useQuizLoader:', loadedQuiz.title);
-      setQuiz(loadedQuiz);
-      setQuestions(loadedQuestions);
-      setTimeLeft((loadedQuiz.timeLimit || loadedQuiz.duration) * 60);
       
-      // Save to localStorage for future direct access
-      try {
-        localStorage.setItem(`quiz_${quizId}`, JSON.stringify(loadedQuiz));
-        if (loadedQuestions && loadedQuestions.length > 0) {
-          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(loadedQuestions));
+      // Verify this is the correct quiz
+      if (loadedQuiz.id === quizId) {
+        setQuiz(loadedQuiz);
+        setQuestions(loadedQuestions);
+        setTimeLeft((loadedQuiz.timeLimit || loadedQuiz.duration) * 60);
+        
+        // Save to localStorage for future direct access
+        try {
+          localStorage.setItem(`quiz_${quizId}`, JSON.stringify(loadedQuiz));
+          if (loadedQuestions && loadedQuestions.length > 0) {
+            localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(loadedQuestions));
+          }
+        } catch (err) {
+          console.error("Failed to save quiz to localStorage:", err);
         }
-      } catch (err) {
-        console.error("Failed to save quiz to localStorage:", err);
+      } else {
+        console.error(`Quiz ID mismatch! Expected: ${quizId}, Got: ${loadedQuiz.id}`);
+        setQuizStateError(`Quiz ID mismatch! This might be the wrong quiz. Try clearing the cache.`);
       }
     }
     
@@ -268,7 +289,6 @@ const TakeQuiz = () => {
     }
   };
   
-  // Add the missing handleCancelLoading function
   const handleCancelLoading = () => {
     console.log("Canceling quiz loading");
     navigate('/');
@@ -322,6 +342,18 @@ const TakeQuiz = () => {
       onRetry={retryLoading} 
       isRetryable={true} 
       fallbackActive={fallbackActive}
+      onClearCache={handleClearCache}
+      onDebug={handleDebugQuiz}
+    />;
+  }
+  
+  // Extra verification to ensure we're displaying the right quiz
+  if (quiz.id !== quizId) {
+    return <QuizError 
+      error={`Quiz ID mismatch! Expected: ${quizId}, Got: ${quiz.id}. Please clear cache and try again.`}
+      onRetry={retryLoading} 
+      isRetryable={true} 
+      fallbackActive={false}
       onClearCache={handleClearCache}
       onDebug={handleDebugQuiz}
     />;

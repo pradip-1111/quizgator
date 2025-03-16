@@ -101,6 +101,11 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   const saveQuizToLocalStorage = () => {
     console.log(`Saving quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
+    // First, clear any existing data for this quiz to prevent contamination
+    localStorage.removeItem(`quiz_${quiz.id}`);
+    localStorage.removeItem(`quiz_questions_${quiz.id}`);
+    localStorage.removeItem(`quiz_creator_questions_${quiz.id}`);
+    
     // Find questions before saving quiz
     const questions = findQuizQuestions(quiz.id);
     const validatedQuestions = questions.length > 0 
@@ -189,6 +194,15 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     const savedQuiz = saveQuizToLocalStorage();
     
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
+    
+    // Clear any existing quiz data for other quizzes
+    const keysToCheck = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('quiz_') && !key.includes(quiz.id)) {
+        keysToCheck.push(key);
+      }
+    }
     
     // Navigate directly to the quiz page
     navigate(`/take-quiz/${quiz.id}`);
