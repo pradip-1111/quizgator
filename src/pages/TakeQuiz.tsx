@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -55,7 +56,16 @@ const TakeQuiz = () => {
     setCurrentQuestion(0);
     setStarted(false);
     setTimeLeft(0);
-    setQuizStateError(null);
+    setError(null);
+    
+    // Clear other quizzes from localStorage to prevent conflicts
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('quiz_') && !key.includes(quizId)) {
+        console.log(`Clearing potentially conflicting quiz data: ${key}`);
+        localStorage.removeItem(key);
+      }
+    }
     
     console.log(`Attempting to load quiz with ID: ${quizId} directly from localStorage`);
     
@@ -107,7 +117,7 @@ const TakeQuiz = () => {
     }
     
     console.log("No direct quiz found in localStorage, will use useQuizLoader");
-  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setQuizStateError]);
+  }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setError]);
   
   // Fallback to useQuizLoader if direct loading fails
   const { 
@@ -273,9 +283,14 @@ const TakeQuiz = () => {
     if (quizId) {
       console.log(`Clearing cache for quiz ID: ${quizId}`);
       
-      localStorage.removeItem(`quiz_${quizId}`);
-      localStorage.removeItem(`quiz_questions_${quizId}`);
-      localStorage.removeItem(`quiz_creator_questions_${quizId}`);
+      // Clear all quiz-related data
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes('quiz')) {
+          console.log(`Clearing: ${key}`);
+          localStorage.removeItem(key);
+        }
+      }
       
       clearQuizCache(quizId);
       

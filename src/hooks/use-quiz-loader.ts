@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Question, QuizData } from '@/types/quiz';
@@ -19,31 +18,42 @@ export const clearQuizCache = (quizId?: string) => {
   console.log("Clearing quiz cache", quizId ? `for quiz ${quizId}` : "for all quizzes");
   
   try {
+    // For all localStorage items
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        // If quizId is provided, only remove items related to that quiz
+        if (quizId) {
+          if (key.includes(quizId) || key === 'quizzes') {
+            keysToRemove.push(key);
+          }
+        } 
+        // Otherwise, remove all quiz-related items
+        else if (key.includes('quiz') || key === 'quizzes') {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    
+    console.log(`Removing ${keysToRemove.length} localStorage items:`, keysToRemove);
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // Also update the quizzes array by removing the specified quiz
     if (quizId) {
-      localStorage.removeItem(`quiz_questions_${quizId}`);
-      localStorage.removeItem(`quiz_creator_questions_${quizId}`);
-      localStorage.removeItem(`quiz_results_${quizId}`);
-      
       const storedQuizzes = localStorage.getItem('quizzes');
       if (storedQuizzes) {
         try {
           const quizzes = JSON.parse(storedQuizzes);
-          const updatedQuizzes = quizzes.filter((q: any) => q.id !== quizId);
-          localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+          if (Array.isArray(quizzes)) {
+            const updatedQuizzes = quizzes.filter((q: any) => q.id !== quizId);
+            localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+            console.log(`Updated quizzes array to remove quiz ${quizId}`);
+          }
         } catch (e) {
           console.error("Error updating quizzes array:", e);
         }
       }
-    } else {
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.includes('quiz') || key === 'quizzes')) {
-          keysToRemove.push(key);
-        }
-      }
-      
-      keysToRemove.forEach(key => localStorage.removeItem(key));
     }
     
     return true;

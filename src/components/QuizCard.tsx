@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -101,7 +102,16 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   const saveQuizToLocalStorage = () => {
     console.log(`Saving quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // First, clear any existing data for this quiz to prevent contamination
+    // First, clear ANY existing data for ALL quizzes to prevent contamination
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('quiz_') && !key.includes(quiz.id)) {
+        console.log(`Clearing potentially conflicting quiz data: ${key}`);
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Now clear specific data for this quiz
     localStorage.removeItem(`quiz_${quiz.id}`);
     localStorage.removeItem(`quiz_questions_${quiz.id}`);
     localStorage.removeItem(`quiz_creator_questions_${quiz.id}`);
@@ -194,15 +204,6 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     const savedQuiz = saveQuizToLocalStorage();
     
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
-    
-    // Clear any existing quiz data for other quizzes
-    const keysToCheck = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('quiz_') && !key.includes(quiz.id)) {
-        keysToCheck.push(key);
-      }
-    }
     
     // Navigate directly to the quiz page
     navigate(`/take-quiz/${quiz.id}`);
