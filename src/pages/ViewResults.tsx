@@ -1,170 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft, FileText, FileCog, AlertCircle } from 'lucide-react';
-import { StudentResponse } from '@/types/quiz';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '../components/Navbar';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useResultsLoader } from '@/hooks/use-results-loader';
+import QuizError from '@/components/quiz/QuizError';
+import QuizLoading from '@/components/quiz/QuizLoading';
 
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const { toast } = useToast();
-  const [quizTitle, setQuizTitle] = useState('');
-  const [results, setResults] = useState<StudentResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadResults = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Load quiz info from Supabase
-        if (!quizId) {
-          throw new Error('Quiz ID is missing');
-        }
-
-        console.log(`Attempting to load results for quiz ID: ${quizId}`);
-
-        // Check if we have results in localStorage first
-        const resultsKey = `quiz_results_${quizId}`;
-        const storedResults = localStorage.getItem(resultsKey);
-        let foundLocalResults = false;
-        
-        if (storedResults) {
-          const parsedResults = JSON.parse(storedResults);
-          console.log(`Found ${parsedResults.length} results in localStorage for quiz ID: ${quizId}`);
-          
-          if (parsedResults.length > 0) {
-            foundLocalResults = true;
-            setQuizTitle(parsedResults[0].quizTitle || 'Quiz Results');
-            
-            // Transform results for display
-            const studentResponses = parsedResults.map(result => {
-              const percentageScore = result.totalPoints > 0 
-                ? Math.round((result.score / result.totalPoints) * 100) 
-                : 0;
-                
-              return {
-                studentName: result.studentName,
-                studentId: result.studentId,
-                score: result.score,
-                totalPoints: result.totalPoints,
-                submittedAt: result.submittedAt,
-                percentageScore,
-                securityViolations: result.securityViolations,
-                completed: result.completed
-              };
-            });
-            
-            setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
-          }
-        }
-        
-        // If we didn't find local results, try to fetch from Supabase
-        if (!foundLocalResults) {
-          try {
-            // Fetch quiz details - don't use single() to avoid error if no quiz found
-            const { data: quizData, error: quizError } = await supabase
-              .from('quizzes')
-              .select('title')
-              .eq('id', quizId)
-              .maybeSingle();
-
-            if (quizError) {
-              console.error('Error fetching quiz:', quizError);
-              throw quizError;
-            }
-
-            if (quizData) {
-              console.log('Found quiz in database:', quizData.title);
-              setQuizTitle(quizData.title);
-            } else {
-              console.log('Quiz not found in database, using default title');
-              setQuizTitle('Quiz Results');
-            }
-
-            // Fetch quiz attempts for the specific quiz
-            const { data: attemptsData, error: attemptsError } = await supabase
-              .from('quiz_attempts')
-              .select('id, student_name, student_id, score, total_points, submitted_at, security_violations, completed')
-              .eq('quiz_id', quizId)
-              .order('student_id');
-
-            if (attemptsError) {
-              console.error('Error fetching attempts:', attemptsError);
-              throw attemptsError;
-            }
-
-            if (attemptsData && attemptsData.length > 0) {
-              console.log(`Found ${attemptsData.length} attempts in database`);
-              // Transform data for display
-              const studentResponses = attemptsData.map(attempt => {
-                const percentageScore = attempt.total_points > 0 
-                  ? Math.round((attempt.score / attempt.total_points) * 100) 
-                  : 0;
-                  
-                return {
-                  studentName: attempt.student_name,
-                  studentId: attempt.student_id,
-                  score: attempt.score,
-                  totalPoints: attempt.total_points,
-                  submittedAt: attempt.submitted_at,
-                  percentageScore,
-                  securityViolations: attempt.security_violations,
-                  completed: attempt.completed
-                };
-              });
-              
-              // Sort results by student ID (roll number) in ascending order
-              const sortedResults = studentResponses.sort((a, b) => {
-                // First try to sort numerically if both IDs are numbers
-                const aNum = parseInt(a.studentId);
-                const bNum = parseInt(b.studentId);
-                
-                if (!isNaN(aNum) && !isNaN(bNum)) {
-                  return aNum - bNum;
-                }
-                
-                // Fall back to string comparison if not numbers
-                return a.studentId.localeCompare(b.studentId);
-              });
-              
-              setResults(sortedResults);
-            } else if (!foundLocalResults) {
-              // If we get here, we didn't find results in either localStorage or database
-              console.log('No results found anywhere');
-              setResults([]);
-            }
-          } catch (supabaseError) {
-            console.error('Supabase error:', supabaseError);
-            // If we have local results, don't show the error
-            if (!foundLocalResults) {
-              setError('Unable to load quiz data from the server. Using local data if available.');
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading results:', error);
-        setError('Failed to load quiz results. Please try again.');
-        toast({
-          title: "Error",
-          description: "Failed to load quiz results. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadResults();
-  }, [quizId, toast]);
+  const { results, quizTitle, loading, error } = useResultsLoader(quizId);
 
   const handleDownloadCSV = () => {
     try {
@@ -299,6 +151,28 @@ const ViewResults = () => {
     score: result.percentageScore
   }));
 
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <QuizLoading />
+        </div>
+      </div>
+    );
+  }
+
+  if (error && results.length === 0) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <QuizError error={error} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -331,14 +205,8 @@ const ViewResults = () => {
           {results.length} submissions {results.length > 0 && '(sorted by roll number)'}
         </p>
         
-        {loading ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p>Loading results...</p>
-            </CardContent>
-          </Card>
-        ) : error ? (
-          <Card>
+        {error && (
+          <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center text-amber-600">
                 <AlertCircle className="h-5 w-5 mr-2" />
@@ -346,18 +214,10 @@ const ViewResults = () => {
               </CardTitle>
               <CardDescription>{error}</CardDescription>
             </CardHeader>
-            <CardContent>
-              {results.length > 0 ? (
-                <p>Showing available results from local storage.</p>
-              ) : (
-                <p>No results found for this quiz. Please check the quiz ID and try again.</p>
-              )}
-            </CardContent>
-            <CardContent className="border-t pt-4">
-              <p className="text-sm text-muted-foreground">Quiz ID: {quizId}</p>
-            </CardContent>
           </Card>
-        ) : results.length > 0 ? (
+        )}
+        
+        {results.length > 0 ? (
           <>
             <Card className="mb-8">
               <CardHeader>
