@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { Clock, FileText, Users, Link as LinkIcon, BarChart } from 'lucide-react';
+import { Clock, FileText, Users, Link as LinkIcon, BarChart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export type Quiz = {
@@ -22,9 +22,10 @@ export type Quiz = {
 type QuizCardProps = {
   quiz: Quiz;
   onCopyLink: (id: string) => void;
+  onDelete?: (id: string) => void;
 };
 
-const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
+const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   const navigate = useNavigate();
   
   const statusColor = {
@@ -68,58 +69,8 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
   const handleOpenQuiz = () => {
     console.log(`Opening quiz: ${quiz.id} with title: ${quiz.title}`);
     
-    // Ensure quiz questions exist
-    ensureQuizQuestionsExist(quiz.id, quiz.questions);
-    
-    // Navigate directly instead of using window.open
-    // Using window.location to ensure a full page reload which helps with initializing the quiz
-    window.location.href = `/take-quiz/${quiz.id}`;
-  };
-
-  // Function to ensure quiz questions exist
-  const ensureQuizQuestionsExist = (quizId: string, questionCount: number) => {
-    // Check if questions already exist
-    const existingQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
-    
-    if (!existingQuestions) {
-      console.log(`Generating sample questions for quiz ${quizId}`);
-      const questionTypes = ['multiple-choice', 'true-false', 'short-answer', 'long-answer'];
-      const questions = [];
-      
-      for (let i = 0; i < questionCount; i++) {
-        const type = questionTypes[i % questionTypes.length];
-        
-        let options = [];
-        if (type === 'multiple-choice') {
-          options = [
-            { id: '1', text: 'Option A', isCorrect: i === 0 },
-            { id: '2', text: 'Option B', isCorrect: false },
-            { id: '3', text: 'Option C', isCorrect: false },
-            { id: '4', text: 'Option D', isCorrect: false }
-          ];
-        } else if (type === 'true-false') {
-          options = [
-            { id: '1', text: 'True', isCorrect: false },
-            { id: '2', text: 'False', isCorrect: true }
-          ];
-        }
-        
-        questions.push({
-          id: `${i + 1}`,
-          text: `Question ${i + 1}: This is a sample ${type} question.`,
-          type,
-          options,
-          points: 10,
-          required: i < (questionCount - 1)
-        });
-      }
-      
-      // Store the questions in localStorage
-      localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
-      console.log(`Stored ${questions.length} questions for quiz ${quizId}`);
-    } else {
-      console.log(`Questions already exist for quiz ${quizId}`);
-    }
+    // Navigate directly
+    navigate(`/take-quiz/${quiz.id}`);
   };
 
   // Navigate to view results
@@ -132,6 +83,21 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
   const handleEditQuiz = () => {
     console.log(`Navigating to edit-quiz/${quiz.id}`);
     navigate(`/edit-quiz/${quiz.id}`);
+  };
+  
+  // Handle delete quiz
+  const handleDeleteQuiz = () => {
+    if (window.confirm(`Are you sure you want to delete "${quiz.title}"? This cannot be undone.`)) {
+      if (onDelete) {
+        // Delete related data from localStorage
+        localStorage.removeItem(`quiz_questions_${quiz.id}`);
+        localStorage.removeItem(`quiz_creator_questions_${quiz.id}`);
+        localStorage.removeItem(`quiz_results_${quiz.id}`);
+        
+        // Call the delete handler
+        onDelete(quiz.id);
+      }
+    }
   };
 
   return (
@@ -183,6 +149,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink }) => {
           
           <Button size="sm" onClick={handleEditQuiz}>
             Edit
+          </Button>
+          
+          <Button size="sm" variant="destructive" onClick={handleDeleteQuiz}>
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </CardFooter>

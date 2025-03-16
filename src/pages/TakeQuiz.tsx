@@ -36,7 +36,7 @@ const TakeQuiz = () => {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [requiresAuth, setRequiresAuth] = useState(true);
+  const [requiresAuth, setRequiresAuth] = useState(false); // Changed to false for easier testing
   
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
@@ -54,11 +54,14 @@ const TakeQuiz = () => {
     }
   }, [user, requiresAuth, loading, navigate, toast]);
 
+  // Reset quiz data when component mounts
   useEffect(() => {
     console.log("TakeQuiz component mounted with quizId:", quizId);
     const loadQuiz = async () => {
       setLoading(true);
       setError(null);
+      setQuestions([]);
+      setAnswers({});
       
       try {
         if (!quizId) {
@@ -74,39 +77,7 @@ const TakeQuiz = () => {
         
         if (!storedQuizzes) {
           console.error("No quizzes found in localStorage");
-          
-          // Create a dummy quiz for testing if none exists
-          const dummyQuizzes = [
-            {
-              id: quizId,
-              userId: '1',
-              title: 'Sample Quiz',
-              description: 'This is a sample quiz for testing',
-              questions: 5,
-              duration: 10,
-              created: new Date().toISOString(),
-              attempts: 0,
-              status: 'active' as QuizStatus
-            }
-          ];
-          
-          localStorage.setItem('quizzes', JSON.stringify(dummyQuizzes));
-          console.log("Created dummy quiz:", dummyQuizzes[0]);
-          
-          // Load dummy questions for this quiz
-          const dummyQuestions = generateSampleQuestions(5);
-          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(dummyQuestions));
-          
-          setQuestions(dummyQuestions);
-          setQuiz({
-            id: quizId,
-            title: 'Sample Quiz',
-            description: 'This is a sample quiz for testing',
-            timeLimit: 10,
-            questions: dummyQuestions
-          });
-          setTimeLeft(10 * 60);
-          
+          setError("No quizzes found. Please create a quiz first.");
           setLoading(false);
           return;
         }
@@ -118,53 +89,26 @@ const TakeQuiz = () => {
         
         if (!foundQuiz) {
           console.error("Quiz not found with ID:", quizId);
-          
-          // Create a dummy quiz if not found
-          const dummyQuiz = {
-            id: quizId,
-            userId: '1',
-            title: 'Sample Quiz',
-            description: 'This is a sample quiz for testing',
-            questions: 5,
-            duration: 10,
-            created: new Date().toISOString(),
-            attempts: 0,
-            status: 'active' as QuizStatus
-          };
-          
-          quizzes.push(dummyQuiz);
-          localStorage.setItem('quizzes', JSON.stringify(quizzes));
-          console.log("Created dummy quiz:", dummyQuiz);
-          
-          // Load dummy questions for this quiz
-          const dummyQuestions = generateSampleQuestions(5);
-          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(dummyQuestions));
-          
-          setQuestions(dummyQuestions);
-          setQuiz({
-            id: quizId,
-            title: 'Sample Quiz',
-            description: 'This is a sample quiz for testing',
-            timeLimit: 10,
-            questions: dummyQuestions
-          });
-          setTimeLeft(10 * 60);
-          
+          setError(`Quiz with ID ${quizId} not found`);
           setLoading(false);
           return;
         }
         
         console.log("Found quiz:", foundQuiz);
         
+        // Clear any existing questions for this quiz
+        localStorage.removeItem(`quiz_questions_${quizId}`);
+        
         // Get or generate questions for the quiz
         let quizQuestions: Question[] = [];
         
-        // Check if there are stored questions for this quiz
-        const storedQuestions = localStorage.getItem(`quiz_questions_${quizId}`);
-        if (storedQuestions) {
-          console.log("Found stored questions for quiz");
-          quizQuestions = JSON.parse(storedQuestions);
-          console.log("Parsed questions:", quizQuestions);
+        // Check if there are stored questions for this quiz in the quiz creator
+        const storedQuestionsByCreator = localStorage.getItem(`quiz_creator_questions_${quizId}`);
+        if (storedQuestionsByCreator) {
+          console.log("Found stored questions created by quiz author");
+          quizQuestions = JSON.parse(storedQuestionsByCreator);
+          // Store these questions for the quiz taker
+          localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(quizQuestions));
         } else {
           console.log("Generating questions for quiz");
           // Generate sample questions if none exist
@@ -205,6 +149,19 @@ const TakeQuiz = () => {
     };
 
     loadQuiz();
+    
+    // Cleanup function
+    return () => {
+      // Clean up tab tracking if active
+      if (cleanupTabTrackingRef.current) {
+        cleanupTabTrackingRef.current();
+      }
+      
+      // Clear any timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current as unknown as number);
+      }
+    };
   }, [quizId]);
   
   useEffect(() => {
@@ -219,6 +176,8 @@ const TakeQuiz = () => {
           return prev - 1;
         });
       }, 1000);
+      
+      timerRef.current = timer as unknown as number;
       
       return () => clearInterval(timer);
     }

@@ -1,300 +1,244 @@
+
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '../context/AuthContext';
 import QuizCard, { Quiz } from '../components/QuizCard';
 import Navbar from '../components/Navbar';
-import { Plus, Search, FileDown, ClipboardCheck, Settings, Clock, Trash2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
-const dummyQuizzes: Quiz[] = [
-  {
-    id: '1',
-    userId: '1', // Admin user ID
-    title: 'Midterm Examination',
-    description: 'Comprehensive test covering chapters 1-5',
-    questions: 25,
-    duration: 90,
-    created: '2023-10-15T10:30:00Z',
-    attempts: 45,
-    status: 'completed'
-  },
-  {
-    id: '2',
-    userId: '1', // Admin user ID
-    title: 'Weekly Quiz #3',
-    description: 'Test on recent material from week 3',
-    questions: 10,
-    duration: 20,
-    created: '2023-10-25T14:15:00Z',
-    attempts: 28,
-    status: 'active'
-  },
-  {
-    id: '3',
-    userId: '2', // Another user ID
-    title: 'Final Exam Preparation',
-    description: 'Practice quiz for upcoming final exam',
-    questions: 40,
-    duration: 120,
-    created: '2023-11-01T09:00:00Z',
-    attempts: 0,
-    status: 'draft'
-  },
-  {
-    id: '4',
-    userId: '1', // Admin user ID
-    title: 'Pop Quiz: Chapter 7',
-    description: 'Surprise assessment on recent material',
-    questions: 8,
-    duration: 15,
-    created: '2023-11-05T10:20:00Z',
-    attempts: 32,
-    status: 'active'
-  }
-];
+import { PlusCircle, Search, Lock, FilePenLine } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-
+  
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('all');
+  
+  // Load quizzes from localStorage
   useEffect(() => {
-    if (user) {
-      const storedQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-      
-      if (storedQuizzes.length > 0) {
-        const userQuizzes = storedQuizzes.filter((quiz: Quiz) => quiz.userId === user.id);
-        setQuizzes(userQuizzes);
+    try {
+      const storedQuizzes = localStorage.getItem('quizzes');
+      if (storedQuizzes) {
+        setQuizzes(JSON.parse(storedQuizzes));
       } else {
-        const userQuizzes = dummyQuizzes.filter(quiz => quiz.userId === user.id);
-        setQuizzes(userQuizzes);
+        // Initialize with empty array if no quizzes found
+        localStorage.setItem('quizzes', JSON.stringify([]));
       }
-    } else {
-      setQuizzes([]);
+    } catch (error) {
+      console.error('Error loading quizzes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load quizzes",
+        variant: "destructive",
+      });
     }
-  }, [user]);
+  }, [toast]);
 
+  // Function to handle "Create Quiz" button click
+  const handleCreateQuiz = () => {
+    if (user) {
+      navigate('/create-quiz');
+    } else {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to create a quiz",
+        variant: "destructive",
+      });
+      navigate('/login');
+    }
+  };
+
+  // Function to handle "Copy Link" action
   const handleCopyLink = (quizId: string) => {
     toast({
-      title: "Link copied",
+      title: "Link Copied",
       description: "Quiz link has been copied to clipboard",
     });
   };
-
-  const clearAllQuizzes = () => {
-    setQuizzes([]);
-    localStorage.removeItem('quizzes');
-    
-    toast({
-      title: "All quizzes cleared",
-      description: "Your dashboard is now empty",
-    });
-  };
-
-  const filteredQuizzes = (status?: string) => {
-    return quizzes
-      .filter(quiz => status ? quiz.status === status : true)
-      .filter(quiz => 
-        quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        quiz.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-  };
-
-  const statsCards = [
-    {
-      title: "Total Quizzes",
-      value: quizzes.length,
-      icon: ClipboardCheck,
-      color: "bg-blue-100 text-blue-900"
-    },
-    {
-      title: "Active Quizzes",
-      value: quizzes.filter(q => q.status === 'active').length,
-      icon: Clock,
-      color: "bg-green-100 text-green-900"
-    },
-    {
-      title: "Total Attempts",
-      value: quizzes.reduce((sum, quiz) => sum + quiz.attempts, 0),
-      icon: FileDown,
-      color: "bg-purple-100 text-purple-900"
+  
+  // Function to handle "Delete Quiz" action
+  const handleDeleteQuiz = (quizId: string) => {
+    try {
+      // Filter out the deleted quiz
+      const updatedQuizzes = quizzes.filter(quiz => quiz.id !== quizId);
+      
+      // Save updated quizzes to localStorage
+      localStorage.setItem('quizzes', JSON.stringify(updatedQuizzes));
+      
+      // Update state
+      setQuizzes(updatedQuizzes);
+      
+      toast({
+        title: "Quiz Deleted",
+        description: "The quiz has been permanently deleted",
+      });
+    } catch (error) {
+      console.error('Error deleting quiz:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete quiz",
+        variant: "destructive",
+      });
     }
-  ];
+  };
+
+  // Filter quizzes based on search term and active tab
+  const filteredQuizzes = quizzes.filter(quiz => {
+    const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quiz.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (activeTab === 'all') {
+      return matchesSearch;
+    } else if (activeTab === 'draft') {
+      return matchesSearch && quiz.status === 'draft';
+    } else if (activeTab === 'active') {
+      return matchesSearch && quiz.status === 'active';
+    } else if (activeTab === 'completed') {
+      return matchesSearch && quiz.status === 'completed';
+    }
+    
+    return matchesSearch;
+  });
+  
+  // Check if any quizzes exist
+  const hasQuizzes = quizzes.length > 0;
+  
+  // Filter drafts, active and completed quizzes
+  const draftQuizzes = quizzes.filter(quiz => quiz.status === 'draft').length;
+  const activeQuizzes = quizzes.filter(quiz => quiz.status === 'active').length;
+  const completedQuizzes = quizzes.filter(quiz => quiz.status === 'completed').length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-8 animate-fade-in">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Manage your quizzes and view results</p>
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage your quizzes and view performance analytics
+            </p>
           </div>
           
-          <div className="mt-4 md:mt-0 flex gap-2">
-            <Link to="/create-quiz">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Quiz
-              </Button>
-            </Link>
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Clear All Quizzes
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action will remove all quizzes from your dashboard. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={clearAllQuizzes}>
-                    Yes, clear all quizzes
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          <Button onClick={handleCreateQuiz}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Create Quiz
+          </Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {statsCards.map((card, index) => (
-            <div 
-              key={index} 
-              className="bg-card rounded-lg shadow-subtle p-6 border border-border animate-scale-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground">{card.title}</p>
-                  <h3 className="text-3xl font-bold mt-1">{card.value}</h3>
-                </div>
-                <div className={`h-12 w-12 rounded-full ${card.color} flex items-center justify-center`}>
-                  <card.icon className="h-6 w-6" />
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Quizzes</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-3xl font-bold">{quizzes.length}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Draft</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-3xl font-bold">{draftQuizzes}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-3xl font-bold">{activeQuizzes}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-3xl font-bold">{completedQuizzes}</div>
+            </CardContent>
+          </Card>
         </div>
         
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-          <h2 className="text-2xl font-semibold mb-4 sm:mb-0">Your Quizzes</h2>
-          <div className="w-full sm:w-auto relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+          <Tabs 
+            defaultValue="all" 
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList>
+              <TabsTrigger value="all">All Quizzes</TabsTrigger>
+              <TabsTrigger value="draft">Drafts</TabsTrigger>
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="completed">Completed</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search quizzes..."
-              className="w-full sm:w-[300px] pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
         
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="draft">Drafts</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all" className="mt-2">
-            {filteredQuizzes().length > 0 ? (
-              <div className="grid grid-cols-1 gap-6">
-                {filteredQuizzes().map((quiz) => (
-                  <QuizCard key={quiz.id} quiz={quiz} onCopyLink={handleCopyLink} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No quizzes found. Try a different search term or create a new quiz.</p>
-                <Link to="/create-quiz">
-                  <Button variant="outline" className="mt-4">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create a Quiz
+        {hasQuizzes ? (
+          <div className="space-y-4">
+            {filteredQuizzes.map((quiz) => (
+              <QuizCard 
+                key={quiz.id} 
+                quiz={quiz} 
+                onCopyLink={handleCopyLink} 
+                onDelete={handleDeleteQuiz}
+              />
+            ))}
+            
+            {filteredQuizzes.length === 0 && (
+              <Card className="p-8 text-center">
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">No quizzes found matching your search.</p>
+                  <Button variant="outline" onClick={() => setSearchTerm('')}>
+                    Clear Search
                   </Button>
-                </Link>
-              </div>
+                </CardContent>
+              </Card>
             )}
-          </TabsContent>
-          
-          <TabsContent value="active" className="mt-2">
-            {filteredQuizzes('active').length > 0 ? (
-              <div className="grid grid-cols-1 gap-6">
-                {filteredQuizzes('active').map((quiz) => (
-                  <QuizCard key={quiz.id} quiz={quiz} onCopyLink={handleCopyLink} />
-                ))}
+          </div>
+        ) : (
+          <Card className="p-8 text-center">
+            <CardContent className="flex flex-col items-center">
+              <div className="bg-secondary rounded-full p-4 mb-4">
+                <FilePenLine className="h-8 w-8 text-primary" />
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No active quizzes found.</p>
-                <Link to="/create-quiz">
-                  <Button variant="outline" className="mt-4">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create a Quiz
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="draft" className="mt-2">
-            {filteredQuizzes('draft').length > 0 ? (
-              <div className="grid grid-cols-1 gap-6">
-                {filteredQuizzes('draft').map((quiz) => (
-                  <QuizCard key={quiz.id} quiz={quiz} onCopyLink={handleCopyLink} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No draft quizzes found.</p>
-                <Link to="/create-quiz">
-                  <Button variant="outline" className="mt-4">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create a Quiz
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="completed" className="mt-2">
-            {filteredQuizzes('completed').length > 0 ? (
-              <div className="grid grid-cols-1 gap-6">
-                {filteredQuizzes('completed').map((quiz) => (
-                  <QuizCard key={quiz.id} quiz={quiz} onCopyLink={handleCopyLink} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No completed quizzes found.</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              
+              <h2 className="text-xl font-semibold mb-2">No Quizzes Created Yet</h2>
+              <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
+                Get started by creating your first quiz. You can add multiple choice, 
+                true/false, and text questions to test your students.
+              </p>
+              
+              <Button onClick={handleCreateQuiz}>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Create Your First Quiz
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );
