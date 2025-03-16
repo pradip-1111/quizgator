@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +35,7 @@ const TakeQuiz = () => {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [requiresAuth, setRequiresAuth] = useState(false); // Changed to false for easier testing
+  const [requiresAuth, setRequiresAuth] = useState(false);
   
   const timerRef = useRef<number | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
@@ -420,9 +419,10 @@ const TakeQuiz = () => {
       
       exitFullscreen();
       
+      // Hide the actual score from the student
       toast({
         title: "Quiz Submitted",
-        description: `Your score: ${score}/${totalPoints}. Your answers have been recorded.`,
+        description: "Your answers have been recorded successfully.",
       });
       
       toast({

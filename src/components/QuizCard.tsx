@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Clock, FileText, Users, Link as LinkIcon, BarChart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 
 export type Quiz = {
   id: string;
@@ -27,6 +28,7 @@ type QuizCardProps = {
 
 const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const statusColor = {
     draft: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -73,7 +75,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     navigate(`/take-quiz/${quiz.id}`);
   };
 
-  // Navigate to view results
+  // Navigate to view results - only available for admin users
   const handleViewResults = () => {
     console.log(`Navigating to view-results/${quiz.id}`);
     navigate(`/view-results/${quiz.id}`);
@@ -142,18 +144,22 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
             Open
           </Button>
           
-          <Button size="sm" variant="outline" onClick={handleViewResults}>
-            <BarChart className="h-4 w-4 mr-1" />
-            Results
-          </Button>
-          
-          <Button size="sm" onClick={handleEditQuiz}>
-            Edit
-          </Button>
-          
-          <Button size="sm" variant="destructive" onClick={handleDeleteQuiz}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {user && user.role === 'admin' && (
+            <>
+              <Button size="sm" variant="outline" onClick={handleViewResults}>
+                <BarChart className="h-4 w-4 mr-1" />
+                Results
+              </Button>
+              
+              <Button size="sm" onClick={handleEditQuiz}>
+                Edit
+              </Button>
+              
+              <Button size="sm" variant="destructive" onClick={handleDeleteQuiz}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </CardFooter>
     </Card>
