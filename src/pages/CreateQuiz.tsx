@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -31,14 +32,14 @@ const CreateQuiz = () => {
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([
     {
-      id: '1',
+      id: crypto.randomUUID(),
       text: 'What is the capital of France?',
       type: 'multiple-choice',
       options: [
-        { id: '1', text: 'Paris', isCorrect: true },
-        { id: '2', text: 'London', isCorrect: false },
-        { id: '3', text: 'Berlin', isCorrect: false },
-        { id: '4', text: 'Rome', isCorrect: false }
+        { id: crypto.randomUUID(), text: 'Paris', isCorrect: true },
+        { id: crypto.randomUUID(), text: 'London', isCorrect: false },
+        { id: crypto.randomUUID(), text: 'Berlin', isCorrect: false },
+        { id: crypto.randomUUID(), text: 'Rome', isCorrect: false }
       ],
       points: 10,
       required: true
@@ -47,12 +48,12 @@ const CreateQuiz = () => {
 
   const handleAddQuestion = () => {
     const newQuestion: Question = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       text: '',
       type: 'multiple-choice',
       options: [
-        { id: '1', text: 'Option 1', isCorrect: false },
-        { id: '2', text: 'Option 2', isCorrect: false }
+        { id: crypto.randomUUID(), text: 'Option 1', isCorrect: false },
+        { id: crypto.randomUUID(), text: 'Option 2', isCorrect: false }
       ],
       points: 10,
       required: true
@@ -119,7 +120,10 @@ const CreateQuiz = () => {
     setLoading(true);
     
     try {
+      console.log("Starting quiz save process");
       const quizId = crypto.randomUUID();
+      
+      // Insert the quiz first
       const { data: quizData, error: quizError } = await supabase
         .from('quizzes')
         .insert({
@@ -132,14 +136,24 @@ const CreateQuiz = () => {
         .select()
         .single();
       
-      if (quizError) throw quizError;
+      if (quizError) {
+        console.error("Error inserting quiz:", quizError);
+        throw quizError;
+      }
       
+      console.log("Quiz saved successfully:", quizData);
+      
+      // Save all questions
       for (let i = 0; i < questions.length; i++) {
         const question = questions[i];
+        
+        // Generate a UUID for the question
+        const questionId = crypto.randomUUID();
         
         const { data: questionData, error: questionError } = await supabase
           .from('questions')
           .insert({
+            id: questionId,
             quiz_id: quizId,
             text: question.text,
             type: question.type,
@@ -150,24 +164,38 @@ const CreateQuiz = () => {
           .select()
           .single();
         
-        if (questionError) throw questionError;
+        if (questionError) {
+          console.error("Error inserting question:", questionError);
+          throw questionError;
+        }
         
+        console.log("Question saved successfully:", questionData);
+        
+        // Save all options for the question if they exist
         if (question.options && question.options.length > 0) {
           const optionsToInsert = question.options.map((opt, index) => ({
-            question_id: questionData.id,
+            id: crypto.randomUUID(),
+            question_id: questionId,
             text: opt.text,
             is_correct: opt.isCorrect,
             order_number: index
           }));
           
-          const { error: optionsError } = await supabase
+          const { data: optionsData, error: optionsError } = await supabase
             .from('options')
-            .insert(optionsToInsert);
+            .insert(optionsToInsert)
+            .select();
           
-          if (optionsError) throw optionsError;
+          if (optionsError) {
+            console.error("Error inserting options:", optionsError);
+            throw optionsError;
+          }
+          
+          console.log("Options saved successfully:", optionsData);
         }
       }
       
+      // For backward compatibility, also save to localStorage
       const newQuiz: Quiz = {
         id: quizId,
         userId: user.id,
