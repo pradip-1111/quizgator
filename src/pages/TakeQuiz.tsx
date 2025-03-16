@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +8,16 @@ import { Quiz } from '@/components/QuizCard';
 import { Question, QuizData, QuizResult, QuizStatus } from '@/types/quiz';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+
+// Import missing component references
+import QuizHeader from '@/components/quiz/QuizHeader';
+import QuizControls from '@/components/quiz/QuizControls';
+import QuizProgress from '@/components/quiz/QuizProgress';
+import QuizNavigation from '@/components/quiz/QuizNavigation';
+import QuestionItem from '@/components/quiz/QuestionItem';
+import QuizLoading from '@/components/quiz/QuizLoading';
+import QuizError from '@/components/quiz/QuizError';
+import QuizRegistration from '@/components/quiz/QuizRegistration';
 
 const TakeQuiz = () => {
   
@@ -588,6 +599,8 @@ const TakeQuiz = () => {
           onPrevious={handlePreviousQuestion}
           onNext={handleNextQuestion}
           onSubmit={handleSubmitQuiz}
+          tabSwitchWarnings={tabSwitchWarnings}
+          remainingQuestions={quiz?.questions?.length ? quiz.questions.filter(q => !answers[q.id]).length : 0}
         />
       </main>
       
