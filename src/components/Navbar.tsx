@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +21,8 @@ import {
   Home,
   GraduationCap, 
   Plus,
-  UserPlus
+  UserPlus,
+  Users
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
@@ -167,12 +169,12 @@ const Navbar: React.FC = () => {
                         <Button 
                           variant="ghost"
                           className="w-full justify-start" 
-                          onClick={() => handleNavigation('/analytics/responses')}
+                          onClick={() => handleNavigation('/user-responses')}
                         >
                           <div className="text-left">
-                            <div className="text-sm font-medium leading-none">User Responses</div>
+                            <div className="text-sm font-medium leading-none">Student Responses</div>
                             <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                              Detailed breakdown of individual responses
+                              View all student responses across quizzes
                             </p>
                           </div>
                         </Button>
