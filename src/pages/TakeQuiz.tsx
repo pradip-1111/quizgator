@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -199,6 +198,7 @@ const TakeQuiz = () => {
     return <QuizLoading 
       cancelLoading={handleCancelLoading} 
       loadingStage={loadingStage}
+      fallbackActive={fallbackActive}
       message={
         fallbackActive 
           ? "Using locally stored quiz due to connection issues." 

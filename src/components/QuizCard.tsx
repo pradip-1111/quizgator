@@ -58,16 +58,34 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
     localStorage.setItem('quizzes', JSON.stringify(quizzes));
     console.log(`Saved quiz to localStorage: ${quiz.title} with ID: ${quiz.id}`);
     
-    // Get the creator questions key
+    // Get the creator questions
     const creatorQuestionsKey = `quiz_creator_questions_${quiz.id}`;
     const creatorQuestions = localStorage.getItem(creatorQuestionsKey);
     
     if (creatorQuestions) {
-      // If we have creator questions, make sure they're associated with this quiz 
-      // by also storing them in the regular questions key for immediate access
+      // Store questions in both creator and regular question keys
+      localStorage.setItem(`quiz_questions_${quiz.id}`, creatorQuestions);
+      console.log(`Saved creator questions for quiz ${quiz.id}`);
+      
+      // Make sure the actual questions are also logged
+      try {
+        const questionsArray = JSON.parse(creatorQuestions);
+        console.log(`Question count: ${questionsArray.length}`, questionsArray);
+      } catch (err) {
+        console.error("Failed to parse questions for logging:", err);
+      }
+    } else {
+      console.warn(`No creator questions found for quiz ${quiz.id}`);
+      
+      // Fallback: Check if we have questions in the storage from a different key
       const questionsKey = `quiz_questions_${quiz.id}`;
-      localStorage.setItem(questionsKey, creatorQuestions);
-      console.log(`Associated creator questions with quiz ${quiz.id}`);
+      const existingQuestions = localStorage.getItem(questionsKey);
+      
+      if (existingQuestions) {
+        console.log(`Found existing questions for quiz ${quiz.id}`);
+      } else {
+        console.warn(`No questions found for quiz ${quiz.id} in any storage location`);
+      }
     }
   };
 
@@ -87,7 +105,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ quiz, onCopyLink, onDelete }) => {
         
         // Also show a toast using sonner for direct feedback
         toast.success("Quiz link copied to clipboard", {
-          description: quizLink,
+          description: "Share this link with your students.",
           duration: 3000,
         });
         

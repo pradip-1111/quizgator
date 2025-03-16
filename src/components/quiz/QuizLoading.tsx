@@ -2,16 +2,22 @@
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Database, HardDrive, Server } from 'lucide-react';
+import { ArrowLeft, Database, HardDrive, Server, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface QuizLoadingProps {
   cancelLoading?: () => void;
   message?: string;
   loadingStage?: 'initial' | 'database' | 'local' | 'demo';
+  fallbackActive?: boolean;
 }
 
-const QuizLoading = ({ cancelLoading, message, loadingStage = 'initial' }: QuizLoadingProps) => {
+const QuizLoading = ({ 
+  cancelLoading, 
+  message, 
+  loadingStage = 'initial',
+  fallbackActive = false
+}: QuizLoadingProps) => {
   // Different messages based on the loading stage
   const getLoadingMessage = () => {
     switch (loadingStage) {
@@ -54,6 +60,12 @@ const QuizLoading = ({ cancelLoading, message, loadingStage = 'initial' }: QuizL
           <p className="text-sm text-muted-foreground text-center">
             {message || "This may take a moment as we retrieve the latest information."}
           </p>
+          {fallbackActive && (
+            <div className="flex items-center mt-2 text-amber-600">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              <p className="text-sm">Using locally stored quiz due to connection issues.</p>
+            </div>
+          )}
         </div>
       </CardContent>
       

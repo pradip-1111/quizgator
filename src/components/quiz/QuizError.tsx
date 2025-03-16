@@ -1,76 +1,72 @@
 
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardFooter, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, RefreshCcw, HardDrive } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-type QuizErrorProps = {
-  error: string | null;
+interface QuizErrorProps {
+  error: Error | string | null;
   onRetry?: () => void;
   isRetryable?: boolean;
-  showBackButton?: boolean;
   fallbackAvailable?: boolean;
-};
+}
 
 const QuizError = ({ 
   error, 
   onRetry, 
-  isRetryable = false, 
-  showBackButton = true,
+  isRetryable = false,
   fallbackAvailable = false
 }: QuizErrorProps) => {
+  const errorMessage = error instanceof Error ? error.message : error;
+  
   return (
     <Card className="w-full max-w-lg mx-auto shadow-lg">
-      <CardHeader className="space-y-1">
-        <CardTitle className="flex items-center">
-          {fallbackAvailable ? (
-            <>
-              <HardDrive className="h-5 w-5 mr-2 text-amber-500" />
-              <span className="text-amber-600">Using Local Quiz Data</span>
-            </>
-          ) : (
-            <>
-              <AlertCircle className="h-5 w-5 mr-2 text-red-600" />
-              <span className="text-red-600">Error Loading Quiz</span>
-            </>
-          )}
+      <CardHeader className="pb-2">
+        <CardTitle className="text-center text-xl text-destructive">
+          Quiz Loading Error
         </CardTitle>
-        <CardDescription className="text-base">
-          {fallbackAvailable 
-            ? "There was an issue loading quiz data from the database, but we found a local copy of your quiz."
-            : error || "Failed to load quiz. Please try again."}
-        </CardDescription>
       </CardHeader>
-      
-      {isRetryable && (
-        <CardContent>
-          <Alert variant={fallbackAvailable ? "warning" : "destructive"} className="mb-4">
-            <AlertTitle>{fallbackAvailable ? "Local Data Used" : "Connection Issue"}</AlertTitle>
-            <AlertDescription>
-              {fallbackAvailable 
-                ? "We're showing you a locally stored version of the quiz because there was an issue connecting to the server."
-                : "There might be an issue with your network connection or the server is temporarily unavailable."}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      )}
-      
-      <CardFooter className="flex justify-between">
-        {showBackButton && (
-          <Link to="/">
-            <Button variant="outline">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
-            </Button>
-          </Link>
-        )}
+      <CardContent className="py-6">
+        <div className="space-y-4">
+          {fallbackAvailable ? (
+            <Alert variant="warning">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Connection Issue</AlertTitle>
+              <AlertDescription>
+                There was a problem connecting to the server, but we found a locally stored version of this quiz.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error Loading Quiz</AlertTitle>
+              <AlertDescription>
+                {errorMessage || "There was an error loading the quiz. Please try again later."}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {fallbackAvailable && (
+            <p className="text-sm text-center text-muted-foreground">
+              The quiz will continue with locally stored questions.
+            </p>
+          )}
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-center space-x-3">
+        <Link to="/">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Go Home
+          </Button>
+        </Link>
         
         {isRetryable && onRetry && (
-          <Button onClick={onRetry}>
+          <Button onClick={onRetry} size="sm">
             <RefreshCcw className="mr-2 h-4 w-4" />
-            Retry Connection
+            Retry
           </Button>
         )}
       </CardFooter>
