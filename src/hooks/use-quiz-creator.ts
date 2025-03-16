@@ -12,6 +12,19 @@ const isValidUuid = (id: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 };
 
+// Generate a valid UUID
+const generateUuid = (): string => {
+  return crypto.randomUUID();
+};
+
+// Ensure entity has a valid UUID
+const ensureValidUuid = (id: string | undefined): string => {
+  if (!id || !isValidUuid(id)) {
+    return generateUuid();
+  }
+  return id;
+};
+
 export function useQuizCreator() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,14 +39,14 @@ export function useQuizCreator() {
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([
     {
-      id: crypto.randomUUID(),
+      id: generateUuid(),
       text: 'What is the capital of France?',
       type: 'multiple-choice',
       options: [
-        { id: crypto.randomUUID(), text: 'Paris', isCorrect: true },
-        { id: crypto.randomUUID(), text: 'London', isCorrect: false },
-        { id: crypto.randomUUID(), text: 'Berlin', isCorrect: false },
-        { id: crypto.randomUUID(), text: 'Rome', isCorrect: false }
+        { id: generateUuid(), text: 'Paris', isCorrect: true },
+        { id: generateUuid(), text: 'London', isCorrect: false },
+        { id: generateUuid(), text: 'Berlin', isCorrect: false },
+        { id: generateUuid(), text: 'Rome', isCorrect: false }
       ],
       points: 10,
       required: true
@@ -42,12 +55,12 @@ export function useQuizCreator() {
 
   const handleAddQuestion = () => {
     const newQuestion: Question = {
-      id: crypto.randomUUID(),
+      id: generateUuid(),
       text: '',
       type: 'multiple-choice',
       options: [
-        { id: crypto.randomUUID(), text: 'Option 1', isCorrect: false },
-        { id: crypto.randomUUID(), text: 'Option 2', isCorrect: false }
+        { id: generateUuid(), text: 'Option 1', isCorrect: false },
+        { id: generateUuid(), text: 'Option 2', isCorrect: false }
       ],
       points: 10,
       required: true
@@ -57,25 +70,17 @@ export function useQuizCreator() {
   };
 
   const handleUpdateQuestion = (updatedQuestion: Question) => {
-    // Ensure the question and all its options have valid UUIDs
-    const safeQuestion = { ...updatedQuestion };
-    
-    // Validate/fix question ID
-    if (!isValidUuid(safeQuestion.id)) {
-      console.warn(`Replacing invalid question ID: ${safeQuestion.id}`);
-      safeQuestion.id = crypto.randomUUID();
-    }
-    
-    // Validate/fix option IDs
-    if (safeQuestion.options) {
-      safeQuestion.options = safeQuestion.options.map(opt => {
-        if (!isValidUuid(opt.id)) {
-          console.warn(`Replacing invalid option ID: ${opt.id}`);
-          return { ...opt, id: crypto.randomUUID() };
-        }
-        return opt;
-      });
-    }
+    // Create a deep copy of the question to avoid reference issues
+    const safeQuestion: Question = { 
+      ...updatedQuestion,
+      id: ensureValidUuid(updatedQuestion.id),
+      options: updatedQuestion.options 
+        ? updatedQuestion.options.map(opt => ({
+            ...opt,
+            id: ensureValidUuid(opt.id)
+          }))
+        : []
+    };
     
     setQuestions(questions.map(q => 
       q.id === updatedQuestion.id ? safeQuestion : q
@@ -130,9 +135,26 @@ export function useQuizCreator() {
       console.log("Starting quiz save process");
       
       // Generate a fresh UUID for the quiz
-      const quizId = crypto.randomUUID();
+      const quizId = generateUuid();
       
       console.log("Quiz ID generated:", quizId);
+      
+      // Sanitize all questions and options before saving to ensure valid UUIDs
+      const sanitizedQuestions = questions.map((question, index) => {
+        const sanitizedQuestion = {
+          ...question,
+          id: ensureValidUuid(question.id)
+        };
+        
+        if (sanitizedQuestion.options) {
+          sanitizedQuestion.options = sanitizedQuestion.options.map(opt => ({
+            ...opt,
+            id: ensureValidUuid(opt.id)
+          }));
+        }
+        
+        return sanitizedQuestion;
+      });
       
       // Insert the quiz first
       const { data: quizData, error: quizError } = await supabase
@@ -153,18 +175,18 @@ export function useQuizCreator() {
       
       console.log("Quiz saved successfully:", quizData);
       
-      // Save questions one by one to ensure proper UUID handling
-      for (let i = 0; i < questions.length; i++) {
-        const question = questions[i];
+      // Save questions one by one to ensure proper handling
+      for (let i = 0; i < sanitizedQuestions.length; i++) {
+        const question = sanitizedQuestions[i];
+        const questionId = question.id;
         
-        // Ensure question has a valid UUID
-        let questionId = question.id;
+        console.log(`Saving question ${i+1}/${sanitizedQuestions.length} with ID ${questionId}`);
+        
+        // Double check the UUID is valid before inserting
         if (!isValidUuid(questionId)) {
-          console.warn(`Replacing invalid question ID during save: ${questionId}`);
-          questionId = crypto.randomUUID();
+          console.error(`Invalid question ID detected: ${questionId}`);
+          throw new Error(`Invalid question ID format detected: ${questionId}`);
         }
-        
-        console.log(`Saving question ${i+1}/${questions.length} with ID ${questionId}`);
         
         const { error: questionError } = await supabase
           .from('questions')
@@ -185,14 +207,12 @@ export function useQuizCreator() {
         
         // Save all options for the question if they exist
         if (question.options && question.options.length > 0) {
-          // Generate fresh UUIDs for all options and ensure they're valid
           const optionsToInsert = question.options.map((opt, index) => {
-            // Validate option ID
-            let optionId = opt.id;
-            if (!isValidUuid(optionId)) {
-              console.warn(`Replacing invalid option ID during save: ${optionId}`);
-              optionId = crypto.randomUUID();
-            }
+            // Final validation before database insertion
+            const optionId = ensureValidUuid(opt.id);
+            
+            // Log the option ID for debugging
+            console.log(`Option ${index} ID: ${optionId}`);
             
             return {
               id: optionId,
@@ -233,8 +253,8 @@ export function useQuizCreator() {
       localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
       
       const questionsKey = `quiz_creator_questions_${quizId}`;
-      localStorage.setItem(questionsKey, JSON.stringify(questions));
-      localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(questions));
+      localStorage.setItem(questionsKey, JSON.stringify(sanitizedQuestions));
+      localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(sanitizedQuestions));
       
       toast({
         title: status === 'active' ? "Quiz published" : "Draft saved",
