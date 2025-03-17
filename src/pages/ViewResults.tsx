@@ -14,7 +14,6 @@ import ExportTools from '@/components/results/ExportTools';
 import ResultsWarning from '@/components/results/ResultsWarning';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -25,10 +24,11 @@ const ViewResults = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Simplified authorization check
+  // Check if user is authorized to view results
   useEffect(() => {
     const checkAccess = async () => {
       setIsLoading(true);
+      console.log('Checking access permissions for ViewResults...');
       
       try {
         // First check if user exists
@@ -43,7 +43,7 @@ const ViewResults = () => {
           return;
         }
         
-        // Check if user is an admin - if they are, they can view any quiz results
+        // Check if user is an admin - all admins can view results
         if (user.role === 'admin') {
           console.log('User is admin, access granted');
           setIsAuthorized(true);
