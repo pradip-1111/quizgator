@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +20,6 @@ const Signup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // If user is already logged in, redirect to dashboard
   useEffect(() => {
     console.log("Signup page loaded, current user:", user);
     if (user) {
@@ -34,7 +32,6 @@ const Signup = () => {
     e.preventDefault();
     console.log("Signup form submitted with email:", email);
     
-    // Basic validation
     if (!name || !email || !password || !confirmPassword) {
       toast({
         title: "Error",
@@ -67,23 +64,12 @@ const Signup = () => {
       console.log("Attempting registration...");
       await register(name, email, password);
       
-      // Check if email confirmation is required
-      const { data: authSettings } = await supabase.auth.getSettings();
-      const emailConfirmationRequired = authSettings?.autoconfirm === false;
+      toast({
+        title: "Account Created",
+        description: "If email confirmation is required, please check your email. Otherwise, you can now log in.",
+      });
       
-      if (emailConfirmationRequired) {
-        toast({
-          title: "Verification Required",
-          description: "Please check your email to confirm your account before logging in.",
-        });
-        navigate('/login');
-      } else {
-        toast({
-          title: "Success",
-          description: "Account created successfully. You are now logged in.",
-        });
-        navigate('/admin-dashboard');
-      }
+      navigate('/login');
     } catch (error) {
       console.error("Registration error:", error);
       let errorMessage = "Registration failed. Please try again.";
@@ -92,7 +78,6 @@ const Signup = () => {
         errorMessage = error.message;
       }
       
-      // Specific error for already registered email
       if (errorMessage.includes("User already registered")) {
         errorMessage = "This email is already registered. Please log in instead.";
       }
@@ -112,7 +97,7 @@ const Signup = () => {
   };
 
   if (user) {
-    return null; // Don't render if already logged in
+    return null;
   }
 
   return (
