@@ -93,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // For demo purposes, we'll check for admin@example.com / password
       if (email === 'admin@example.com' && password === 'password') {
-        console.log("Demo user login");
+        console.log("Demo user login successful");
         const demoUser = {
           id: 'demo-user-id',
           name: 'Admin User',
@@ -108,13 +108,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // For non-demo users, use Supabase auth
       console.log("Attempting Supabase login for:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password
       });
       
       if (error) {
         console.error("Supabase auth error:", error);
-        throw new Error(error.message);
+        throw error;
       }
       
       if (!data || !data.user) {
@@ -154,27 +154,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Register with Supabase for other accounts
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           data: {
-            name
+            name: name.trim()
           }
         }
       });
       
       if (error) {
         console.error("Registration error:", error);
-        throw new Error(error.message);
+        throw error;
       }
       
       console.log("Registration response:", data);
       
-      // Note: In Supabase, users typically need to confirm their email
-      // before they can log in, unless email confirmation is disabled
+      // In Supabase, users need to confirm their email before they can log in
       if (data.user) {
         console.log("Registration successful, user:", data.user);
-        // Notify the user that they need to confirm their email
         return;
       } else {
         console.log("Registration completed but awaiting email confirmation");
