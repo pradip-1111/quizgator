@@ -25,7 +25,7 @@ const ViewResults = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if user is authorized to view this quiz's results
+  // Simplified authorization check
   useEffect(() => {
     const checkAccess = async () => {
       setIsLoading(true);
@@ -43,8 +43,11 @@ const ViewResults = () => {
           return;
         }
         
-        // Check if user is an admin
-        if (user.role !== 'admin') {
+        // Check if user is an admin - if they are, they can view any quiz results
+        if (user.role === 'admin') {
+          console.log('User is admin, access granted');
+          setIsAuthorized(true);
+        } else {
           console.log('Authorization failed: User is not an admin', user.role);
           toast({
             title: "Access Denied",
@@ -52,58 +55,6 @@ const ViewResults = () => {
             variant: "destructive",
           });
           navigate('/');
-          return;
-        }
-        
-        // If we have a quiz ID, check if this admin is allowed to view it
-        if (quizId) {
-          // Get the quiz details
-          const { data, error } = await supabase
-            .from('quizzes')
-            .select('created_by')
-            .eq('id', quizId)
-            .maybeSingle();
-          
-          if (error) {
-            console.error('Error checking quiz creator:', error);
-            toast({
-              title: "Error",
-              description: "Could not verify quiz ownership",
-              variant: "destructive",
-            });
-            navigate('/admin-dashboard');
-            return;
-          }
-          
-          // Admin can view the results if they created the quiz or if there's no creator assigned
-          if (data && (!data.created_by || data.created_by === user.id)) {
-            console.log('User authorized to view results:', { 
-              quizCreator: data?.created_by, 
-              currentUser: user.id 
-            });
-            setIsAuthorized(true);
-          } else {
-            console.log('Access denied - quiz creator mismatch:', { 
-              quizCreator: data?.created_by, 
-              currentUser: user.id 
-            });
-            toast({
-              title: "Access Denied",
-              description: "You can only view results for quizzes you created",
-              variant: "destructive",
-            });
-            navigate('/admin-dashboard');
-            return;
-          }
-        } else {
-          // No quiz ID provided
-          console.log('Authorization failed: No quiz ID provided');
-          toast({
-            title: "Error",
-            description: "No quiz specified",
-            variant: "destructive",
-          });
-          navigate('/admin-dashboard');
           return;
         }
       } catch (error) {
