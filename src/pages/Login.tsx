@@ -58,12 +58,13 @@ const Login = () => {
       }
       
       // Better error messaging based on specific error messages
-      if (errorMessage.includes("Invalid login credentials")) {
+      if (errorMessage.includes("Invalid login credentials") || 
+          errorMessage.includes("Invalid credentials")) {
         errorMessage = "Email or password is incorrect";
       } else if (errorMessage.includes("Email not confirmed")) {
         errorMessage = "Please confirm your email before logging in";
-      } else if (errorMessage.includes("Invalid credentials")) {
-        errorMessage = "Email or password is incorrect";
+      } else if (errorMessage.includes("Invalid email")) {
+        errorMessage = "Please enter a valid email address";
       }
       
       setError(errorMessage);
@@ -115,6 +116,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
@@ -125,6 +127,7 @@ const Login = () => {
                     variant="link" 
                     onClick={() => navigate('/forgot-password')} 
                     className="text-xs h-auto p-0"
+                    disabled={loading}
                   >
                     Forgot password?
                   </Button>
@@ -137,11 +140,13 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
+                    disabled={loading}
                   />
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     onClick={toggleShowPassword}
+                    disabled={loading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />

@@ -90,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("Login attempt for:", email);
     try {
       setLoading(true);
+      
       // For demo purposes, we'll check for admin@example.com / password
       if (email === 'admin@example.com' && password === 'password') {
         console.log("Demo user login");
