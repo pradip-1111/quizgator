@@ -14,19 +14,23 @@ import ExportTools from '@/components/results/ExportTools';
 import ResultsWarning from '@/components/results/ResultsWarning';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { results, quizTitle, loading, error, hasResults, retryLoading } = useResultsLoader(quizId);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if user is admin
+  // Check if user is authorized to view this quiz's results
   useEffect(() => {
-    const checkIfAdmin = () => {
-      // If no user or user is not admin, redirect to homepage
+    const checkAccess = async () => {
+      setIsLoading(true);
+      
+      // First check if user exists and is an admin
       if (!user) {
         toast({
           title: "Access Denied",
@@ -47,14 +51,79 @@ const ViewResults = () => {
         return;
       }
       
-      // User is admin, continue loading the page
-      setIsAdmin(true);
+      // If we have a quiz ID, check if this admin created the quiz
+      if (quizId) {
+        try {
+          const { data, error } = await supabase
+            .from('quizzes')
+            .select('created_by')
+            .eq('id', quizId)
+            .single();
+          
+          if (error) {
+            console.error('Error checking quiz creator:', error);
+            toast({
+              title: "Error",
+              description: "Could not verify quiz ownership",
+              variant: "destructive",
+            });
+            navigate('/admin-dashboard');
+            return;
+          }
+          
+          // If created_by is null or matches the current user, grant access
+          if (!data.created_by || data.created_by === user.id) {
+            setIsAuthorized(true);
+          } else {
+            toast({
+              title: "Access Denied",
+              description: "You can only view results for quizzes you created",
+              variant: "destructive",
+            });
+            navigate('/admin-dashboard');
+            return;
+          }
+        } catch (error) {
+          console.error('Error in authorization check:', error);
+          toast({
+            title: "Error",
+            description: "An unexpected error occurred",
+            variant: "destructive",
+          });
+          navigate('/admin-dashboard');
+          return;
+        }
+      } else {
+        // No quiz ID provided
+        toast({
+          title: "Error",
+          description: "No quiz specified",
+          variant: "destructive",
+        });
+        navigate('/admin-dashboard');
+        return;
+      }
+      
+      setIsLoading(false);
     };
-    checkIfAdmin();
-  }, [user, navigate, toast]);
+    
+    checkAccess();
+  }, [user, quizId, navigate, toast]);
 
-  if (!isAdmin) {
-    // If not admin, don't render anything while the redirect happens
+  // Don't render anything while authorization check is in progress
+  if (isLoading) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <QuizLoading />
+        </div>
+      </div>
+    );
+  }
+
+  // If not authorized, don't render anything (redirect should happen)
+  if (!isAuthorized) {
     return null;
   }
 
