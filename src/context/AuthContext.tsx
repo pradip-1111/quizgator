@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: authData.user.id,
             name: authData.user.user_metadata?.name || 'User',
             email: authData.user.email || '',
-            role: 'admin' as const
+            role: 'admin' as const  // All authenticated users are given admin role
           };
           setUser(user);
           localStorage.setItem('user', JSON.stringify(user));
@@ -121,8 +121,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw new Error(error.message);
       
-      console.log('Register user:', { name, email, password });
-      console.log('Supabase registration:', data);
+      // If successful registration, automatically log in the user
+      if (data && data.user) {
+        const newUser = {
+          id: data.user.id,
+          name: name,
+          email: data.user.email || '',
+          role: 'admin' as const // Grant admin role to all registered users
+        };
+        
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        
+        console.log('User registered and logged in:', newUser);
+      }
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
