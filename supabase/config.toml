@@ -81,5 +81,5 @@ vector_port = 54328
 backend = "postgres"
 
 [functions]
-enabled = true
+[functions.serve]
 port = 54321
