@@ -162,91 +162,110 @@ export function useQuizCreator() {
         return;
       }
       
-      // Save to Supabase database for non-demo users
-      const { error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Session check error:", sessionError);
-        throw new Error(`Authentication error: ${sessionError.message}`);
-      }
-      
-      console.log("Saving quiz to Supabase with user ID:", userId);
-      
-      const { error: quizError } = await supabase
-        .from('quizzes')
-        .insert({
-          id: quizId,
-          title: quizTitle,
-          description: quizDescription,
-          time_limit: parseInt(timeLimit),
-          created_by: userId
-        });
-      
-      if (quizError) {
-        console.error("Error inserting quiz:", quizError);
-        throw new Error(`Failed to save quiz: ${quizError.message}`);
-      }
-      
-      console.log("Quiz saved successfully to Supabase");
-      
-      // Save all questions to Supabase
-      for (let i = 0; i < sanitizedQuestions.length; i++) {
-        const question = sanitizedQuestions[i];
-        const questionId = question.id;
+      try {
+        // Check session and authentication status first
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        console.log(`Saving question ${i+1}/${sanitizedQuestions.length} with ID ${questionId}`);
-        
-        const { error: questionError } = await supabase
-          .from('questions')
-          .insert({
-            id: questionId,
-            quiz_id: quizId,
-            text: question.text,
-            type: question.type,
-            points: question.points,
-            required: question.required,
-            order_number: i
-          });
-        
-        if (questionError) {
-          console.error(`Error inserting question ${i+1}:`, questionError);
-          throw new Error(`Failed to save question ${i+1}: ${questionError.message}`);
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          throw new Error(`Authentication error: ${sessionError.message}`);
         }
         
-        if (question.options && question.options.length > 0) {
-          const optionsToInsert = question.options.map((opt, index) => {
-            const optionId = ensureValidUuid(opt.id);
+        if (!sessionData.session) {
+          console.error("No active session found");
+          throw new Error("No active session found. Please log in again.");
+        }
+        
+        console.log("Saving quiz to Supabase with user ID:", userId);
+        
+        // Insert quiz with proper error handling
+        const { data: quizData, error: quizError } = await supabase
+          .from('quizzes')
+          .insert({
+            id: quizId,
+            title: quizTitle,
+            description: quizDescription,
+            time_limit: parseInt(timeLimit),
+            created_by: userId
+          })
+          .select('id')
+          .single();
+        
+        if (quizError) {
+          console.error("Error inserting quiz:", quizError);
+          throw new Error(`Failed to save quiz: ${quizError.message}`);
+        }
+        
+        console.log("Quiz saved successfully to Supabase:", quizData);
+        
+        // Save all questions to Supabase with proper error handling
+        for (let i = 0; i < sanitizedQuestions.length; i++) {
+          const question = sanitizedQuestions[i];
+          const questionId = question.id;
+          
+          console.log(`Saving question ${i+1}/${sanitizedQuestions.length} with ID ${questionId}`);
+          
+          const { error: questionError } = await supabase
+            .from('questions')
+            .insert({
+              id: questionId,
+              quiz_id: quizId,
+              text: question.text,
+              type: question.type,
+              points: question.points,
+              required: question.required,
+              order_number: i
+            });
+          
+          if (questionError) {
+            console.error(`Error inserting question ${i+1}:`, questionError);
+            throw new Error(`Failed to save question ${i+1}: ${questionError.message}`);
+          }
+          
+          if (question.options && question.options.length > 0) {
+            const optionsToInsert = question.options.map((opt, index) => {
+              const optionId = ensureValidUuid(opt.id);
+              
+              return {
+                id: optionId,
+                question_id: questionId,
+                text: opt.text,
+                is_correct: opt.isCorrect,
+                order_number: index
+              };
+            });
             
-            return {
-              id: optionId,
-              question_id: questionId,
-              text: opt.text,
-              is_correct: opt.isCorrect,
-              order_number: index
-            };
-          });
-          
-          console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
-          
-          const { error: optionsError } = await supabase
-            .from('options')
-            .insert(optionsToInsert);
-          
-          if (optionsError) {
-            console.error(`Error inserting options for question ${i+1}:`, optionsError);
-            throw new Error(`Failed to save options for question ${i+1}: ${optionsError.message}`);
+            console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
+            
+            const { error: optionsError } = await supabase
+              .from('options')
+              .insert(optionsToInsert);
+            
+            if (optionsError) {
+              console.error(`Error inserting options for question ${i+1}:`, optionsError);
+              throw new Error(`Failed to save options for question ${i+1}: ${optionsError.message}`);
+            }
           }
         }
+        
+        toast({
+          title: status === 'active' ? "Quiz published" : "Draft saved",
+          description: status === 'active' 
+            ? "Your quiz is now live and ready to share" 
+            : "Your quiz has been saved as a draft",
+        });
+        
+        navigate('/admin-dashboard');
+      } catch (supabaseError) {
+        console.error("Supabase error:", supabaseError);
+        // If Supabase fails, at least we saved to localStorage
+        toast({
+          title: "Warning",
+          description: `Error saving to database but quiz was saved locally: ${supabaseError.message}`,
+          variant: "destructive",
+        });
+        navigate('/admin-dashboard');
       }
-      
-      toast({
-        title: status === 'active' ? "Quiz published" : "Draft saved",
-        description: status === 'active' 
-          ? "Your quiz is now live and ready to share" 
-          : "Your quiz has been saved as a draft",
-      });
-      
-      navigate('/admin-dashboard');
     } catch (error) {
       console.error('Error saving quiz:', error);
       toast({
