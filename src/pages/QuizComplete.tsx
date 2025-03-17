@@ -71,7 +71,7 @@ const QuizComplete = () => {
       const studentName = quizResult.studentName || 'Student';
       const date = new Date(quizResult.submittedAt).toLocaleDateString();
       
-      // Create a formatted string with the quiz results
+      // Create a formatted string with the quiz results, without scores
       let resultText = `Quiz Response Confirmation for: ${quizTitle}\n`;
       resultText += `Student: ${studentName}\n`;
       resultText += `Date: ${date}\n\n`;

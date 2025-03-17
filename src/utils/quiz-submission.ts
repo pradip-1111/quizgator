@@ -200,6 +200,10 @@ export async function submitQuiz(
     console.error('Supabase error in quiz submission:', supabaseError);
   }
   
+  // For student-facing result, remove score information
+  const studentResult = { ...result };
+  
+  // Return the complete result object for internal use
   return result;
 }
 
