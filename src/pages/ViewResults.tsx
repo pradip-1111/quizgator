@@ -33,6 +33,7 @@ const ViewResults = () => {
       try {
         // First check if user exists
         if (!user) {
+          console.log('Authorization failed: No user found');
           toast({
             title: "Access Denied",
             description: "Please log in to view this page",
@@ -44,6 +45,7 @@ const ViewResults = () => {
         
         // Check if user is an admin
         if (user.role !== 'admin') {
+          console.log('Authorization failed: User is not an admin', user.role);
           toast({
             title: "Access Denied",
             description: "Only administrators can view quiz results",
@@ -75,6 +77,10 @@ const ViewResults = () => {
           
           // Admin can view the results if they created the quiz or if there's no creator assigned
           if (data && (!data.created_by || data.created_by === user.id)) {
+            console.log('User authorized to view results:', { 
+              quizCreator: data?.created_by, 
+              currentUser: user.id 
+            });
             setIsAuthorized(true);
           } else {
             console.log('Access denied - quiz creator mismatch:', { 
@@ -91,6 +97,7 @@ const ViewResults = () => {
           }
         } else {
           // No quiz ID provided
+          console.log('Authorization failed: No quiz ID provided');
           toast({
             title: "Error",
             description: "No quiz specified",
@@ -116,7 +123,8 @@ const ViewResults = () => {
     checkAccess();
   }, [user, quizId, navigate, toast]);
 
-  // Don't render anything while authorization check is in progress
+  // We need to ensure the component doesn't render anything until authorization is confirmed
+  // This is critical to prevent content flashing before redirect
   if (isLoading) {
     return (
       <div className="min-h-screen">
