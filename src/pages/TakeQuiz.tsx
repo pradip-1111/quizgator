@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -46,11 +45,9 @@ const TakeQuiz = () => {
     getRemainingQuestionCount
   } = useQuizState();
   
-  // Check if quiz is expired
   useEffect(() => {
     if (!quizId) return;
     
-    // Check if this quiz is marked as expired
     const expiredFlag = localStorage.getItem(`quiz_expired_${quizId}`);
     if (expiredFlag === 'true') {
       console.log(`Quiz ${quizId} is marked as expired`);
@@ -59,13 +56,11 @@ const TakeQuiz = () => {
     }
   }, [quizId, setQuizStateError]);
   
-  // Clear any previous quiz data first to avoid cross-contamination
   useEffect(() => {
     if (!quizId) return;
     
     console.log(`Initial load for quiz ID: ${quizId}, clearing state and checking localStorage`);
     
-    // Reset all state when quizId changes
     setQuiz(null);
     setQuestions([]);
     setAnswers({});
@@ -74,7 +69,6 @@ const TakeQuiz = () => {
     setTimeLeft(0);
     setQuizStateError(null);
     
-    // Clear other quizzes from localStorage to prevent conflicts
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('quiz_') && !key.includes(quizId)) {
@@ -86,23 +80,19 @@ const TakeQuiz = () => {
     console.log(`Attempting to load quiz with ID: ${quizId} directly from localStorage`);
     
     try {
-      // Try to get the quiz data directly from localStorage first
       const directQuizData = localStorage.getItem(`quiz_${quizId}`);
       
       if (directQuizData) {
         const parsedQuiz = JSON.parse(directQuizData);
         console.log("Found quiz directly in localStorage:", parsedQuiz.title);
         
-        // Verify this is the correct quiz
         if (parsedQuiz.id === quizId) {
           setQuiz(parsedQuiz);
           
-          // Check if questions are included in the quiz data
           if (Array.isArray(parsedQuiz.questions) && parsedQuiz.questions.length > 0) {
             console.log(`Using ${parsedQuiz.questions.length} questions from direct quiz data`);
             setQuestions(parsedQuiz.questions);
           } else {
-            // Try to load questions separately from localStorage
             const questionsData = localStorage.getItem(`quiz_questions_${quizId}`);
             if (questionsData) {
               const parsedQuestions = JSON.parse(questionsData);
@@ -113,7 +103,6 @@ const TakeQuiz = () => {
             }
           }
           
-          // Set time limit
           setTimeLeft((parsedQuiz.timeLimit || parsedQuiz.duration) * 60);
           setQuizStateLoading(false);
           return;
@@ -122,7 +111,6 @@ const TakeQuiz = () => {
         }
       }
       
-      // Debug: List all localStorage keys to check what's available
       console.log("LocalStorage keys:");
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -135,7 +123,6 @@ const TakeQuiz = () => {
     console.log("No direct quiz found in localStorage, will use useQuizLoader");
   }, [quizId, setQuiz, setQuestions, setTimeLeft, setQuizStateLoading, setAnswers, setCurrentQuestion, setStarted, setQuizStateError]);
   
-  // Fallback to useQuizLoader if direct loading fails
   const { 
     quiz: loadedQuiz, 
     questions: loadedQuestions, 
@@ -146,23 +133,19 @@ const TakeQuiz = () => {
     fallbackActive
   } = useQuizLoader(quizId);
   
-  // Handle data from useQuizLoader
   useEffect(() => {
     if (isExpired) {
-      // Don't load quiz data if it's expired
       return;
     }
     
     if (loadedQuiz && !quiz) {
       console.log('Quiz loaded from useQuizLoader:', loadedQuiz.title);
       
-      // Verify this is the correct quiz
       if (loadedQuiz.id === quizId) {
         setQuiz(loadedQuiz);
         setQuestions(loadedQuestions);
         setTimeLeft((loadedQuiz.timeLimit || loadedQuiz.duration) * 60);
         
-        // Save to localStorage for future direct access
         try {
           localStorage.setItem(`quiz_${quizId}`, JSON.stringify(loadedQuiz));
           if (loadedQuestions && loadedQuestions.length > 0) {
@@ -195,14 +178,11 @@ const TakeQuiz = () => {
     try {
       exitFullscreen();
       
-      // Save the quiz ID before submission to prevent it from being lost
       const currentQuizId = quizId || '';
       const currentQuizTitle = quiz.title || 'Quiz';
       
-      // Mark the quiz as expired to prevent future access
       localStorage.setItem(`quiz_expired_${currentQuizId}`, 'true');
       
-      // Submit the quiz and store the result
       submitQuiz(
         currentQuizId, 
         quiz, 
@@ -211,7 +191,6 @@ const TakeQuiz = () => {
         rollNumber, 
         email
       ).then(result => {
-        // Store the quiz result
         const quizResult = {
           ...result,
           quizTitle: currentQuizTitle
@@ -228,13 +207,12 @@ const TakeQuiz = () => {
             console.error("Failed to send confirmation email:", error);
           });
           
-        // Navigate to the completion page with the result
         navigate('/quiz-complete', { state: { quizResult } });
       });
       
       toast({
         title: "Quiz Submitted",
-        description: "Your answers have been recorded successfully.",
+        description: "Your answers have been recorded successfully. A confirmation email will be sent to your email address.",
       });
     } catch (error) {
       console.error('Error submitting quiz:', error);
@@ -319,7 +297,6 @@ const TakeQuiz = () => {
     if (quizId) {
       console.log(`Clearing cache for quiz ID: ${quizId}`);
       
-      // Careful cache clearing - only remove cache for this quiz, not all quizzes
       localStorage.removeItem(`quiz_${quizId}`);
       localStorage.removeItem(`quiz_questions_${quizId}`);
       localStorage.removeItem(`quiz_expired_${quizId}`);
@@ -401,7 +378,6 @@ const TakeQuiz = () => {
     />;
   }
   
-  // Extra verification to ensure we're displaying the right quiz
   if (quiz.id !== quizId) {
     return <QuizError 
       error={`Quiz ID mismatch! Expected: ${quizId}, Got: ${quiz.id}. Please clear cache and try again.`}

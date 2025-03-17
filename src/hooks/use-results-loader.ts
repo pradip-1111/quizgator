@@ -51,7 +51,8 @@ export function useResultsLoader(quizId: string | undefined) {
               : 0,
             securityViolations: result.securityViolations,
             completed: result.completed,
-            quizTitle: result.quizTitle
+            quizTitle: result.quizTitle,
+            studentEmail: result.studentEmail || ''
           }));
           
           setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
@@ -90,7 +91,7 @@ export function useResultsLoader(quizId: string | undefined) {
       // Fetch quiz attempts even if the quiz title fetch failed
       const { data: attemptsData, error: attemptsError } = await supabase
         .from('quiz_attempts')
-        .select('id, student_name, student_id, score, total_points, submitted_at, security_violations, completed')
+        .select('id, student_name, student_id, student_email, score, total_points, submitted_at, security_violations, completed')
         .eq('quiz_id', quizId)
         .order('student_id');
 
@@ -106,6 +107,7 @@ export function useResultsLoader(quizId: string | undefined) {
         const studentResponses: StudentResponse[] = attemptsData.map(attempt => ({
           studentName: attempt.student_name,
           studentId: attempt.student_id,
+          studentEmail: attempt.student_email || '',
           score: attempt.score,
           totalPoints: attempt.total_points,
           submittedAt: attempt.submitted_at,
@@ -125,6 +127,32 @@ export function useResultsLoader(quizId: string | undefined) {
       } else if (!foundLocalResults) {
         console.log('No attempts found in database');
         setResults([]);
+      }
+
+      // Check if any emails were sent for this quiz
+      if (results.length > 0) {
+        const { data: emailData, error: emailError } = await supabase
+          .from('email_notifications')
+          .select('student_id, email_sent, email_sent_at')
+          .eq('quiz_id', quizId);
+
+        if (emailError) {
+          console.error('Error fetching email notification status:', emailError);
+        } else if (emailData && emailData.length > 0) {
+          console.log(`Found ${emailData.length} email notifications for this quiz`);
+          
+          // Update the results with email status
+          const updatedResults = results.map(result => {
+            const emailNotification = emailData.find(email => email.student_id === result.studentId);
+            return {
+              ...result,
+              emailSent: emailNotification?.email_sent || false,
+              emailSentAt: emailNotification?.email_sent_at || null
+            };
+          });
+          
+          setResults(updatedResults);
+        }
       }
     } catch (supabaseError) {
       console.error('Supabase error:', supabaseError);

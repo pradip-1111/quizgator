@@ -193,6 +193,9 @@ export async function submitQuiz(
           console.error('Error logging email notification request:', emailError);
         } else {
           console.log('Successfully saved email notification request');
+          
+          // Call the Edge Function to send an email confirmation
+          await sendConfirmationEmail(quizId, quiz.title, studentName, studentId, studentEmail);
         }
       }
     }
@@ -210,25 +213,35 @@ export async function submitQuiz(
 export async function sendConfirmationEmail(
   quizId: string,
   quizTitle: string,
-  result: QuizResult,
-  email: string | undefined
+  studentName: string,
+  studentId: string,
+  studentEmail?: string
 ): Promise<boolean> {
-  if (!email) {
+  if (!studentEmail) {
     console.error('No email provided for confirmation');
     return false;
   }
   
-  console.log(`Sending confirmation email to ${email} for quiz ${quizTitle}`);
+  console.log(`Sending confirmation email to ${studentEmail} for quiz ${quizTitle}`);
   
   try {
-    // In a real app, you would call your backend API to send the email
-    // For demo purposes, we'll just log it and pretend it worked
+    // Call the Supabase Edge Function to send the email
+    const { data, error } = await supabase.functions.invoke('send-quiz-confirmation', {
+      body: {
+        quizId,
+        quizTitle,
+        studentName,
+        studentId,
+        studentEmail
+      }
+    });
     
-    console.log('Email would contain:');
-    console.log(`Subject: Quiz Submission Confirmation: ${quizTitle}`);
-    console.log(`Body: Thank you ${result.studentName} for completing the quiz.`);
-    console.log(`Your submission has been recorded.`);
+    if (error) {
+      console.error('Error calling send-quiz-confirmation function:', error);
+      return false;
+    }
     
+    console.log('Email confirmation sent successfully:', data);
     return true;
   } catch (error) {
     console.error('Error sending confirmation email:', error);
