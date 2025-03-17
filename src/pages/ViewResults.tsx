@@ -30,35 +30,37 @@ const ViewResults = () => {
     const checkAccess = async () => {
       setIsLoading(true);
       
-      // First check if user exists and is an admin
-      if (!user) {
-        toast({
-          title: "Access Denied",
-          description: "Please log in to view this page",
-          variant: "destructive",
-        });
-        navigate('/');
-        return;
-      }
-      
-      if (user.role !== 'admin') {
-        toast({
-          title: "Access Denied",
-          description: "Only administrators can view quiz results",
-          variant: "destructive",
-        });
-        navigate('/');
-        return;
-      }
-      
-      // If we have a quiz ID, check if this admin created the quiz
-      if (quizId) {
-        try {
+      try {
+        // First check if user exists
+        if (!user) {
+          toast({
+            title: "Access Denied",
+            description: "Please log in to view this page",
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
+        }
+        
+        // Check if user is an admin
+        if (user.role !== 'admin') {
+          toast({
+            title: "Access Denied",
+            description: "Only administrators can view quiz results",
+            variant: "destructive",
+          });
+          navigate('/');
+          return;
+        }
+        
+        // If we have a quiz ID, check if this admin is allowed to view it
+        if (quizId) {
+          // Get the quiz details
           const { data, error } = await supabase
             .from('quizzes')
             .select('created_by')
             .eq('id', quizId)
-            .single();
+            .maybeSingle();
           
           if (error) {
             console.error('Error checking quiz creator:', error);
@@ -71,10 +73,14 @@ const ViewResults = () => {
             return;
           }
           
-          // If created_by is null or matches the current user, grant access
-          if (!data.created_by || data.created_by === user.id) {
+          // Admin can view the results if they created the quiz or if there's no creator assigned
+          if (data && (!data.created_by || data.created_by === user.id)) {
             setIsAuthorized(true);
           } else {
+            console.log('Access denied - quiz creator mismatch:', { 
+              quizCreator: data?.created_by, 
+              currentUser: user.id 
+            });
             toast({
               title: "Access Denied",
               description: "You can only view results for quizzes you created",
@@ -83,29 +89,28 @@ const ViewResults = () => {
             navigate('/admin-dashboard');
             return;
           }
-        } catch (error) {
-          console.error('Error in authorization check:', error);
+        } else {
+          // No quiz ID provided
           toast({
             title: "Error",
-            description: "An unexpected error occurred",
+            description: "No quiz specified",
             variant: "destructive",
-            
           });
           navigate('/admin-dashboard');
           return;
         }
-      } else {
-        // No quiz ID provided
+      } catch (error) {
+        console.error('Error in authorization check:', error);
         toast({
           title: "Error",
-          description: "No quiz specified",
+          description: "An unexpected error occurred",
           variant: "destructive",
         });
         navigate('/admin-dashboard');
         return;
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
     checkAccess();
