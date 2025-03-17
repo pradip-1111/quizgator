@@ -89,6 +89,7 @@ const ViewResults = () => {
             title: "Error",
             description: "An unexpected error occurred",
             variant: "destructive",
+            
           });
           navigate('/admin-dashboard');
           return;
