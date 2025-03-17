@@ -1,11 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowLeft, FileText, FileCog, AlertCircle } from 'lucide-react';
+import { ArrowLeft, FileText, FileCog, AlertCircle, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '../components/Navbar';
 import { useToast } from '@/hooks/use-toast';
@@ -16,28 +16,45 @@ import QuizLoading from '@/components/quiz/QuizLoading';
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const { toast } = useToast();
-  const { results, quizTitle, loading, error, hasResults } = useResultsLoader(quizId);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { results, quizTitle, loading, error, hasResults, retryLoading } = useResultsLoader(quizId);
 
-  console.log("View Results Component - quizId:", quizId);
-  console.log("View Results Component - loading:", loading);
-  console.log("View Results Component - error:", error);
-  console.log("View Results Component - results:", results);
+  // Check if user is admin - for demonstration, checking if URL includes admin
+  React.useEffect(() => {
+    const checkIfAdmin = () => {
+      const path = window.location.pathname;
+      setIsAdmin(path.includes('admin-dashboard') || path.includes('admin'));
+    };
+    checkIfAdmin();
+  }, []);
 
   const handleDownloadCSV = () => {
     try {
       // Create CSV content
-      const headers = ['Student Name', 'Roll Number', 'Score', 'Total Points', 'Percentage', 'Submitted At'];
+      const headers = ['Student Name', 'Roll Number', 'Submitted At'];
+      // Only add score columns if admin
+      if (isAdmin) {
+        headers.push('Score', 'Total Points', 'Percentage');
+      }
+      
       const csvRows = [headers];
 
       results.forEach(result => {
         const row = [
           result.studentName,
           result.studentId,
-          result.score.toString(),
-          result.totalPoints.toString(),
-          `${result.percentageScore}%`,
           new Date(result.submittedAt).toLocaleString()
         ];
+        
+        // Only add score data if admin
+        if (isAdmin) {
+          row.push(
+            result.score.toString(),
+            result.totalPoints.toString(),
+            `${result.percentageScore}%`
+          );
+        }
+        
         csvRows.push(row);
       });
 
@@ -73,49 +90,93 @@ const ViewResults = () => {
     try {
       // Create a printable version of the page
       const printContent = document.createElement('div');
-      printContent.innerHTML = `
-        <style>
-          body { font-family: Arial, sans-serif; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          h1, h2 { margin-bottom: 10px; }
-          .header { margin-bottom: 20px; }
-          .score-good { color: green; }
-          .score-average { color: orange; }
-          .score-poor { color: red; }
-        </style>
-        <div class="header">
-          <h1>${quizTitle} - Results</h1>
-          <p>Generated on ${new Date().toLocaleString()}</p>
-          <p>Total submissions: ${results.length}</p>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Student Name</th>
-              <th>Roll Number</th>
-              <th>Score</th>
-              <th>Percentage</th>
-              <th>Submitted At</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${results.map(result => `
+      
+      // Different content based on user role
+      if (isAdmin) {
+        printContent.innerHTML = `
+          <style>
+            body { font-family: Arial, sans-serif; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            h1, h2 { margin-bottom: 10px; }
+            .header { margin-bottom: 20px; }
+            .score-good { color: green; }
+            .score-average { color: orange; }
+            .score-poor { color: red; }
+          </style>
+          <div class="header">
+            <h1>${quizTitle} - Results</h1>
+            <p>Generated on ${new Date().toLocaleString()}</p>
+            <p>Total submissions: ${results.length}</p>
+          </div>
+          <table>
+            <thead>
               <tr>
-                <td>${result.studentName}</td>
-                <td>${result.studentId}</td>
-                <td>${result.score}/${result.totalPoints}</td>
-                <td class="${
-                  result.percentageScore >= 80 ? 'score-good' : 
-                  result.percentageScore >= 60 ? 'score-average' : 'score-poor'
-                }">${result.percentageScore}%</td>
-                <td>${new Date(result.submittedAt).toLocaleString()}</td>
+                <th>Student Name</th>
+                <th>Roll Number</th>
+                <th>Score</th>
+                <th>Percentage</th>
+                <th>Status</th>
+                <th>Submitted At</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
+            </thead>
+            <tbody>
+              ${results.map(result => `
+                <tr>
+                  <td>${result.studentName}</td>
+                  <td>${result.studentId}</td>
+                  <td>${result.score}/${result.totalPoints}</td>
+                  <td class="${
+                    result.percentageScore >= 80 ? 'score-good' : 
+                    result.percentageScore >= 60 ? 'score-average' : 'score-poor'
+                  }">${result.percentageScore}%</td>
+                  <td>${
+                    result.percentageScore >= 80 ? 'Excellent' : 
+                    result.percentageScore >= 60 ? 'Satisfactory' : 'Needs Improvement'
+                  }</td>
+                  <td>${new Date(result.submittedAt).toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        // Student view - no scores
+        printContent.innerHTML = `
+          <style>
+            body { font-family: Arial, sans-serif; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            h1, h2 { margin-bottom: 10px; }
+            .header { margin-bottom: 20px; }
+          </style>
+          <div class="header">
+            <h1>${quizTitle} - Submissions</h1>
+            <p>Generated on ${new Date().toLocaleString()}</p>
+            <p>Total submissions: ${results.length}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Student Name</th>
+                <th>Roll Number</th>
+                <th>Submitted At</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${results.map(result => `
+                <tr>
+                  <td>${result.studentName}</td>
+                  <td>${result.studentId}</td>
+                  <td>${new Date(result.submittedAt).toLocaleString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
       
       // Create a new window for printing
       const printWindow = window.open('', '_blank');
@@ -149,12 +210,6 @@ const ViewResults = () => {
       });
     }
   };
-
-  // Display data in table and chart format
-  const chartData = results.map(result => ({
-    name: result.studentName,
-    score: result.percentageScore
-  }));
 
   if (loading) {
     return (
@@ -197,15 +252,19 @@ const ViewResults = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex justify-between items-center">
-          <Link to="/admin-dashboard">
+          <Link to={isAdmin ? "/admin-dashboard" : "/"}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              Back to {isAdmin ? "Dashboard" : "Home"}
             </Button>
           </Link>
           
           {results.length > 0 && (
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => retryLoading()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Data
+              </Button>
               <Button variant="outline" size="sm" onClick={handleDownloadCSV}>
                 <FileCog className="h-4 w-4 mr-2" />
                 Export CSV
@@ -237,31 +296,36 @@ const ViewResults = () => {
         
         {results.length > 0 ? (
           <>
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Performance Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={chartData}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" />
-                      <YAxis label={{ value: 'Score (%)', angle: -90, position: 'insideLeft' }} />
-                      <Tooltip />
-                      <Bar dataKey="score" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            {isAdmin && (
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>Performance Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={results.map(result => ({
+                          name: result.studentName,
+                          score: result.percentageScore
+                        }))}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" />
+                        <YAxis label={{ value: 'Score (%)', angle: -90, position: 'insideLeft' }} />
+                        <Tooltip />
+                        <Bar dataKey="score" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             <Card>
               <CardHeader>
-                <CardTitle>Student Results</CardTitle>
+                <CardTitle>Student {isAdmin ? "Results" : "Submissions"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -269,9 +333,13 @@ const ViewResults = () => {
                     <TableRow>
                       <TableHead>Student Name</TableHead>
                       <TableHead>Roll Number</TableHead>
-                      <TableHead>Score</TableHead>
-                      <TableHead>Percentage</TableHead>
-                      <TableHead>Status</TableHead>
+                      {isAdmin && (
+                        <>
+                          <TableHead>Score</TableHead>
+                          <TableHead>Percentage</TableHead>
+                          <TableHead>Status</TableHead>
+                        </>
+                      )}
                       <TableHead>Submitted At</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -280,19 +348,23 @@ const ViewResults = () => {
                       <TableRow key={index}>
                         <TableCell className="font-medium">{result.studentName}</TableCell>
                         <TableCell>{result.studentId}</TableCell>
-                        <TableCell>{result.score}/{result.totalPoints}</TableCell>
-                        <TableCell>{result.percentageScore}%</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            result.percentageScore >= 80 ? 'bg-green-100 text-green-800 border-green-200' : 
-                            result.percentageScore >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 
-                            'bg-red-100 text-red-800 border-red-200'
-                          }>
-                            {result.percentageScore >= 80 ? 'Excellent' : 
-                             result.percentageScore >= 60 ? 'Satisfactory' : 
-                             'Needs Improvement'}
-                          </Badge>
-                        </TableCell>
+                        {isAdmin && (
+                          <>
+                            <TableCell>{result.score}/{result.totalPoints}</TableCell>
+                            <TableCell>{result.percentageScore}%</TableCell>
+                            <TableCell>
+                              <Badge className={
+                                result.percentageScore >= 80 ? 'bg-green-100 text-green-800 border-green-200' : 
+                                result.percentageScore >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 
+                                'bg-red-100 text-red-800 border-red-200'
+                              }>
+                                {result.percentageScore >= 80 ? 'Excellent' : 
+                                result.percentageScore >= 60 ? 'Satisfactory' : 
+                                'Needs Improvement'}
+                              </Badge>
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell>{new Date(result.submittedAt).toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
