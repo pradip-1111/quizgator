@@ -20,13 +20,17 @@ const Login = () => {
 
   // If user is already logged in, redirect to dashboard
   useEffect(() => {
+    console.log("Login page loaded, current user:", user);
     if (user) {
+      console.log("User already logged in, redirecting to dashboard");
       navigate('/admin-dashboard');
     }
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Login form submitted with email:", email);
+    
     if (!email || !password) {
       toast({
         title: "Error",
@@ -38,16 +42,32 @@ const Login = () => {
 
     setLoading(true);
     try {
+      console.log("Attempting login...");
       await login(email, password);
+      console.log("Login successful");
       toast({
         title: "Success",
         description: "Logged in successfully",
       });
       navigate('/admin-dashboard', { replace: true });
     } catch (error) {
+      console.error("Login error:", error);
+      let errorMessage = "Invalid credentials";
+      
+      if (error instanceof Error) {
+        // If the error is from Supabase, it will have a message
+        errorMessage = error.message;
+      }
+      
+      if (email === 'admin@example.com') {
+        errorMessage += ". Use admin@example.com / password for demo.";
+      } else {
+        errorMessage += ". Make sure you've registered and confirmed your email if required.";
+      }
+      
       toast({
         title: "Error",
-        description: "Invalid credentials. Use admin@example.com / password for demo.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -89,7 +109,7 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"

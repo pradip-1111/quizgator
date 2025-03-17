@@ -27,6 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Setup auth state listener
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, "Session:", session);
       if (event === 'SIGNED_IN' && session) {
         // For real Supabase users, we'll use their session data
         const userData = {
@@ -37,19 +38,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
+        console.log("User signed in, userData set:", userData);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('user');
         localStorage.removeItem('supabase.auth.token');
+        console.log("User signed out, state cleared");
       }
     });
 
     // Check if user is logged in from localStorage for initial state
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        console.log("Found stored user on init:", parsedUser);
+      } catch (error) {
+        console.error("Error parsing stored user:", error);
+        localStorage.removeItem('user');
+      }
     }
+    
+    // Check Supabase session as well
+    const checkSession = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log("Initial session check:", sessionData);
+      if (sessionData?.session && !user) {
+        const supabaseUser = sessionData.session.user;
+        const userData = {
+          id: supabaseUser.id,
+          name: supabaseUser.user_metadata?.name || 'User',
+          email: supabaseUser.email || '',
+          role: 'admin' as const
+        };
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        console.log("Set user from Supabase session:", userData);
+      }
+    };
+    
+    checkSession();
     setLoading(false);
 
     return () => {
@@ -58,9 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
+    console.log("Login attempt for:", email);
     try {
       // For demo purposes, we're just checking for admin@example.com / password
       if (email === 'admin@example.com' && password === 'password') {
+        console.log("Demo user login");
         const demoUser = {
           id: 'demo-user-id',
           name: 'Admin User',
@@ -74,14 +105,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       } else {
         // For non-demo users, use Supabase auth
+        console.log("Attempting Supabase login");
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         
-        if (authError) throw new Error(authError.message);
+        if (authError) {
+          console.error("Supabase auth error:", authError);
+          throw new Error(authError.message);
+        }
         
         if (authData.user) {
+          console.log("Supabase login successful:", authData.user);
           const user = {
             id: authData.user.id,
             name: authData.user.user_metadata?.name || 'User',
@@ -90,7 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           setUser(user);
           localStorage.setItem('user', JSON.stringify(user));
+          console.log("User state set after login:", user);
         } else {
+          console.error("No user data returned from Supabase");
           throw new Error('Invalid credentials');
         }
       }
@@ -101,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (name: string, email: string, password: string) => {
+    console.log("Register attempt for:", email, "with name:", name);
     try {
       // Skip Supabase registration for the demo account
       if (email === 'admin@example.com') {
@@ -119,10 +158,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("Registration error:", error);
+        throw new Error(error.message);
+      }
       
       // If successful registration, automatically log in the user
       if (data && data.user) {
+        console.log("Registration successful, user:", data.user);
         const newUser = {
           id: data.user.id,
           name: name,
@@ -134,6 +177,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user', JSON.stringify(newUser));
         
         console.log('User registered and logged in:', newUser);
+      } else {
+        console.log("Registration may require email confirmation");
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -142,13 +187,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    console.log("Logout initiated");
     // Sign out from Supabase
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error during sign out:", error);
+    }
     
     // Clear local state
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('supabase.auth.token');
+    console.log("User logged out, state cleared");
   };
 
   const registerStudent = async (name: string, rollNumber: string, email: string, quizId: string) => {
