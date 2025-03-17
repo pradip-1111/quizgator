@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -184,6 +183,11 @@ const TakeQuiz = () => {
       
       localStorage.setItem(`quiz_expired_${currentQuizId}`, 'true');
       
+      toast({
+        title: "Quiz Submitted",
+        description: "Your answers are being recorded. Please wait...",
+      });
+      
       submitQuiz(
         currentQuizId, 
         quiz, 
@@ -197,45 +201,19 @@ const TakeQuiz = () => {
           quizTitle: currentQuizTitle
         };
         
-        // Send confirmation email
-        if (email) {
-          sendConfirmationEmail(
-            currentQuizId,
-            currentQuizTitle,
-            name,
-            rollNumber,
-            email
-          )
-            .then((success) => {
-              if (success) {
-                toast({
-                  title: "Confirmation Email Sent",
-                  description: `A confirmation has been sent to ${email}`,
-                });
-              } else {
-                toast({
-                  title: "Email Not Sent",
-                  description: "We couldn't send a confirmation email. Your quiz was still submitted successfully.",
-                  variant: "destructive",
-                });
-              }
-            })
-            .catch((error) => {
-              console.error("Failed to send confirmation email:", error);
-              toast({
-                title: "Email Error",
-                description: "There was an error sending the confirmation email. Your quiz was still submitted successfully.",
-                variant: "destructive",
-              });
-            });
-        }
-        
         navigate('/quiz-complete', { state: { quizResult } });
-      });
-      
-      toast({
-        title: "Quiz Submitted",
-        description: "Your answers have been recorded successfully. A confirmation email will be sent to your email address.",
+        
+        toast({
+          title: "Quiz Processed Successfully",
+          description: "Your answers have been recorded. A confirmation email will be sent to your email address.",
+        });
+      }).catch(error => {
+        console.error('Error in quiz submission process:', error);
+        toast({
+          title: "Error",
+          description: "There was a problem submitting your quiz. Please try again.",
+          variant: "destructive",
+        });
       });
     } catch (error) {
       console.error('Error submitting quiz:', error);

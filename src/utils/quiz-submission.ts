@@ -12,53 +12,7 @@ export async function submitQuiz(
 ): Promise<QuizResult> {
   console.log(`Submitting quiz ${quizId} for student ${studentName} (${studentId})`);
 
-  // Check if this student has already submitted this quiz
-  try {
-    const { data: existingSubmission, error: checkError } = await supabase
-      .from('quiz_attempts')
-      .select('id')
-      .eq('quiz_id', quizId)
-      .eq('student_id', studentId)
-      .limit(1);
-      
-    if (checkError) {
-      console.error('Error checking for existing submissions:', checkError);
-    } else if (existingSubmission && existingSubmission.length > 0) {
-      console.log(`Student ${studentId} has already submitted this quiz. Using existing submission.`);
-      // Return the existing submission result
-      const { data: existingData, error: fetchError } = await supabase
-        .from('quiz_attempts')
-        .select('*')
-        .eq('id', existingSubmission[0].id)
-        .single();
-        
-      if (fetchError) {
-        console.error('Error fetching existing submission:', fetchError);
-      } else if (existingData) {
-        // Return existing submission data as a QuizResult
-        return {
-          quizId,
-          studentName: existingData.student_name,
-          studentId: existingData.student_id,
-          studentEmail: existingData.student_email,
-          score: existingData.score,
-          totalPoints: existingData.total_points,
-          percentageScore: existingData.total_points > 0 
-            ? (existingData.score / existingData.total_points) * 100 
-            : 0,
-          answers: [], // We don't have the detailed answers here
-          submittedAt: new Date(existingData.submitted_at),
-          securityViolations: existingData.security_violations,
-          completed: existingData.completed,
-          quizTitle: quiz.title
-        };
-      }
-    }
-  } catch (error) {
-    console.error('Error checking for existing submissions:', error);
-    // Continue with submission to ensure user can still submit
-  }
-
+  // Process the quiz data first before making any network requests
   // Find the correct quiz questions
   let questions = quiz.questions || [];
   
@@ -75,6 +29,7 @@ export async function submitQuiz(
     }
   }
 
+  // Process submissions locally first to improve perceived performance
   // Convert the answers record to an array of QuizAnswer objects
   const formattedAnswers: QuizAnswer[] = [];
   let score = 0;
@@ -133,12 +88,12 @@ export async function submitQuiz(
     percentageScore,
     answers: formattedAnswers,
     submittedAt,
-    securityViolations: 0, // This would be populated from security tracking
+    securityViolations: 0,
     completed: true,
     quizTitle: quiz.title
   };
   
-  // Store the result in local storage first
+  // Store the result in local storage immediately for a faster user experience
   try {
     // Get existing results for this quiz
     const resultsKey = `quiz_results_${quizId}`;
@@ -165,9 +120,10 @@ export async function submitQuiz(
     console.error('Error saving result to localStorage:', e);
   }
   
-  // Also try to save to Supabase
+  // Start the Supabase database operations in the background
+  // This won't block the user interface
   try {
-    console.log('Attempting to save quiz attempt to Supabase...');
+    console.log('Saving quiz attempt to Supabase in the background...');
     
     // Convert UUID string to UUID format if needed
     let formattedQuizId = quizId;
@@ -180,17 +136,42 @@ export async function submitQuiz(
         quizId.slice(20)
       ].join('-');
     }
-    
-    // First check if a submission for this student and quiz already exists
+
+    // Use a single async operation to check for existing attempts
+    saveToDatabaseAsync(formattedQuizId, studentName, studentId, studentEmail, score, totalPoints, submittedAt, formattedAnswers, quiz.title);
+  } catch (supabaseError) {
+    console.error('Error initiating Supabase operations:', supabaseError);
+    // Don't block the user experience, just log the error
+  }
+  
+  // Return the complete result object for immediate use
+  return result;
+}
+
+// Separate function for database operations to avoid blocking the UI
+async function saveToDatabaseAsync(
+  quizId: string,
+  studentName: string,
+  studentId: string,
+  studentEmail: string | undefined,
+  score: number,
+  totalPoints: number,
+  submittedAt: Date,
+  formattedAnswers: QuizAnswer[],
+  quizTitle: string | undefined
+) {
+  try {
+    // Check if a submission for this student and quiz already exists
     const { data: existingAttempt, error: checkError } = await supabase
       .from('quiz_attempts')
       .select('id')
-      .eq('quiz_id', formattedQuizId)
+      .eq('quiz_id', quizId)
       .eq('student_id', studentId)
       .maybeSingle();
       
     if (checkError) {
       console.error('Error checking for existing attempts:', checkError);
+      return;
     }
     
     let attemptId: string | null = null;
@@ -214,6 +195,7 @@ export async function submitQuiz(
         
       if (updateError) {
         console.error('Error updating quiz attempt:', updateError);
+        return;
       } else if (updatedData) {
         console.log('Successfully updated quiz attempt with ID:', updatedData.id);
         attemptId = updatedData.id;
@@ -228,6 +210,7 @@ export async function submitQuiz(
             
           if (deleteError) {
             console.error('Error deleting existing answers:', deleteError);
+            return;
           }
           
           // Then insert new answers
@@ -246,6 +229,7 @@ export async function submitQuiz(
           
           if (answersError) {
             console.error('Error saving updated quiz answers:', answersError);
+            return;
           } else {
             console.log(`Successfully saved ${answersForInsert.length} updated answers`);
           }
@@ -256,7 +240,7 @@ export async function submitQuiz(
       const { data: attemptData, error: attemptError } = await supabase
         .from('quiz_attempts')
         .insert({
-          quiz_id: formattedQuizId,
+          quiz_id: quizId,
           student_name: studentName,
           student_id: studentId,
           student_email: studentEmail,
@@ -271,6 +255,7 @@ export async function submitQuiz(
       
       if (attemptError) {
         console.error('Error saving quiz attempt to Supabase:', attemptError);
+        return;
       } else if (attemptData) {
         console.log('Successfully saved quiz attempt to Supabase with ID:', attemptData.id);
         attemptId = attemptData.id;
@@ -291,19 +276,20 @@ export async function submitQuiz(
         
         if (answersError) {
           console.error('Error saving quiz answers to Supabase:', answersError);
+          return;
         } else {
           console.log(`Successfully saved ${answersForInsert.length} answers to Supabase`);
         }
       }
     }
     
-    // Also log email request
+    // Also log email request if email is provided
     if (studentEmail) {
       const { error: emailError } = await supabase
         .from('email_notifications')
         .upsert({
           quiz_id: quizId,
-          quiz_title: quiz.title,
+          quiz_title: quizTitle,
           student_name: studentName,
           student_id: studentId,
           student_email: studentEmail,
@@ -312,20 +298,24 @@ export async function submitQuiz(
       
       if (emailError) {
         console.error('Error logging email notification request:', emailError);
+        return;
       } else {
         console.log('Successfully saved email notification request');
         
         // Call the Edge Function to send an email confirmation
-        const emailResult = await sendConfirmationEmail(quizId, quiz.title, studentName, studentId, studentEmail);
-        console.log('Email confirmation result:', emailResult);
+        // This is also done in the background
+        sendConfirmationEmail(quizId, quizTitle || 'Quiz', studentName, studentId, studentEmail)
+          .then(result => {
+            console.log('Email confirmation result:', result);
+          })
+          .catch(error => {
+            console.error('Error sending confirmation email:', error);
+          });
       }
     }
-  } catch (supabaseError) {
-    console.error('Supabase error in quiz submission:', supabaseError);
+  } catch (error) {
+    console.error('Unexpected error in database operations:', error);
   }
-  
-  // Return the complete result object for internal use
-  return result;
 }
 
 export async function sendConfirmationEmail(
