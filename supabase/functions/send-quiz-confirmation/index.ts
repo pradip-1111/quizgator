@@ -19,47 +19,25 @@ interface QuizSubmissionRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  console.log("Received request to send-quiz-confirmation function");
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { quizId, quizTitle, studentName, studentId, studentEmail }: QuizSubmissionRequest = await req.json();
+    const body = await req.json();
+    console.log("Request body:", body);
+    
+    const { quizId, quizTitle, studentName, studentId, studentEmail }: QuizSubmissionRequest = body;
     
     if (!studentEmail) {
       throw new Error("Student email is required");
     }
     
-    console.log(`Sending quiz confirmation email to ${studentEmail} for ${studentName}`);
+    console.log(`Sending quiz confirmation email to ${studentEmail} for ${studentName} (Quiz: ${quizTitle})`);
 
-    // Store in the email_notifications table
-    const { data: insertData, error: dbError } = await fetch(
-      `${Deno.env.get("SUPABASE_URL")}/rest/v1/email_notifications`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-          "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-        },
-        body: JSON.stringify({
-          student_id: studentId,
-          student_email: studentEmail,
-          student_name: studentName,
-          quiz_id: quizId,
-          quiz_title: quizTitle,
-        }),
-      }
-    ).then(res => res.json());
-
-    if (dbError) {
-      console.error("Error storing email notification:", dbError);
-      throw new Error("Failed to store email notification");
-    }
-    
-    console.log("Email notification stored:", insertData);
-    
     // Send the email
     const emailResponse = await resend.emails.send({
       from: "Quiz System <onboarding@resend.dev>",
@@ -94,28 +72,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!emailResponse.id) {
       throw new Error("Failed to send email");
-    }
-
-    // Update the notification record to mark email as sent
-    const { error: updateError } = await fetch(
-      `${Deno.env.get("SUPABASE_URL")}/rest/v1/email_notifications?id=eq.${insertData?.id || ""}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
-          "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-          "Prefer": "return=minimal",
-        },
-        body: JSON.stringify({
-          email_sent: true,
-          email_sent_at: new Date().toISOString(),
-        }),
-      }
-    ).then(res => res.json());
-
-    if (updateError) {
-      console.error("Error updating email notification:", updateError);
     }
 
     return new Response(JSON.stringify({ success: true, emailId: emailResponse.id }), {

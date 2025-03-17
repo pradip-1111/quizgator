@@ -12,6 +12,53 @@ export async function submitQuiz(
 ): Promise<QuizResult> {
   console.log(`Submitting quiz ${quizId} for student ${studentName} (${studentId})`);
 
+  // Check if this student has already submitted this quiz
+  try {
+    const { data: existingSubmission, error: checkError } = await supabase
+      .from('quiz_attempts')
+      .select('id')
+      .eq('quiz_id', quizId)
+      .eq('student_id', studentId)
+      .limit(1);
+      
+    if (checkError) {
+      console.error('Error checking for existing submissions:', checkError);
+    } else if (existingSubmission && existingSubmission.length > 0) {
+      console.log(`Student ${studentId} has already submitted this quiz. Using existing submission.`);
+      // Return the existing submission result
+      const { data: existingData, error: fetchError } = await supabase
+        .from('quiz_attempts')
+        .select('*')
+        .eq('id', existingSubmission[0].id)
+        .single();
+        
+      if (fetchError) {
+        console.error('Error fetching existing submission:', fetchError);
+      } else if (existingData) {
+        // Return existing submission data as a QuizResult
+        return {
+          quizId,
+          studentName: existingData.student_name,
+          studentId: existingData.student_id,
+          studentEmail: existingData.student_email,
+          score: existingData.score,
+          totalPoints: existingData.total_points,
+          percentageScore: existingData.total_points > 0 
+            ? (existingData.score / existingData.total_points) * 100 
+            : 0,
+          answers: [], // We don't have the detailed answers here
+          submittedAt: new Date(existingData.submitted_at),
+          securityViolations: existingData.security_violations,
+          completed: existingData.completed,
+          quizTitle: quiz.title
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for existing submissions:', error);
+    // Continue with submission to ensure user can still submit
+  }
+
   // Find the correct quiz questions
   let questions = quiz.questions || [];
   
@@ -100,6 +147,9 @@ export async function submitQuiz(
     
     if (storedResults) {
       results = JSON.parse(storedResults);
+      
+      // Remove any previous submissions with the same student ID
+      results = results.filter((r: any) => r.studentId !== studentId);
     }
     
     // Add new result with a formatted date string
@@ -131,80 +181,143 @@ export async function submitQuiz(
       ].join('-');
     }
     
-    // Attempt to store in Supabase - using upsert to avoid duplicates
-    const { data: attemptData, error: attemptError } = await supabase
+    // First check if a submission for this student and quiz already exists
+    const { data: existingAttempt, error: checkError } = await supabase
       .from('quiz_attempts')
-      .upsert({
-        quiz_id: formattedQuizId,
-        student_name: studentName,
-        student_id: studentId,
-        student_email: studentEmail,
-        score: score,
-        total_points: totalPoints,
-        completed: true,
-        security_violations: 0,
-        submitted_at: submittedAt.toISOString()
-      })
       .select('id')
-      .single();
+      .eq('quiz_id', formattedQuizId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+      
+    if (checkError) {
+      console.error('Error checking for existing attempts:', checkError);
+    }
     
-    if (attemptError) {
-      console.error('Error saving quiz attempt to Supabase:', attemptError);
+    // If an attempt already exists, update it instead of creating a new one
+    if (existingAttempt?.id) {
+      console.log(`Updating existing attempt with ID: ${existingAttempt.id} for student ${studentId}`);
       
-      // Even if Supabase fails, we'll continue since we saved to localStorage
-      console.log('Continuing with local storage data only due to Supabase error');
-    } else if (attemptData) {
-      console.log('Successfully saved quiz attempt to Supabase with ID:', attemptData.id);
-      
-      // Now save individual answers linked to this attempt
-      const answersForInsert = formattedAnswers.map(answer => ({
-        attempt_id: attemptData.id,
-        question_id: answer.questionId,
-        selected_option_id: answer.selectedOptionId,
-        text_answer: answer.textAnswer,
-        is_correct: answer.isCorrect,
-        points_awarded: answer.pointsAwarded
-      }));
-      
-      const { error: answersError } = await supabase
-        .from('quiz_answers')
-        .upsert(answersForInsert);
-      
-      if (answersError) {
-        console.error('Error saving quiz answers to Supabase:', answersError);
-      } else {
-        console.log(`Successfully saved ${answersForInsert.length} answers to Supabase`);
-      }
-      
-      // Also log email request
-      if (studentEmail) {
-        const { error: emailError } = await supabase
-          .from('email_notifications')
-          .upsert({
-            quiz_id: quizId,
-            quiz_title: quiz.title,
-            student_name: studentName,
-            student_id: studentId,
-            student_email: studentEmail,
-            submitted_at: submittedAt.toISOString()
-          });
+      const { data: updatedData, error: updateError } = await supabase
+        .from('quiz_attempts')
+        .update({
+          score: score,
+          total_points: totalPoints,
+          completed: true,
+          security_violations: 0,
+          submitted_at: submittedAt.toISOString()
+        })
+        .eq('id', existingAttempt.id)
+        .select('id')
+        .single();
         
-        if (emailError) {
-          console.error('Error logging email notification request:', emailError);
-        } else {
-          console.log('Successfully saved email notification request');
+      if (updateError) {
+        console.error('Error updating quiz attempt:', updateError);
+      } else if (updatedData) {
+        console.log('Successfully updated quiz attempt with ID:', updatedData.id);
+        
+        // Now update individual answers
+        if (formattedAnswers.length > 0) {
+          // First delete any existing answers
+          const { error: deleteError } = await supabase
+            .from('quiz_answers')
+            .delete()
+            .eq('attempt_id', updatedData.id);
+            
+          if (deleteError) {
+            console.error('Error deleting existing answers:', deleteError);
+          }
           
-          // Call the Edge Function to send an email confirmation
-          await sendConfirmationEmail(quizId, quiz.title, studentName, studentId, studentEmail);
+          // Then insert new answers
+          const answersForInsert = formattedAnswers.map(answer => ({
+            attempt_id: updatedData.id,
+            question_id: answer.questionId,
+            selected_option_id: answer.selectedOptionId,
+            text_answer: answer.textAnswer,
+            is_correct: answer.isCorrect,
+            points_awarded: answer.pointsAwarded
+          }));
+          
+          const { error: answersError } = await supabase
+            .from('quiz_answers')
+            .insert(answersForInsert);
+          
+          if (answersError) {
+            console.error('Error saving updated quiz answers:', answersError);
+          } else {
+            console.log(`Successfully saved ${answersForInsert.length} updated answers`);
+          }
         }
+      }
+    } else {
+      // No existing attempt, create a new one
+      const { data: attemptData, error: attemptError } = await supabase
+        .from('quiz_attempts')
+        .insert({
+          quiz_id: formattedQuizId,
+          student_name: studentName,
+          student_id: studentId,
+          student_email: studentEmail,
+          score: score,
+          total_points: totalPoints,
+          completed: true,
+          security_violations: 0,
+          submitted_at: submittedAt.toISOString()
+        })
+        .select('id')
+        .single();
+      
+      if (attemptError) {
+        console.error('Error saving quiz attempt to Supabase:', attemptError);
+      } else if (attemptData) {
+        console.log('Successfully saved quiz attempt to Supabase with ID:', attemptData.id);
+        
+        // Now save individual answers linked to this attempt
+        const answersForInsert = formattedAnswers.map(answer => ({
+          attempt_id: attemptData.id,
+          question_id: answer.questionId,
+          selected_option_id: answer.selectedOptionId,
+          text_answer: answer.textAnswer,
+          is_correct: answer.isCorrect,
+          points_awarded: answer.pointsAwarded
+        }));
+        
+        const { error: answersError } = await supabase
+          .from('quiz_answers')
+          .upsert(answersForInsert);
+        
+        if (answersError) {
+          console.error('Error saving quiz answers to Supabase:', answersError);
+        } else {
+          console.log(`Successfully saved ${answersForInsert.length} answers to Supabase`);
+        }
+      }
+    }
+    
+    // Also log email request
+    if (studentEmail) {
+      const { error: emailError } = await supabase
+        .from('email_notifications')
+        .upsert({
+          quiz_id: quizId,
+          quiz_title: quiz.title,
+          student_name: studentName,
+          student_id: studentId,
+          student_email: studentEmail,
+          submitted_at: submittedAt.toISOString()
+        });
+      
+      if (emailError) {
+        console.error('Error logging email notification request:', emailError);
+      } else {
+        console.log('Successfully saved email notification request');
+        
+        // Call the Edge Function to send an email confirmation
+        await sendConfirmationEmail(quizId, quiz.title, studentName, studentId, studentEmail);
       }
     }
   } catch (supabaseError) {
     console.error('Supabase error in quiz submission:', supabaseError);
   }
-  
-  // For student-facing result, remove score information
-  const studentResult = { ...result };
   
   // Return the complete result object for internal use
   return result;
@@ -242,6 +355,23 @@ export async function sendConfirmationEmail(
     }
     
     console.log('Email confirmation sent successfully:', data);
+    
+    // Update the email notification record to mark as sent
+    const { error: updateError } = await supabase
+      .from('email_notifications')
+      .update({ 
+        email_sent: true,
+        email_sent_at: new Date().toISOString()
+      })
+      .eq('quiz_id', quizId)
+      .eq('student_id', studentId);
+      
+    if (updateError) {
+      console.error('Error updating email notification status:', updateError);
+    } else {
+      console.log('Successfully updated email notification status');
+    }
+    
     return true;
   } catch (error) {
     console.error('Error sending confirmation email:', error);

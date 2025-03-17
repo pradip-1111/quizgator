@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -196,11 +197,18 @@ const TakeQuiz = () => {
           quizTitle: currentQuizTitle
         };
         
-        sendConfirmationEmail(currentQuizId, currentQuizTitle, result, user?.email || email)
+        // Fix the parameter types by extracting the needed fields
+        sendConfirmationEmail(
+          currentQuizId, 
+          currentQuizTitle, 
+          name, 
+          rollNumber, 
+          email || result.studentEmail
+        )
           .then(() => {
             toast({
               title: "Confirmation Email Sent",
-              description: `A confirmation has been sent to ${user?.email || email}`,
+              description: `A confirmation has been sent to ${email || result.studentEmail}`,
             });
           })
           .catch((error) => {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from './use-toast';
 import { StudentResponse } from '@/types/quiz';
@@ -35,12 +34,24 @@ export function useResultsLoader(quizId: string | undefined) {
         const parsedResults = JSON.parse(storedResults);
         console.log(`Found ${parsedResults.length} results in localStorage for key: ${resultsKey}`);
         
-        if (parsedResults.length > 0) {
+        // Filter out duplicate student IDs (keep the latest)
+        const uniqueResults = new Map();
+        parsedResults.forEach((result: any) => {
+          // If this student ID is already in the map, only replace if this result is newer
+          const existingResult = uniqueResults.get(result.studentId);
+          if (!existingResult || new Date(result.submittedAt) > new Date(existingResult.submittedAt)) {
+            uniqueResults.set(result.studentId, result);
+          }
+        });
+        
+        const uniqueParsedResults = Array.from(uniqueResults.values());
+        
+        if (uniqueParsedResults.length > 0) {
           foundLocalResults = true;
-          setQuizTitle(parsedResults[0].quizTitle || 'Quiz Results');
+          setQuizTitle(uniqueParsedResults[0].quizTitle || 'Quiz Results');
           
           // Transform results for display
-          const studentResponses: StudentResponse[] = parsedResults.map((result: any) => ({
+          const studentResponses: StudentResponse[] = uniqueParsedResults.map((result: any) => ({
             studentName: result.studentName,
             studentId: result.studentId,
             score: result.score,
@@ -52,7 +63,9 @@ export function useResultsLoader(quizId: string | undefined) {
             securityViolations: result.securityViolations,
             completed: result.completed,
             quizTitle: result.quizTitle,
-            studentEmail: result.studentEmail || ''
+            studentEmail: result.studentEmail || '',
+            emailSent: result.emailSent || false,
+            emailSentAt: result.emailSentAt || null
           }));
           
           setResults(studentResponses.sort((a, b) => a.studentId.localeCompare(b.studentId)));
@@ -130,7 +143,7 @@ export function useResultsLoader(quizId: string | undefined) {
       }
 
       // Check if any emails were sent for this quiz
-      if (results.length > 0) {
+      if (attemptsData && attemptsData.length > 0) {
         const { data: emailData, error: emailError } = await supabase
           .from('email_notifications')
           .select('student_id, email_sent, email_sent_at')
