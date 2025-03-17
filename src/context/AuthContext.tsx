@@ -76,10 +76,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user', JSON.stringify(userData));
         console.log("Set user from Supabase session:", userData);
       }
+      setLoading(false);
     };
     
     checkSession();
-    setLoading(false);
 
     return () => {
       data.subscription.unsubscribe();
@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     console.log("Login attempt for:", email);
     try {
-      // For demo purposes, we're just checking for admin@example.com / password
+      // For demo purposes, we'll check for admin@example.com / password
       if (email === 'admin@example.com' && password === 'password') {
         console.log("Demo user login");
         const demoUser = {
@@ -144,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Skip Supabase registration for the demo account
       if (email === 'admin@example.com') {
         console.log('Demo account registration skipped');
-        return;
+        throw new Error('Cannot register with demo account email');
       }
       
       // Register with Supabase for other accounts
@@ -163,20 +163,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(error.message);
       }
       
-      // If successful registration, automatically log in the user
+      console.log("Registration response:", data);
+      
       if (data && data.user) {
         console.log("Registration successful, user:", data.user);
-        const newUser = {
-          id: data.user.id,
-          name: name,
-          email: data.user.email || '',
-          role: 'admin' as const // Grant admin role to all registered users
-        };
         
-        setUser(newUser);
-        localStorage.setItem('user', JSON.stringify(newUser));
+        // Check if email confirmation is required
+        // We don't call getSettings() as it doesn't exist
+        // Instead we check if the user is confirmed
+        const isEmailConfirmationRequired = !data.user.email_confirmed_at;
         
-        console.log('User registered and logged in:', newUser);
+        if (isEmailConfirmationRequired) {
+          console.log("Email confirmation required");
+          // We don't automatically log in the user here
+          // They will need to verify their email first
+        } else {
+          console.log("Email confirmation not required, logging in user");
+          // If email confirmation is not required, we can log in the user
+          const newUser = {
+            id: data.user.id,
+            name: name,
+            email: data.user.email || '',
+            role: 'admin' as const
+          };
+          
+          setUser(newUser);
+          localStorage.setItem('user', JSON.stringify(newUser));
+        }
       } else {
         console.log("Registration may require email confirmation");
       }

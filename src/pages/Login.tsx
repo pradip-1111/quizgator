@@ -55,14 +55,17 @@ const Login = () => {
       let errorMessage = "Invalid credentials";
       
       if (error instanceof Error) {
-        // If the error is from Supabase, it will have a message
         errorMessage = error.message;
+      }
+      
+      if (errorMessage.includes("Invalid login credentials")) {
+        errorMessage = "Email or password is incorrect";
+      } else if (errorMessage.includes("Email not confirmed")) {
+        errorMessage = "Please confirm your email before logging in";
       }
       
       if (email === 'admin@example.com') {
         errorMessage += ". Use admin@example.com / password for demo.";
-      } else {
-        errorMessage += ". Make sure you've registered and confirmed your email if required.";
       }
       
       toast({
