@@ -57,10 +57,13 @@ const Login = () => {
         errorMessage = error.message;
       }
       
+      // Better error messaging based on specific error messages
       if (errorMessage.includes("Invalid login credentials")) {
         errorMessage = "Email or password is incorrect";
       } else if (errorMessage.includes("Email not confirmed")) {
         errorMessage = "Please confirm your email before logging in";
+      } else if (errorMessage.includes("Invalid credentials")) {
+        errorMessage = "Email or password is incorrect";
       }
       
       setError(errorMessage);

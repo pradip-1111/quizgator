@@ -101,38 +101,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(demoUser);
         localStorage.setItem('user', JSON.stringify(demoUser));
-        
-        // Skip token creation for demo user
         return;
-      } else {
-        // For non-demo users, use Supabase auth
-        console.log("Attempting Supabase login for:", email);
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (authError) {
-          console.error("Supabase auth error:", authError);
-          throw new Error(authError.message);
-        }
-        
-        if (authData.user) {
-          console.log("Supabase login successful:", authData.user);
-          const user = {
-            id: authData.user.id,
-            name: authData.user.user_metadata?.name || 'User',
-            email: authData.user.email || '',
-            role: 'admin' as const  // All authenticated users are given admin role
-          };
-          setUser(user);
-          localStorage.setItem('user', JSON.stringify(user));
-          console.log("User state set after login:", user);
-        } else {
-          console.error("No user data returned from Supabase");
-          throw new Error('Invalid credentials');
-        }
       }
+
+      // For non-demo users, use Supabase auth
+      console.log("Attempting Supabase login for:", email);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error("Supabase auth error:", error);
+        throw new Error(error.message);
+      }
+      
+      if (!data || !data.user) {
+        console.error("No user data returned from Supabase");
+        throw new Error('Invalid credentials');
+      }
+      
+      // User successfully authenticated
+      console.log("Supabase login successful:", data.user);
+      const userData = {
+        id: data.user.id,
+        name: data.user.user_metadata?.name || 'User',
+        email: data.user.email || '',
+        role: 'admin' as const
+      };
+      
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      console.log("User state set after login:", userData);
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -169,9 +169,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Registration response:", data);
       
-      if (data && data.user) {
+      // Note: In Supabase, users typically need to confirm their email
+      // before they can log in, unless email confirmation is disabled
+      if (data.user) {
         console.log("Registration successful, user:", data.user);
-        return; // Return success, let the UI handle the rest
+        // Notify the user that they need to confirm their email
+        return;
       } else {
         console.log("Registration completed but awaiting email confirmation");
       }
