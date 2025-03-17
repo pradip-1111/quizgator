@@ -197,24 +197,39 @@ const TakeQuiz = () => {
           quizTitle: currentQuizTitle
         };
         
-        // Fix the parameter types by extracting the needed fields
-        sendConfirmationEmail(
-          currentQuizId, 
-          currentQuizTitle, 
-          name, 
-          rollNumber, 
-          email || result.studentEmail
-        )
-          .then(() => {
-            toast({
-              title: "Confirmation Email Sent",
-              description: `A confirmation has been sent to ${email || result.studentEmail}`,
+        // Send confirmation email
+        if (email) {
+          sendConfirmationEmail(
+            currentQuizId,
+            currentQuizTitle,
+            name,
+            rollNumber,
+            email
+          )
+            .then((success) => {
+              if (success) {
+                toast({
+                  title: "Confirmation Email Sent",
+                  description: `A confirmation has been sent to ${email}`,
+                });
+              } else {
+                toast({
+                  title: "Email Not Sent",
+                  description: "We couldn't send a confirmation email. Your quiz was still submitted successfully.",
+                  variant: "destructive",
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("Failed to send confirmation email:", error);
+              toast({
+                title: "Email Error",
+                description: "There was an error sending the confirmation email. Your quiz was still submitted successfully.",
+                variant: "destructive",
+              });
             });
-          })
-          .catch((error) => {
-            console.error("Failed to send confirmation email:", error);
-          });
-          
+        }
+        
         navigate('/quiz-complete', { state: { quizResult } });
       });
       

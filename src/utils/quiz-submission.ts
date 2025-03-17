@@ -193,6 +193,8 @@ export async function submitQuiz(
       console.error('Error checking for existing attempts:', checkError);
     }
     
+    let attemptId: string | null = null;
+    
     // If an attempt already exists, update it instead of creating a new one
     if (existingAttempt?.id) {
       console.log(`Updating existing attempt with ID: ${existingAttempt.id} for student ${studentId}`);
@@ -214,6 +216,7 @@ export async function submitQuiz(
         console.error('Error updating quiz attempt:', updateError);
       } else if (updatedData) {
         console.log('Successfully updated quiz attempt with ID:', updatedData.id);
+        attemptId = updatedData.id;
         
         // Now update individual answers
         if (formattedAnswers.length > 0) {
@@ -270,6 +273,7 @@ export async function submitQuiz(
         console.error('Error saving quiz attempt to Supabase:', attemptError);
       } else if (attemptData) {
         console.log('Successfully saved quiz attempt to Supabase with ID:', attemptData.id);
+        attemptId = attemptData.id;
         
         // Now save individual answers linked to this attempt
         const answersForInsert = formattedAnswers.map(answer => ({
@@ -312,7 +316,8 @@ export async function submitQuiz(
         console.log('Successfully saved email notification request');
         
         // Call the Edge Function to send an email confirmation
-        await sendConfirmationEmail(quizId, quiz.title, studentName, studentId, studentEmail);
+        const emailResult = await sendConfirmationEmail(quizId, quiz.title, studentName, studentId, studentEmail);
+        console.log('Email confirmation result:', emailResult);
       }
     }
   } catch (supabaseError) {
