@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       } else {
         // For non-demo users, use Supabase auth
-        console.log("Attempting Supabase login");
+        console.log("Attempting Supabase login for:", email);
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password
@@ -168,18 +168,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data && data.user) {
         console.log("Registration successful, user:", data.user);
         
-        // Check if email confirmation is required
-        // We don't call getSettings() as it doesn't exist
-        // Instead we check if the user is confirmed
-        const isEmailConfirmationRequired = !data.user.email_confirmed_at;
-        
-        if (isEmailConfirmationRequired) {
-          console.log("Email confirmation required");
-          // We don't automatically log in the user here
-          // They will need to verify their email first
+        // For simplicity, assume email confirmation is required by default
+        // This is the usual case with Supabase
+        if (!data.user.email_confirmed_at) {
+          console.log("Email confirmation is required");
+          // Return success but don't log in the user yet
+          return;
         } else {
-          console.log("Email confirmation not required, logging in user");
-          // If email confirmation is not required, we can log in the user
+          console.log("Email already confirmed, logging in user");
+          // If email is already confirmed, log in the user
           const newUser = {
             id: data.user.id,
             name: name,
@@ -191,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('user', JSON.stringify(newUser));
         }
       } else {
-        console.log("Registration may require email confirmation");
+        console.log("Registration completed but awaiting email confirmation");
       }
     } catch (error) {
       console.error('Registration error:', error);
