@@ -114,59 +114,7 @@ export function useQuizCreator() {
     try {
       console.log("Starting quiz save process");
       
-      if (user.email === 'admin@example.com') {
-        const quizId = generateUuid();
-        console.log("Demo user detected, saving to localStorage only with ID:", quizId);
-        
-        const sanitizedQuestions = questions.map(question => {
-          return sanitizeUuidsInObject({
-            ...question,
-            id: ensureValidUuid(question.id),
-            options: question.options ? [...question.options] : []
-          });
-        });
-        
-        const newQuiz: Quiz = {
-          id: quizId,
-          userId: userId,
-          title: quizTitle,
-          description: quizDescription,
-          questions: questions.length,
-          duration: parseInt(timeLimit),
-          created: new Date().toISOString(),
-          attempts: 0,
-          status: status
-        };
-        
-        const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
-        localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
-        
-        localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(sanitizedQuestions));
-        
-        toast({
-          title: status === 'active' ? "Quiz published" : "Draft saved",
-          description: status === 'active' 
-            ? "Your quiz is now live and ready to share" 
-            : "Your quiz has been saved as a draft",
-        });
-        
-        navigate('/admin-dashboard');
-        return;
-      }
-      
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Session check error:", sessionError);
-        throw new Error(`Authentication error: ${sessionError.message}`);
-      }
-      
-      if (!sessionData.session) {
-        throw new Error("No active session found. Please log in again.");
-      }
-      
-      console.log("Current session data:", sessionData);
-      
+      // Generate a UUID for the quiz
       const quizId = generateUuid();
       console.log("Quiz ID generated:", quizId);
       
@@ -178,76 +126,7 @@ export function useQuizCreator() {
         });
       });
       
-      console.log("Sanitized questions:", JSON.stringify(sanitizedQuestions, null, 2));
-      
-      const { data: quizData, error: quizError } = await supabase
-        .from('quizzes')
-        .insert({
-          id: quizId,
-          title: quizTitle,
-          description: quizDescription,
-          time_limit: parseInt(timeLimit),
-          created_by: userId,
-          status: status
-        })
-        .select();
-      
-      if (quizError) {
-        console.error("Error inserting quiz:", quizError);
-        throw new Error(`Failed to save quiz: ${quizError.message}`);
-      }
-      
-      console.log("Quiz saved successfully:", quizData);
-      
-      for (let i = 0; i < sanitizedQuestions.length; i++) {
-        const question = sanitizedQuestions[i];
-        const questionId = question.id;
-        
-        console.log(`Saving question ${i+1}/${sanitizedQuestions.length} with ID ${questionId}`);
-        
-        const { error: questionError } = await supabase
-          .from('questions')
-          .insert({
-            id: questionId,
-            quiz_id: quizId,
-            text: question.text,
-            type: question.type,
-            points: question.points,
-            required: question.required,
-            order_number: i
-          });
-        
-        if (questionError) {
-          console.error(`Error inserting question ${i+1}:`, questionError);
-          throw new Error(`Failed to save question ${i+1}: ${questionError.message}`);
-        }
-        
-        if (question.options && question.options.length > 0) {
-          const optionsToInsert = question.options.map((opt, index) => {
-            const optionId = ensureValidUuid(opt.id);
-            
-            return {
-              id: optionId,
-              question_id: questionId,
-              text: opt.text,
-              is_correct: opt.isCorrect,
-              order_number: index
-            };
-          });
-          
-          console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
-          
-          const { error: optionsError } = await supabase
-            .from('options')
-            .insert(optionsToInsert);
-          
-          if (optionsError) {
-            console.error(`Error inserting options for question ${i+1}:`, optionsError);
-            throw new Error(`Failed to save options for question ${i+1}: ${optionsError.message}`);
-          }
-        }
-      }
-      
+      // For all users, save questions to localStorage for fallback
       const newQuiz: Quiz = {
         id: quizId,
         userId: userId,
@@ -262,8 +141,96 @@ export function useQuizCreator() {
       
       const existingQuizzes = JSON.parse(localStorage.getItem('quizzes') || '[]');
       localStorage.setItem('quizzes', JSON.stringify([...existingQuizzes, newQuiz]));
-      
       localStorage.setItem(`quiz_questions_${quizId}`, JSON.stringify(sanitizedQuestions));
+      
+      // Save to Supabase for all authenticated users (not just demo)
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session check error:", sessionError);
+          throw new Error(`Authentication error: ${sessionError.message}`);
+        }
+        
+        // If user has a valid session, save to Supabase
+        if (sessionData.session) {
+          console.log("Saving quiz to Supabase with user ID:", userId);
+          
+          const { data: quizData, error: quizError } = await supabase
+            .from('quizzes')
+            .insert({
+              id: quizId,
+              title: quizTitle,
+              description: quizDescription,
+              time_limit: parseInt(timeLimit),
+              created_by: userId,
+              status: status
+            })
+            .select();
+          
+          if (quizError) {
+            console.error("Error inserting quiz:", quizError);
+            throw new Error(`Failed to save quiz: ${quizError.message}`);
+          }
+          
+          console.log("Quiz saved successfully to Supabase:", quizData);
+          
+          // Save all questions to Supabase
+          for (let i = 0; i < sanitizedQuestions.length; i++) {
+            const question = sanitizedQuestions[i];
+            const questionId = question.id;
+            
+            console.log(`Saving question ${i+1}/${sanitizedQuestions.length} with ID ${questionId}`);
+            
+            const { error: questionError } = await supabase
+              .from('questions')
+              .insert({
+                id: questionId,
+                quiz_id: quizId,
+                text: question.text,
+                type: question.type,
+                points: question.points,
+                required: question.required,
+                order_number: i
+              });
+            
+            if (questionError) {
+              console.error(`Error inserting question ${i+1}:`, questionError);
+              throw new Error(`Failed to save question ${i+1}: ${questionError.message}`);
+            }
+            
+            if (question.options && question.options.length > 0) {
+              const optionsToInsert = question.options.map((opt, index) => {
+                const optionId = ensureValidUuid(opt.id);
+                
+                return {
+                  id: optionId,
+                  question_id: questionId,
+                  text: opt.text,
+                  is_correct: opt.isCorrect,
+                  order_number: index
+                };
+              });
+              
+              console.log(`Saving ${optionsToInsert.length} options for question ${i+1}`);
+              
+              const { error: optionsError } = await supabase
+                .from('options')
+                .insert(optionsToInsert);
+              
+              if (optionsError) {
+                console.error(`Error inserting options for question ${i+1}:`, optionsError);
+                throw new Error(`Failed to save options for question ${i+1}: ${optionsError.message}`);
+              }
+            }
+          }
+        } else {
+          console.log("No active session found, saving only to localStorage");
+        }
+      } catch (supabaseError) {
+        console.error("Error saving to Supabase:", supabaseError);
+        // We continue because we already saved to localStorage as fallback
+      }
       
       toast({
         title: status === 'active' ? "Quiz published" : "Draft saved",
