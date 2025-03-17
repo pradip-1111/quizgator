@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -12,20 +12,51 @@ import ResultsTable from '@/components/results/ResultsTable';
 import PerformanceChart from '@/components/results/PerformanceChart';
 import ExportTools from '@/components/results/ExportTools';
 import ResultsWarning from '@/components/results/ResultsWarning';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const ViewResults = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const [isAdmin, setIsAdmin] = useState(false);
   const { results, quizTitle, loading, error, hasResults, retryLoading } = useResultsLoader(quizId);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Check if user is admin - for demonstration, checking if URL includes admin
+  // Check if user is admin
   useEffect(() => {
     const checkIfAdmin = () => {
-      const path = window.location.pathname;
-      setIsAdmin(path.includes('admin-dashboard') || path.includes('admin'));
+      // If no user or user is not admin, redirect to homepage
+      if (!user) {
+        toast({
+          title: "Access Denied",
+          description: "Please log in to view this page",
+          variant: "destructive",
+        });
+        navigate('/');
+        return;
+      }
+      
+      if (user.role !== 'admin') {
+        toast({
+          title: "Access Denied",
+          description: "Only administrators can view quiz results",
+          variant: "destructive",
+        });
+        navigate('/');
+        return;
+      }
+      
+      // User is admin, continue loading the page
+      setIsAdmin(true);
     };
     checkIfAdmin();
-  }, []);
+  }, [user, navigate, toast]);
+
+  if (!isAdmin) {
+    // If not admin, don't render anything while the redirect happens
+    return null;
+  }
 
   if (loading) {
     return (
@@ -68,10 +99,10 @@ const ViewResults = () => {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex justify-between items-center">
-          <Link to={isAdmin ? "/admin-dashboard" : "/"}>
+          <Link to="/admin-dashboard">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to {isAdmin ? "Dashboard" : "Home"}
+              Back to Dashboard
             </Button>
           </Link>
           
@@ -79,7 +110,7 @@ const ViewResults = () => {
             <ExportTools 
               results={results} 
               quizTitle={quizTitle} 
-              isAdmin={isAdmin} 
+              isAdmin={true} 
               onRefresh={retryLoading} 
             />
           )}
@@ -94,23 +125,21 @@ const ViewResults = () => {
         
         {results.length > 0 ? (
           <>
-            {isAdmin && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Performance Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <PerformanceChart results={results} />
-                </CardContent>
-              </Card>
-            )}
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Performance Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PerformanceChart results={results} />
+              </CardContent>
+            </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle>{isAdmin ? "Student Results" : "Student Submissions"}</CardTitle>
+                <CardTitle>Student Results</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResultsTable results={results} isAdmin={isAdmin} />
+                <ResultsTable results={results} isAdmin={true} />
               </CardContent>
             </Card>
           </>
