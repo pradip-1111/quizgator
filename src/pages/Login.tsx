@@ -8,12 +8,14 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,13 +32,10 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Login form submitted with email:", email);
+    setError(null);
     
     if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      });
+      setError("Please fill in all fields");
       return;
     }
 
@@ -64,15 +63,7 @@ const Login = () => {
         errorMessage = "Please confirm your email before logging in";
       }
       
-      if (email === 'admin@example.com') {
-        errorMessage += ". Use admin@example.com / password for demo.";
-      }
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -106,6 +97,11 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

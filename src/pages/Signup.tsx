@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -17,6 +17,7 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { register, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -32,31 +33,20 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Signup form submitted with email:", email);
+    setError(null);
     
     if (!name || !email || !password || !confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      });
+      setError("Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
+      setError("Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive",
-      });
+      setError("Password must be at least 6 characters long");
       return;
     }
 
@@ -67,7 +57,7 @@ const Signup = () => {
       
       toast({
         title: "Account Created",
-        description: "If email confirmation is required, please check your email. Otherwise, you can now log in.",
+        description: "Please check your email for confirmation instructions before logging in.",
       });
       
       navigate('/login');
@@ -83,11 +73,7 @@ const Signup = () => {
         errorMessage = "This email is already registered. Please log in instead.";
       }
       
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -121,6 +107,11 @@ const Signup = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>

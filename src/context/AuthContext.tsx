@@ -89,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     console.log("Login attempt for:", email);
     try {
+      setLoading(true);
       // For demo purposes, we'll check for admin@example.com / password
       if (email === 'admin@example.com' && password === 'password') {
         console.log("Demo user login");
@@ -135,12 +136,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Login error:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (name: string, email: string, password: string) => {
     console.log("Register attempt for:", email, "with name:", name);
     try {
+      setLoading(true);
       // Skip Supabase registration for the demo account
       if (email === 'admin@example.com') {
         console.log('Demo account registration skipped');
@@ -167,52 +171,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (data && data.user) {
         console.log("Registration successful, user:", data.user);
-        
-        // For simplicity, assume email confirmation is required by default
-        // This is the usual case with Supabase
-        if (!data.user.email_confirmed_at) {
-          console.log("Email confirmation is required");
-          // Return success but don't log in the user yet
-          return;
-        } else {
-          console.log("Email already confirmed, logging in user");
-          // If email is already confirmed, log in the user
-          const newUser = {
-            id: data.user.id,
-            name: name,
-            email: data.user.email || '',
-            role: 'admin' as const
-          };
-          
-          setUser(newUser);
-          localStorage.setItem('user', JSON.stringify(newUser));
-        }
+        return; // Return success, let the UI handle the rest
       } else {
         console.log("Registration completed but awaiting email confirmation");
       }
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     console.log("Logout initiated");
-    // Sign out from Supabase
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Error during sign out:", error);
+    setLoading(true);
+    try {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error during sign out:", error);
+      }
+      
+      // Clear local state
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('supabase.auth.token');
+      console.log("User logged out, state cleared");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    } finally {
+      setLoading(false);
     }
-    
-    // Clear local state
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('supabase.auth.token');
-    console.log("User logged out, state cleared");
   };
 
   const registerStudent = async (name: string, rollNumber: string, email: string, quizId: string) => {
     try {
+      setLoading(true);
       // Create a temporary account for the student without Supabase auth
       const student = {
         id: crypto.randomUUID(),
@@ -227,6 +222,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Student registration error:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
