@@ -297,35 +297,37 @@ const ViewResults = () => {
         {results.length > 0 ? (
           <>
             {isAdmin && (
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Performance Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={results.map(result => ({
-                          name: result.studentName,
-                          score: result.percentageScore
-                        }))}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" />
-                        <YAxis label={{ value: 'Score (%)', angle: -90, position: 'insideLeft' }} />
-                        <Tooltip />
-                        <Bar dataKey="score" fill="#8884d8" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+              <>
+                <Card className="mb-8">
+                  <CardHeader>
+                    <CardTitle>Performance Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={results.map(result => ({
+                            name: result.studentName,
+                            score: result.percentageScore
+                          }))}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" angle={-45} textAnchor="end" />
+                          <YAxis label={{ value: 'Score (%)', angle: -90, position: 'insideLeft' }} />
+                          <Tooltip />
+                          <Bar dataKey="score" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
             
             <Card>
               <CardHeader>
-                <CardTitle>Student {isAdmin ? "Results" : "Submissions"}</CardTitle>
+                <CardTitle>{isAdmin ? "Student Results" : "Student Submissions"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
