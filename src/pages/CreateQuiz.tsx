@@ -89,13 +89,20 @@ const CreateQuiz = () => {
             />
             
             <div className="mt-8 flex flex-col sm:flex-row justify-end gap-3">
-              <Button variant="outline" onClick={handleSaveDraft} disabled={loading}>
+              <Button 
+                variant="outline" 
+                onClick={handleSaveDraft} 
+                disabled={loading}
+              >
                 <Save className="h-4 w-4 mr-2" />
-                Save as Draft
+                {loading ? "Saving..." : "Save as Draft"}
               </Button>
-              <Button onClick={handlePublishQuiz} disabled={loading}>
+              <Button 
+                onClick={handlePublishQuiz} 
+                disabled={loading}
+              >
                 <Send className="h-4 w-4 mr-2" />
-                Publish Quiz
+                {loading ? "Publishing..." : "Publish Quiz"}
               </Button>
             </div>
           </div>

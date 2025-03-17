@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -146,7 +147,22 @@ export function useQuizCreator() {
       
       console.log("Quiz saved to localStorage:", newQuiz);
       
-      // Save to Supabase database
+      // Check if we're using the demo account, which won't work with Supabase
+      if (user.id === 'demo-user-id') {
+        console.log("Using demo account, skipping Supabase save");
+        
+        toast({
+          title: status === 'active' ? "Quiz published" : "Draft saved",
+          description: status === 'active' 
+            ? "Your quiz is now live and ready to share" 
+            : "Your quiz has been saved as a draft",
+        });
+        
+        navigate('/admin-dashboard');
+        return;
+      }
+      
+      // Save to Supabase database for non-demo users
       const { error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
