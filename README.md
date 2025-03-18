@@ -1,22 +1,27 @@
-# Welcome to your Lovable project
+# Welcome to MY  project Quizgator....
 
 ## Project info
+1. User Roles:
+Admin (Teacher):
+Can create quizzes with custom questions and answers.
+Can generate a unique link for each quiz.
+Can view student submissions and scores in an admin dashboard.
+Can download student scores as a PDF.
 
-**URL**: https://lovable.dev/projects/9a44f36b-d5f0-45e0-9c1e-573fad265262
+Student:
+Access the quiz via the unique link.
+Must enter their roll number and name before starting.
+After starting, the quiz should open in full-screen mode.
+Students cannot switch tabs during the quiz; if they attempt to switch, a warning should appear, and they must quit using a "Quit" button in the top-right corner.
+After submitting the quiz, the student should receive a confirmation email with their score and submission status.
 
 ## How can I edit this code?
 
 There are several ways of editing your application.
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/9a44f36b-d5f0-45e0-9c1e-573fad265262) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
 **Use your preferred IDE**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
